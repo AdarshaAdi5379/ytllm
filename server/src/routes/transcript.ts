@@ -6,6 +6,7 @@ import { fetchTranscript, fetchVideoMetadata } from '../services/transcriptServi
 import { indexTranscript } from '../services/embeddingService';
 import { generateTranscriptSummary, generateSuggestedQuestions, buildSystemPrompt } from '../services/geminiService';
 import { sessionCache } from '../utils/sessionCache';
+import { config } from '../config';
 
 const router = Router();
 
@@ -95,9 +96,23 @@ router.post('/', validateBody(transcriptSchema), async (req: Request, res: Respo
       return;
     }
 
+    if (
+      error.message?.toLowerCase().includes('api key') ||
+      (error as any)?.response?.status === 400 ||
+      error.message?.includes('400 Bad Request')
+    ) {
+      if (config.googleApiKey === 'your_google_api_key_here' || !config.googleApiKey) {
+        res.status(401).json({
+          error: 'INVALID_API_KEY',
+          message: 'Google API key is missing or invalid. Please set a valid GOOGLE_API_KEY in the server/.env file.',
+        });
+        return;
+      }
+    }
+
     res.status(503).json({
       error: 'FETCH_FAILED',
-      message: 'Failed to fetch video information. Please check the URL and try again.',
+      message: 'Failed to fetch video information. Error: ' + error.message + ' | Stack: ' + error.stack,
     });
   }
 });

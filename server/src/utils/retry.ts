@@ -13,11 +13,21 @@ export async function retry<T>(
       return await fn();
     } catch (err: unknown) {
       lastError = err;
+      
+      const status = (err as any)?.response?.status;
+      const isClientError = status && (status === 400 || status === 401 || status === 404);
+      
       const isRateLimit =
         err instanceof Error &&
         (err.message.includes('429') ||
           err.message.toLowerCase().includes('rate limit') ||
-          err.message.toLowerCase().includes('quota'));
+          err.message.toLowerCase().includes('quota') ||
+          status === 403);
+
+      if (isClientError && !isRateLimit) {
+        console.warn(`Client error ${status} encountered, aborting retries:`, (err as Error).message);
+        break;
+      }
 
       if (attempt < maxAttempts && isRateLimit) {
         const delay = baseDelayMs * Math.pow(2, attempt - 1);

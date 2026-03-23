@@ -21,35 +21,86 @@ export interface TranscriptResult {
  * Fetches video metadata (title, channel, duration, thumbnail) from YouTube Data API v3.
  */
 export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata> {
-  return retry(async () => {
-    const response = await axios.get(`${YOUTUBE_API_BASE}/videos`, {
-      params: {
-        key: config.googleApiKey,
-        id: videoId,
-        part: 'snippet,contentDetails',
-      },
+  try {
+    return await retry(async () => {
+      const response = await axios.get(`${YOUTUBE_API_BASE}/videos`, {
+        params: {
+          key: config.googleApiKey,
+          id: videoId,
+          part: 'snippet,contentDetails',
+        },
+      });
+
+      const items = response.data.items;
+      if (!items || items.length === 0) {
+        throw new Error(`Video not found: ${videoId}`);
+      }
+
+      const item = items[0];
+      const snippet = item.snippet;
+      const contentDetails = item.contentDetails;
+
+      return {
+        title: snippet.title,
+        channelName: snippet.channelTitle,
+        duration: formatDuration(contentDetails.duration),
+        thumbnailUrl:
+          snippet.thumbnails?.maxres?.url ||
+          snippet.thumbnails?.high?.url ||
+          snippet.thumbnails?.medium?.url ||
+          `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      };
     });
-
-    const items = response.data.items;
-    if (!items || items.length === 0) {
-      throw new Error(`Video not found: ${videoId}`);
+  } catch (err) {
+    console.warn(`Data API failed for metadata (${videoId}), trying fallback...`);
+    try {
+      const response = await axios.get(`https://www.youtube.com/watch?v=${videoId}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        }
+      });
+      const html = response.data as string;
+      
+      const titleMatch = html.match(/<title>(.*?)<\/title>/);
+      let title = titleMatch ? titleMatch[1].replace(' - YouTube', '') : 'Unknown Video';
+      
+      // Try to extract channel name
+      const channelMatch = html.match(/"ownerChannelName":"([^"]+)"/);
+      const channelName = channelMatch ? channelMatch[1] : 'Unknown Channel';
+      
+      // Try to extract duration
+      const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
+      let duration = '0:00';
+      if (lengthMatch) {
+        const seconds = parseInt(lengthMatch[1], 10);
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        if (h > 0) {
+          duration = `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        } else {
+          duration = `${m}:${String(s).padStart(2, '0')}`;
+        }
+      }
+      
+      return {
+        title,
+        channelName,
+        duration,
+        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      };
+    } catch (fallbackErr) {
+      console.error('Fallback metadata fetch failed:', (fallbackErr as Error).message);
+      // Return bare minimum metadata rather than throwing
+      return {
+        title: 'Unknown Video',
+        channelName: 'Unknown Channel',
+        duration: '0:00',
+        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      };
     }
-
-    const item = items[0];
-    const snippet = item.snippet;
-    const contentDetails = item.contentDetails;
-
-    return {
-      title: snippet.title,
-      channelName: snippet.channelTitle,
-      duration: formatDuration(contentDetails.duration),
-      thumbnailUrl:
-        snippet.thumbnails?.maxres?.url ||
-        snippet.thumbnails?.high?.url ||
-        snippet.thumbnails?.medium?.url ||
-        `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-    };
-  });
+  }
 }
 
 /**
