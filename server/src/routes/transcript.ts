@@ -110,9 +110,17 @@ router.post('/', validateBody(transcriptSchema), async (req: Request, res: Respo
       }
     }
 
+    if (error.message?.includes('403 Forbidden') || error.message?.includes('disabled') || error.message?.includes('SERVICE_DISABLED')) {
+      res.status(403).json({
+        error: 'API_DISABLED',
+        message: 'The Generative Language API is disabled for your Google API key. Please click the link in your Google Cloud Console to enable it.',
+      });
+      return;
+    }
+
     res.status(503).json({
       error: 'FETCH_FAILED',
-      message: 'Failed to fetch video information. Error: ' + error.message + ' | Stack: ' + error.stack,
+      message: 'Failed to fetch video information. Please check the URL and try again.',
     });
   }
 });

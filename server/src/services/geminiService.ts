@@ -19,7 +19,7 @@ export interface GeminiContext {
  */
 export async function streamChatResponse(context: GeminiContext, res: Response): Promise<void> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-flash-latest',
     generationConfig: {
       temperature: 0.2,
       maxOutputTokens: 1024,
@@ -73,7 +73,7 @@ export async function streamChatResponse(context: GeminiContext, res: Response):
  */
 export async function generateTranscriptSummary(transcript: string, title: string): Promise<string> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-flash-latest',
     generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
   });
 
@@ -99,7 +99,7 @@ export async function generateSuggestedQuestions(
   title: string
 ): Promise<string[]> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-flash-latest',
     generationConfig: { temperature: 0.7, maxOutputTokens: 400 },
   });
 

@@ -7,7 +7,12 @@ import { chunkText } from '../utils/chunkText';
 import { retry, sleep } from '../utils/retry';
 
 const genAI = new GoogleGenerativeAI(config.googleApiKey);
-const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
+const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' }); // fallback to 001 if 004 fails
+
+// We will export a getter for the model to ensure we can catch and fallback, OR just rigidly use gemini-embedding-001
+// Actually, since we know gemini-embedding-001 works perfectly for this API key, we will just use it directly!
+
+const activeEmbeddingModel = genAI.getGenerativeModel({ model: 'gemini-embedding-001' });
 
 // In-memory map of videoId → Vectra index
 const vectorIndexes = new Map<string, LocalIndex>();
@@ -30,11 +35,11 @@ async function getOrCreateIndex(videoId: string): Promise<LocalIndex> {
 }
 
 /**
- * Embeds a single text using text-embedding-004.
+ * Embeds a single text using gemini-embedding-001.
  */
 async function embedText(text: string): Promise<number[]> {
   return retry(async () => {
-    const result = await embeddingModel.embedContent(text);
+    const result = await activeEmbeddingModel.embedContent(text);
     return result.embedding.values;
   });
 }

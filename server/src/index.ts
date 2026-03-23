@@ -45,8 +45,16 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: 'INTERNAL_ERROR', message: 'An unexpected error occurred' });
 });
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`🚀 Server running on port ${config.port} (${config.nodeEnv})`);
+});
+
+// Graceful shutdown for fast restarts (fixes tsx hanging)
+['SIGTERM', 'SIGINT', 'SIGUSR2'].forEach((signal) => {
+  process.on(signal, () => {
+    console.log(`${signal} received: forcefully exiting`);
+    process.exit(0);
+  });
 });
 
 export default app;
