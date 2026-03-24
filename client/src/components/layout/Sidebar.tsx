@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Wifi, WifiOff, LayoutDashboard } from 'lucide-react';
 import { VideoCard } from '../video/VideoCard';
 import { useVideoStore } from '../../store/useVideoStore';
 import { checkHealth } from '../../api/client';
@@ -24,39 +24,47 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-64 flex-shrink-0 h-full flex flex-col bg-white border-r border-gray-200">
+    <aside className="w-72 flex-shrink-0 h-full flex flex-col bg-slate-900 border-r border-slate-800 shadow-2xl z-10">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-base font-bold text-gray-900">YouTube AI Chat</h1>
+      <div className="p-6 border-b border-slate-800/50">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <LayoutDashboard size={18} className="text-white" />
+            </div>
+            <h1 className="text-sm font-black text-white tracking-widest uppercase">YT AI CHAT</h1>
+          </div>
           <div
-            className={`flex items-center gap-1 text-xs ${connected === false ? 'text-red-500' : 'text-green-600'}`}
-            title={connected === false ? 'Server disconnected' : 'Server connected'}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter ${
+              connected === false ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
+            }`}
           >
-            {connected === false ? <WifiOff size={12} /> : <Wifi size={12} />}
+            {connected === false ? <WifiOff size={10} /> : <Wifi size={10} />}
+            <span>{connected === false ? 'Offline' : 'Online'}</span>
           </div>
         </div>
 
         <button
           onClick={openAddVideoModal}
           disabled={videoIds.length >= 10}
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="group relative w-full overflow-hidden flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
           aria-label="Add new video"
         >
-          <Plus size={16} />
-          Add Video
+          <div className="absolute inset-0 bg-white/10 group-hover:bg-transparent transition-colors"></div>
+          <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+          <span>Add New Video</span>
         </button>
-        {videoIds.length >= 10 && (
-          <p className="text-xs text-gray-400 text-center mt-1">Max 10 videos reached</p>
-        )}
       </div>
 
       {/* Video list */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
+        <div className="px-3 mb-2">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Your Videos</p>
+        </div>
         {videoIds.length === 0 ? (
-          <div className="p-4 text-center text-sm text-gray-400">
-            <p>No videos loaded.</p>
-            <p className="mt-1">Click "Add Video" to start.</p>
+          <div className="p-8 text-center bg-slate-800/20 rounded-2xl border border-dashed border-slate-700/50">
+            <p className="text-sm font-medium text-slate-400">No videos loaded</p>
+            <p className="text-xs text-slate-500 mt-2">Start by adding your first YouTube URL</p>
           </div>
         ) : (
           videoIds.map((id) => <VideoCard key={id} videoId={id} />)
@@ -64,8 +72,17 @@ export function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-gray-200 text-xs text-gray-400 text-center">
-        {videoIds.length}/10 videos loaded
+      <div className="p-4 border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <span>Usage</span>
+          <span>{videoIds.length}/10</span>
+        </div>
+        <div className="mt-2 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500" 
+            style={{ width: `${(videoIds.length / 10) * 100}%` }}
+          />
+        </div>
       </div>
     </aside>
   );

@@ -49,20 +49,30 @@ export function MainPanel() {
   };
 
   return (
-    <main className="flex-1 flex flex-col overflow-hidden bg-gray-50">
-      <div className="flex-shrink-0">
-        <VideoHeader videoId={video.videoId} />
-        <SummaryCard videoId={video.videoId} onQuestionClick={handleSend} />
-        <TranscriptPanel videoId={video.videoId} />
+    <main className="flex-1 flex flex-col overflow-hidden bg-white">
+      <VideoHeader videoId={video.videoId} />
+      
+      <div className="flex-1 flex overflow-hidden">
+        {/* Chat Section */}
+        <div className="flex-1 flex flex-col relative bg-white">
+          <ChatWindow videoId={video.videoId} />
+          <div className="p-4 bg-gradient-to-t from-white via-white to-transparent">
+            <ChatInput
+              videoId={video.videoId}
+              onSend={handleSend}
+              disabled={video.isStreaming}
+            />
+          </div>
+        </div>
+
+        {/* Info Section (Right Sidebar) */}
+        <div className="w-80 flex-shrink-0 flex flex-col bg-slate-50/50 border-l border-slate-100 overflow-y-auto scrollbar-thin">
+          <div className="p-4 space-y-4">
+            <SummaryCard videoId={video.videoId} onQuestionClick={handleSend} />
+            <TranscriptPanel videoId={video.videoId} />
+          </div>
+        </div>
       </div>
-
-      <ChatWindow videoId={video.videoId} />
-
-      <ChatInput
-        videoId={video.videoId}
-        onSend={handleSend}
-        disabled={video.isStreaming}
-      />
     </main>
   );
 }
