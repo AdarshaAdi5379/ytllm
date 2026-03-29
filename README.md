@@ -5,6 +5,7 @@ Turn any YouTube video into an interactive, AI-powered knowledge base. Paste a U
 ## Prerequisites
 
 - Node.js 20+
+- Python 3.11+
 - A Google API key from [Google AI Studio](https://aistudio.google.com) with these APIs enabled:
   - Gemini 1.5 Flash
   - text-embedding-004
@@ -23,8 +24,8 @@ npm run install:all
 ### 2. Configure environment
 
 ```bash
-cp .env.example server/.env
-# Edit server/.env and set GOOGLE_API_KEY=<your key>
+cp .env.example server-python/.env
+# Edit server-python/.env and set GOOGLE_API_KEY=<your key>
 ```
 
 ### 3. Start development servers
@@ -41,8 +42,8 @@ npm run dev
 ```
 ytllm/
 ├── client/          — React 18 + Vite + TailwindCSS frontend
-├── server/          — Node.js + Express backend
-├── shared/          — TypeScript types shared between frontend and backend
+├── server-python/   — Python + FastAPI backend
+├── shared/          — TypeScript types shared with frontend
 ├── .env.example     — Environment variable template
 └── package.json     — Root monorepo scripts
 ```
@@ -62,21 +63,20 @@ ytllm/
 
 | Method | Path | Description |
 |---|---|---|
-| GET | /api/health | Server status |
-| POST | /api/transcript | Load and index a YouTube video |
-| POST | /api/chat | Stream a Gemini AI response (SSE) |
-| POST | /api/export | Generate PDF or DOCX export |
+| GET | /api/health/ | Server status |
+| POST | /api/transcript/ | Load and index a YouTube video |
+| POST | /api/chat/ | Stream a Gemini AI response (SSE) |
+| POST | /api/export/ | Generate PDF or DOCX export |
 
 ## Deployment
 
 ### Backend (Railway)
 
 1. Set `NODE_ENV=production` and `CORS_ORIGIN=https://your-frontend.vercel.app`
-2. Deploy the `/server` directory
+2. Deploy the `/server-python` directory
 3. Add `GOOGLE_API_KEY` as a secret environment variable
 
 ### Frontend (Vercel)
 
-1. Set the Vite proxy target in `vite.config.ts` to your Railway backend URL, or set `VITE_API_BASE` to the backend URL and update `src/api/client.ts`
+1. Set the Vite proxy target in `vite.config.ts` to your Railway backend URL.
 2. Deploy the `/client` directory with `npm run build`
-# ytllm

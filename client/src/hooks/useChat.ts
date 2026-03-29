@@ -19,19 +19,32 @@ export function useChat(videoId: string | null) {
       setStreaming(videoId, true);
 
       try {
-        const response = await fetch('/api/chat', {
+        const response = await fetch('/api/chat/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            videoId,
+            video_id: videoId,
             question,
-            chatHistory,
-            systemPrompt,
+            chat_history: chatHistory,
+            system_prompt: systemPrompt,
           }),
         });
 
-        if (!response.ok || !response.body) {
-          throw new Error('Failed to connect to chat API');
+        if (!response.ok) {
+          try {
+            const errorData = await response.json();
+            const detail = errorData?.detail;
+            if (detail?.message) {
+              throw new Error(detail.message);
+            }
+            throw new Error(errorData?.message || 'Failed to connect to chat API');
+          } catch {
+            throw new Error('Failed to connect to chat API');
+          }
+        }
+
+        if (!response.body) {
+          throw new Error('Failed to read chat stream');
         }
 
         const reader = response.body.getReader();
