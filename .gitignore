@@ -1,0 +1,17 @@
+.env
+**/.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Python
+**/__pycache__/
+**/*.pyc
+.ruff_cache/
+
+# Node / Vite
+**/node_modules/
+client/dist/
+
+# Chroma (temp/persistent vectors are under /tmp, but ignore if ever copied in)
+**/ytllm-vectors/
