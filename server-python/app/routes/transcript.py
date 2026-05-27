@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.utils.youtube_parser import extract_video_id
 from app.services import transcript_service
 from app.services import embedding_service
-from app.services import gemini_service
+from app.services import llm_service
 from app.utils import session_cache
 from app.config import config
 
@@ -48,13 +48,13 @@ async def load_transcript(req: TranscriptRequest, res: Response):
         summary = ""
         suggested_questions = []
         enrich_ms = 0
-        if config.get("enable_gemini_enrichment"):
+        if config.get("enable_llm_enrichment"):
             # Generate summary and suggested questions concurrently
             enrich_started = time.perf_counter()
-            summary_task = gemini_service.generate_transcript_summary(
+            summary_task = llm_service.generate_transcript_summary(
                 transcript, metadata.title
             )
-            questions_task = gemini_service.generate_suggested_questions(
+            questions_task = llm_service.generate_suggested_questions(
                 transcript, metadata.title
             )
 
@@ -64,7 +64,7 @@ async def load_transcript(req: TranscriptRequest, res: Response):
             enrich_ms = int((time.perf_counter() - enrich_started) * 1000)
 
         # Build system prompt
-        system_prompt = gemini_service.build_system_prompt(
+        system_prompt = llm_service.build_system_prompt(
             metadata.title,
             metadata.channel_name,
             metadata.duration,
@@ -73,7 +73,9 @@ async def load_transcript(req: TranscriptRequest, res: Response):
 
         # Index transcript chunks for semantic search
         index_started = time.perf_counter()
-        chunk_count = await embedding_service.index_transcript(video_id, transcript)
+        chunk_count = await embedding_service.index_transcript_segments(
+            video_id, transcript_result.segments, transcript
+        )
         index_ms = int((time.perf_counter() - index_started) * 1000)
 
         # Store session data for export
@@ -125,20 +127,16 @@ async def load_transcript(req: TranscriptRequest, res: Response):
                 },
             )
 
-        if (
-            "generativelanguage.googleapis.com" in error_msg
-            or "resourceexhausted" in error_msg.lower()
-            or "rate limit" in error_msg.lower()
-        ):
+        if "rate limit" in error_msg.lower() or "429" in error_msg.lower():
             raise HTTPException(
                 status_code=429,
                 detail={
-                    "error": "GEMINI_RATE_LIMIT",
-                    "message": "Gemini API quota/rate limit reached. Please wait and try again, or use a higher-quota key/project.",
+                    "error": "RATE_LIMITED",
+                    "message": "API rate limit reached. Please wait and try again.",
                 },
             )
 
-        if "youtube api quota" in error_msg.lower() or "quota" in error_msg or "429" in error_msg:
+        if "youtube api quota" in error_msg.lower() or ("quota" in error_msg.lower() and "youtube" in error_msg.lower()):
             raise HTTPException(
                 status_code=429,
                 detail={
@@ -147,34 +145,21 @@ async def load_transcript(req: TranscriptRequest, res: Response):
                 },
             )
 
-        if "api key" in error_msg.lower() or "400" in error_msg:
+        if "api key" in error_msg.lower() or "401" in error_msg or "invalid" in error_msg.lower():
             raise HTTPException(
                 status_code=401,
                 detail={
                     "error": "INVALID_API_KEY",
-                    "message": "Google API key is missing, expired, or invalid. Please set a valid GOOGLE_API_KEY in the server-python/.env file.",
+                    "message": "API key is missing, expired, or invalid. Please set a valid OPENAI_API_KEY in the server-python/.env file.",
                 },
             )
 
-        if "404" in error_msg or "is not found" in error_msg.lower():
+        if "insufficient_quota" in error_msg.lower() or "quota" in error_msg.lower():
             raise HTTPException(
-                status_code=503,
+                status_code=429,
                 detail={
-                    "error": "MODEL_NOT_FOUND",
-                    "message": "Your configured Gemini model is not available for this API key. Set GEMINI_MODEL to an available model (for example: models/gemini-flash-latest).",
-                },
-            )
-
-        if (
-            "403" in error_msg
-            or "disabled" in error_msg
-            or "SERVICE_DISABLED" in error_msg
-        ):
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": "API_DISABLED",
-                    "message": "The Generative Language API is disabled for your Google API key. Please click the link in your Google Cloud Console to enable it.",
+                    "error": "QUOTA_EXCEEDED",
+                    "message": "API quota exceeded. Please check your billing plan and usage limits.",
                 },
             )
 

@@ -1,12 +1,14 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
-from typing import Literal
+from typing import Literal, Optional
 
 
 class Settings(BaseSettings):
-    google_api_key: str = Field(default="", alias="GOOGLE_API_KEY")
-    gemini_model: str = Field(default="models/gemini-flash-latest", alias="GEMINI_MODEL")
-    enable_gemini_enrichment: bool = Field(default=True, alias="ENABLE_GEMINI_ENRICHMENT")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
+    openai_embedding_model: str = Field(default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL")
+    openai_base_url: Optional[str] = Field(default=None, alias="OPENAI_BASE_URL")
+    enable_llm_enrichment: bool = Field(default=True, alias="ENABLE_LLM_ENRICHMENT")
     port: int = Field(default=3001, alias="PORT")
     node_env: Literal["development", "production", "test"] = Field(
         default="development", alias="NODE_ENV"
@@ -29,7 +31,12 @@ class Settings(BaseSettings):
     transcript_min_words: int = Field(default=100, alias="TRANSCRIPT_MIN_WORDS")
 
     # Cache settings
-    session_cache_ttl: int = 7200  # 2 hours in seconds
+    session_cache_ttl: int = Field(default=7200, alias="SESSION_CACHE_TTL")  # seconds
+    cleanup_interval_s: int = Field(default=600, alias="CLEANUP_INTERVAL_S")  # seconds
+    vector_index_ttl_s: int = Field(default=7200, alias="VECTOR_INDEX_TTL_S")  # seconds
+
+    # Multi-video
+    max_multi_videos: int = Field(default=10, alias="MAX_MULTI_VIDEOS")
 
     # Rate limits
     requests_per_minute: int = 30
@@ -50,9 +57,11 @@ except Exception as e:
 
 
 config = {
-    "google_api_key": settings.google_api_key,
-    "gemini_model": settings.gemini_model,
-    "enable_gemini_enrichment": settings.enable_gemini_enrichment,
+    "openai_api_key": settings.openai_api_key,
+    "openai_model": settings.openai_model,
+    "openai_embedding_model": settings.openai_embedding_model,
+    "openai_base_url": settings.openai_base_url,
+    "enable_llm_enrichment": settings.enable_llm_enrichment,
     "port": settings.port,
     "node_env": settings.node_env,
     "cors_origins": [origin.strip() for origin in settings.cors_origins.split(",")],
@@ -66,5 +75,8 @@ config = {
     "embedding_batch_delay": settings.embedding_batch_delay,
     "transcript_min_words": settings.transcript_min_words,
     "session_cache_ttl": settings.session_cache_ttl,
+    "cleanup_interval_s": settings.cleanup_interval_s,
+    "vector_index_ttl_s": settings.vector_index_ttl_s,
+    "max_multi_videos": settings.max_multi_videos,
     "requests_per_minute": settings.requests_per_minute,
 }

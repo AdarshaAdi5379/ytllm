@@ -1,15 +1,17 @@
 import json
-import google.generativeai as genai
+from openai import AsyncOpenAI
 from typing import AsyncGenerator
 
 from app.config import config
-from app.utils.retry import retry
 
 
-genai.configure(api_key=config["google_api_key"])
+client = AsyncOpenAI(
+    api_key=config["openai_api_key"],
+    base_url=config.get("openai_base_url"),
+)
 
 
-class GeminiContext:
+class LLMContext:
     def __init__(
         self,
         system_prompt: str,
@@ -26,19 +28,14 @@ class GeminiContext:
 
 
 async def stream_chat_response(
-    context: GeminiContext,
+    context: LLMContext,
 ) -> AsyncGenerator[str, None]:
-    """Assembles the full context payload and streams the Gemini response as SSE."""
-    model_kwargs = {
-        "model_name": config["gemini_model"],
-        "generation_config": {"temperature": 0.2, "max_output_tokens": 1024},
-    }
+    """Assembles the full context payload and streams the OpenAI response as SSE."""
+    messages: list[dict] = []
+
     if (context.system_prompt or "").strip():
-        model_kwargs["system_instruction"] = context.system_prompt
+        messages.append({"role": "system", "content": context.system_prompt})
 
-    model = genai.GenerativeModel(**model_kwargs)
-
-    # Build context content
     context_content = ""
 
     if context.retrieved_chunks:
@@ -51,7 +48,6 @@ async def stream_chat_response(
             f"\n\n[PREVIOUS CONVERSATION SUMMARY]\n{context.chat_summary}"
         )
 
-    # Build history
     history_text = ""
     if context.recent_messages:
         history_text = "\n".join(
@@ -59,7 +55,6 @@ async def stream_chat_response(
             for m in context.recent_messages
         )
 
-    # Compose final user message
     user_message_parts = []
     if history_text:
         user_message_parts.append("[RECENT CONVERSATION]\n" + history_text)
@@ -68,17 +63,18 @@ async def stream_chat_response(
     user_message_parts.append("[QUESTION]\n" + context.question)
     user_message = "\n\n".join(user_message_parts).strip()
 
-    # Stream response
-    def _start_stream():
-        return model.generate_content(user_message, stream=True)
+    messages.append({"role": "user", "content": user_message})
 
-    stream = await retry(_start_stream, max_attempts=3)
+    stream = await client.chat.completions.create(
+        model=config["openai_model"],
+        messages=messages,
+        temperature=0.2,
+        max_tokens=1024,
+        stream=True,
+    )
 
-    for chunk in stream:
-        try:
-            text = chunk.text
-        except Exception:
-            text = None
+    async for chunk in stream:
+        text = chunk.choices[0].delta.content
         if text:
             yield f"data: {json.dumps({'type': 'token', 'content': text})}\n\n"
 
@@ -87,36 +83,26 @@ async def stream_chat_response(
 
 async def generate_transcript_summary(transcript: str, title: str) -> str:
     """Generates a 150-word summary of the transcript."""
-    model = genai.GenerativeModel(
-        model_name=config["gemini_model"],
-        generation_config={"temperature": 0.3, "max_output_tokens": 300},
-    )
-
-    # Use first ~8000 chars to avoid token limits
     truncated = transcript[:8000]
 
-    prompt = f"""You are summarising a YouTube video titled "{title}". 
-Write a concise 150-word summary of the following transcript that captures the main topics, key points, and conclusions. 
+    prompt = f"""You are summarising a YouTube video titled "{title}".
+Write a concise 150-word summary of the following transcript that captures the main topics, key points, and conclusions.
 Be informative and neutral in tone.
 
 Transcript:
 {truncated}"""
 
-    async def _generate():
-        result = await model.generate_content_async(prompt)
-        return result.text
-
-    result = await retry(_generate, max_attempts=3)
-    return result.strip()
+    resp = await client.chat.completions.create(
+        model=config["openai_model"],
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=300,
+    )
+    return (resp.choices[0].message.content or "").strip()
 
 
 async def generate_suggested_questions(transcript: str, title: str) -> list[str]:
     """Generates 5 suggested starter questions about the video."""
-    model = genai.GenerativeModel(
-        model_name=config["gemini_model"],
-        generation_config={"temperature": 0.7, "max_output_tokens": 400},
-    )
-
     truncated = transcript[:4000]
 
     prompt = f"""You are helping a user explore a YouTube video titled "{title}".
@@ -127,12 +113,13 @@ Return ONLY the 5 questions, one per line, without numbering or bullet points.
 Transcript excerpt:
 {truncated}"""
 
-    async def _generate():
-        result = await model.generate_content_async(prompt)
-        return result.text
-
-    result = await retry(_generate, max_attempts=3)
-    text = result.strip()
+    resp = await client.chat.completions.create(
+        model=config["openai_model"],
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=400,
+    )
+    text = (resp.choices[0].message.content or "").strip()
 
     questions = [q.strip() for q in text.split("\n") if len(q.strip()) > 10][:5]
 
@@ -152,9 +139,34 @@ VIDEO INFORMATION:
 - Summary: {summary}
 
 STRICT RULES:
-1. Answer ONLY based on the provided transcript context sections. 
+1. Answer ONLY based on the provided transcript context sections.
 2. If the answer is not in the transcript, say clearly: "This information isn't covered in the video."
 3. Do NOT use outside knowledge or speculation.
 4. Be concise and direct. Use bullet points for lists.
 5. When referencing specific information, mention which part of the video it comes from if possible.
 6. You are discussing THIS specific video only."""
+
+
+def build_multi_system_prompt(videos: list[dict]) -> str:
+    lines = []
+    for v in videos:
+        title = v.get("title") or "Unknown"
+        vid = v.get("video_id") or ""
+        channel = v.get("channel_name") or ""
+        duration = v.get("duration") or ""
+        lines.append(f"- {title} ({vid}) — {channel} — {duration}".strip())
+
+    video_list = "\n".join(lines) if lines else "- (no videos)"
+
+    return f"""You are an AI assistant helping a user compare and answer questions across multiple YouTube videos.
+
+VIDEOS:
+{video_list}
+
+STRICT RULES:
+1. Answer ONLY based on the provided transcript context sections.
+2. If the answer is not in the transcript sections for any video, say clearly: "This information isn't covered in the provided videos."
+3. Do NOT use outside knowledge or speculation.
+4. Be concise and direct. Use bullet points for lists.
+5. When stating a fact, cite the source video by title (and video_id if helpful).
+6. If videos disagree, explicitly call out the disagreement and which video says what."""

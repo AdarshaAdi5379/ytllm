@@ -1,4 +1,7 @@
 import sentry_sdk
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,6 +11,8 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import config
 from app.routes import health, transcript, chat, export
+from app.services import embedding_service
+from app.utils import session_cache
 
 # Initialize Sentry
 sentry_sdk.init(
@@ -16,7 +21,40 @@ sentry_sdk.init(
     traces_sample_rate=1.0,
 )
 
-app = FastAPI(title="YouTube AI Chat Agent")
+async def _cleanup_loop(stop_event: asyncio.Event) -> None:
+    interval_s = int(config.get("cleanup_interval_s", 600))
+    max_age_s = int(config.get("vector_index_ttl_s", config.get("session_cache_ttl", 7200)))
+
+    while not stop_event.is_set():
+        try:
+            active_ids = set(session_cache.session_cache.keys())
+            removed = embedding_service.cleanup_orphaned_indexes(active_ids, max_age_s=max_age_s)
+            if removed and config.get("node_env") != "production":
+                print(f"🧹 Cleanup removed {removed} orphaned vector index dirs")
+        except Exception as e:
+            print(f"Cleanup loop error: {e}")
+
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval_s)
+        except asyncio.TimeoutError:
+            continue
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    stop_event = asyncio.Event()
+    task = asyncio.create_task(_cleanup_loop(stop_event))
+    try:
+        yield
+    finally:
+        stop_event.set()
+        try:
+            await asyncio.wait_for(task, timeout=5)
+        except Exception:
+            task.cancel()
+
+
+app = FastAPI(title="YouTube AI Chat Agent", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(

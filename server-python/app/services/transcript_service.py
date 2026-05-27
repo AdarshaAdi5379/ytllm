@@ -5,6 +5,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 
 from app.config import config
 from app.utils.retry import retry
+from app.utils.chunk_segments import TranscriptSegment
 
 
 YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3"
@@ -21,10 +22,17 @@ class VideoMetadata:
 
 
 class TranscriptResult:
-    def __init__(self, text: str, language: str, is_auto_generated: bool):
+    def __init__(
+        self,
+        text: str,
+        language: str,
+        is_auto_generated: bool,
+        segments: list[TranscriptSegment],
+    ):
         self.text = text
         self.language = language
         self.is_auto_generated = is_auto_generated
+        self.segments = segments
 
 
 async def fetch_video_metadata(video_id: str) -> VideoMetadata:
@@ -171,7 +179,8 @@ async def fetch_transcript_via_data_api(video_id: str) -> TranscriptResult | Non
             )
             download_response.raise_for_status()
 
-            text = _parse_vtt(download_response.text)
+            segments = _parse_vtt_to_segments(download_response.text)
+            text = _segments_to_text(segments)
             if len(text.split()) < config["transcript_min_words"]:
                 return None
 
@@ -179,6 +188,7 @@ async def fetch_transcript_via_data_api(video_id: str) -> TranscriptResult | Non
                 text=text,
                 language=track["snippet"]["language"],
                 is_auto_generated=is_auto_generated,
+                segments=segments,
             )
     except Exception:
         return None
@@ -219,7 +229,8 @@ async def fetch_transcript_via_timedtext(video_id: str) -> TranscriptResult | No
                 try:
                     response = await client.get(url, headers=base_headers, timeout=10.0)
                     if response.text and len(response.text) > 50:
-                        text = _parse_vtt(response.text)
+                        segments = _parse_vtt_to_segments(response.text)
+                        text = _segments_to_text(segments)
                         if len(text.split()) >= config["transcript_min_words"]:
                             print(
                                 f"Found captions via timedtext ({lang}) for {video_id}"
@@ -228,6 +239,7 @@ async def fetch_transcript_via_timedtext(video_id: str) -> TranscriptResult | No
                                 text=text,
                                 language=lang,
                                 is_auto_generated="asr=1" in url,
+                                segments=segments,
                             )
                 except Exception:
                     continue
@@ -238,13 +250,15 @@ async def fetch_transcript_via_timedtext(video_id: str) -> TranscriptResult | No
                 url = f"https://www.youtube.com/api/timedtext?v={video_id}&lang={lang}&fmt=vtt"
                 response = await client.get(url, headers=base_headers, timeout=10.0)
                 if response.text and len(response.text) > 50:
-                    text = _parse_vtt(response.text)
+                    segments = _parse_vtt_to_segments(response.text)
+                    text = _segments_to_text(segments)
                     if len(text.split()) >= config["transcript_min_words"]:
                         print(f"Found captions via timedtext ({lang}) for {video_id}")
                         return TranscriptResult(
                             text=text,
                             language=lang,
                             is_auto_generated=True,
+                            segments=segments,
                         )
             except Exception:
                 continue
@@ -252,38 +266,101 @@ async def fetch_transcript_via_timedtext(video_id: str) -> TranscriptResult | No
     return None
 
 
-def _parse_vtt(vtt_content: str) -> str:
-    """Parses VTT caption file into clean plain text."""
-    lines = vtt_content.split("\n")
-    text_lines = []
-    last_line = ""
+def _parse_vtt_to_segments(vtt_content: str) -> list[TranscriptSegment]:
+    """Parses a VTT caption file into time-stamped segments."""
+    lines = vtt_content.splitlines()
+    segments: list[TranscriptSegment] = []
 
-    for line in lines:
-        trimmed = line.strip()
+    i = 0
+    last_text = ""
+    while i < len(lines):
+        line = lines[i].strip()
 
-        # Skip headers, timestamps, etc.
-        if (
-            trimmed == "WEBVTT"
-            or trimmed.startswith("NOTE")
-            or trimmed.startswith("STYLE")
-            or re.match(r"^\d{2}:\d{2}:\d{2}", trimmed)
-            or re.match(r"^\d{2}:\d{2}[\.,]", trimmed)
-            or re.match(r"^-->", trimmed)
-        ):
+        # Skip headers and comments
+        if not line or line == "WEBVTT" or line.startswith("NOTE") or line.startswith("STYLE"):
+            i += 1
             continue
 
         # Skip pure numeric cue IDs
-        if re.match(r"^\d+$", trimmed):
+        if re.match(r"^\d+$", line):
+            i += 1
             continue
 
-        if trimmed and trimmed != last_line:
-            # Remove HTML tags
-            cleaned = re.sub(r"<[^>]+>", "", trimmed).strip()
-            if cleaned:
-                text_lines.append(cleaned)
-                last_line = trimmed
+        # Cue timing line
+        if "-->" in line:
+            parts = [p.strip() for p in line.split("-->", 1)]
+            start_raw = parts[0]
+            end_raw = parts[1].split()[0] if len(parts) > 1 else ""
 
-    return _clean_transcript_text(" ".join(text_lines))
+            try:
+                start_s = _parse_vtt_timestamp_to_seconds(start_raw)
+                end_s = _parse_vtt_timestamp_to_seconds(end_raw)
+            except Exception:
+                i += 1
+                continue
+
+            i += 1
+            cue_text_lines: list[str] = []
+            while i < len(lines) and lines[i].strip():
+                cue_line = lines[i].strip()
+                cue_line = re.sub(r"<[^>]+>", "", cue_line).strip()
+                if cue_line:
+                    cue_text_lines.append(cue_line)
+                i += 1
+
+            cue_text = " ".join(cue_text_lines).strip()
+            cue_text = _clean_transcript_text(cue_text)
+            if cue_text and cue_text != last_text:
+                segments.append(
+                    TranscriptSegment(text=cue_text, start_s=float(start_s), end_s=float(end_s))
+                )
+                last_text = cue_text
+            i += 1
+            continue
+
+        i += 1
+
+    # Ensure monotonic time ranges
+    normalized: list[TranscriptSegment] = []
+    prev_end = 0.0
+    for seg in segments:
+        start_s = max(float(seg.start_s), prev_end)
+        end_s = max(float(seg.end_s), start_s)
+        normalized.append(TranscriptSegment(text=seg.text, start_s=start_s, end_s=end_s))
+        prev_end = end_s
+    return normalized
+
+
+def _parse_vtt_timestamp_to_seconds(ts: str) -> float:
+    """
+    Parses VTT timestamps like:
+    - HH:MM:SS.mmm
+    - MM:SS.mmm
+    - HH:MM:SS,mmm
+    - MM:SS,mmm
+    """
+    raw = (ts or "").strip()
+    if not raw:
+        raise ValueError("empty timestamp")
+
+    raw = raw.replace(",", ".")
+    parts = raw.split(":")
+    if len(parts) == 3:
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        seconds = float(parts[2])
+    elif len(parts) == 2:
+        hours = 0
+        minutes = int(parts[0])
+        seconds = float(parts[1])
+    else:
+        raise ValueError(f"invalid timestamp: {ts}")
+
+    return float(hours * 3600 + minutes * 60 + seconds)
+
+
+def _segments_to_text(segments: list[TranscriptSegment]) -> str:
+    return _clean_transcript_text(" ".join(seg.text for seg in segments if seg.text))
 
 
 def _clean_transcript_text(text: str) -> str:
@@ -316,13 +393,24 @@ async def fetch_transcript(video_id: str) -> TranscriptResult:
             
         if transcript_items and len(transcript_items) > 0:
             print(f"Transcript fetched via youtube-transcript for {video_id}")
-            raw_text = " ".join(item["text"] for item in transcript_items)
+            segments: list[TranscriptSegment] = []
+            for item in transcript_items:
+                text = _clean_transcript_text((item.get("text") or "").replace("\n", " "))
+                if not text:
+                    continue
+                start_s = float(item.get("start") or 0.0)
+                duration_s = float(item.get("duration") or 0.0)
+                end_s = max(start_s, start_s + duration_s)
+                segments.append(TranscriptSegment(text=text, start_s=start_s, end_s=end_s))
+
+            raw_text = _segments_to_text(segments)
             if len(raw_text.split()) < config["transcript_min_words"]:
                 raise Exception("Transcript too short (likely partial); trying fallback.")
             return TranscriptResult(
-                text=_clean_transcript_text(raw_text),
+                text=raw_text,
                 language="en",
                 is_auto_generated=True,
+                segments=segments,
             )
     except Exception as e:
         print(f"youtube-transcript failed for {video_id}: {e}")

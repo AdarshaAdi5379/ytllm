@@ -1,19 +1,16 @@
-import google.generativeai as genai
+from openai import AsyncOpenAI
 
 from app.config import config
-from app.utils.retry import retry
 
 
-genai.configure(api_key=config["google_api_key"])
+client = AsyncOpenAI(
+    api_key=config["openai_api_key"],
+    base_url=config.get("openai_base_url"),
+)
 
 
 async def summarise_chat_history(old_messages: list[dict]) -> str:
     """Summarises old messages in a conversation to keep context compact."""
-    model = genai.GenerativeModel(
-        model_name=config["gemini_model"],
-        generation_config={"temperature": 0.3, "max_output_tokens": 300},
-    )
-
     history_text = "\n".join(
         f"{'User' if m.get('role') == 'user' else 'Assistant'}: {m.get('content', '')}"
         for m in old_messages
@@ -23,12 +20,13 @@ async def summarise_chat_history(old_messages: list[dict]) -> str:
 
 {history_text}"""
 
-    async def _generate():
-        result = await model.generate_content_async(prompt)
-        return result.text
-
-    result_text = await retry(_generate, max_attempts=3)
-    return (result_text or "").strip()
+    resp = await client.chat.completions.create(
+        model=config["openai_model"],
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=300,
+    )
+    return (resp.choices[0].message.content or "").strip()
 
 
 async def process_history(
@@ -44,13 +42,11 @@ async def process_history(
     if len(chat_history) <= threshold:
         return chat_history, existing_summary
 
-    # Split: older messages get summarised, last N messages stay as full context
     older_messages = (
         chat_history[:-window_size] if window_size < len(chat_history) else []
     )
     recent_messages = chat_history[-window_size:]
 
-    # Build summary from existing summary + older messages
     messages_to_summarise = (
         [
             {

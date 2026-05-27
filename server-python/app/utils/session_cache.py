@@ -60,5 +60,15 @@ class SessionCache:
     def has(video_id: str) -> bool:
         return video_id in cache
 
+    @staticmethod
+    def expire() -> None:
+        # cachetools TTLCache only clears expired items on access/expire()
+        cache.expire()
+
+    @staticmethod
+    def keys() -> list[str]:
+        cache.expire()
+        return list(cache.keys())
+
 
 session_cache = SessionCache()

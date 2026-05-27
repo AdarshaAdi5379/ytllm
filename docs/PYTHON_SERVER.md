@@ -6,14 +6,14 @@ A Python-based backend for the YouTube AI Chat Agent project, originally built w
 
 This is a FastAPI-based backend that provides:
 - YouTube video transcript extraction and indexing
-- AI-powered chat using Google Gemini
+- AI-powered chat using OpenAI (or any OpenAI-compatible provider)
 - Vector-based semantic search using ChromaDB
 - PDF and DOCX export functionality
 
 ## Prerequisites
 
 - Python 3.11+
-- Google API Key from [Google AI Studio](https://aistudio.google.com)
+- OpenAI API key (or any OpenAI-compatible provider key)
 
 ## Quick Start
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env and set GOOGLE_API_KEY=<your key>
+# Edit .env and set OPENAI_API_KEY=<your key>
 ```
 
 ### 3. Run Server
@@ -59,7 +59,7 @@ server-python/
 │   ├── services/
 │   │   ├── transcript_service.py   # YouTube transcript fetching
 │   │   ├── embedding_service.py     # ChromaDB vector store
-│   │   ├── gemini_service.py       # Gemini AI integration
+│   │   ├── llm_service.py          # OpenAI / LLM integration
 │   │   ├── memory_service.py       # Chat history summarization
 │   │   └── export_service.py       # PDF/DOCX generation
 │   ├── utils/
@@ -78,7 +78,10 @@ server-python/
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GOOGLE_API_KEY` | Google AI API key (required) | - |
+| `OPENAI_API_KEY` | OpenAI API key (required) | - |
+| `OPENAI_MODEL` | Chat model | `gpt-4o-mini` |
+| `OPENAI_EMBEDDING_MODEL` | Embedding model | `text-embedding-3-small` |
+| `OPENAI_BASE_URL` | Custom API base URL (for OpenRouter, etc.) | - |
 | `PORT` | Server port | `3001` |
 | `NODE_ENV` | Environment | `development` |
 | `CORS_ORIGIN` | Allowed CORS origin | `http://localhost:5173` |
@@ -89,7 +92,7 @@ server-python/
 |--------|------|-------------|
 | GET | `/api/health/` | Server health check |
 | POST | `/api/transcript/` | Load and index a YouTube video |
-| POST | `/api/chat/` | Stream a Gemini AI response (SSE) |
+| POST | `/api/chat/` | Stream an AI response (SSE) |
 | POST | `/api/export/` | Generate PDF or DOCX export |
 
 ### Health Check
@@ -179,7 +182,7 @@ curl -X POST http://localhost:3001/api/export/ \
 - **System prompt**: Video context embedded in prompt
 
 ### AI Chat
-- Uses Gemini 1.5 Flash for response generation
+- Uses OpenAI (or any OpenAI-compatible provider) for response generation
 - Semantic search using ChromaDB vector store
 - Streaming responses via Server-Sent Events
 
@@ -196,7 +199,7 @@ curl -X POST http://localhost:3001/api/export/ \
 | Server | Uvicorn |
 | Validation | Pydantic |
 | HTTP Client | httpx |
-| AI | Google Gemini |
+| AI | OpenAI (or compatible) |
 | Vector Store | ChromaDB |
 | PDF | FPDF2 |
 | DOCX | python-docx |
