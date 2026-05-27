@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     # Multi-video
     max_multi_videos: int = Field(default=10, alias="MAX_MULTI_VIDEOS")
 
+    # Auth settings
+    jwt_secret: str = Field(default="change-me-to-a-random-secret", alias="JWT_SECRET")
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_expire_minutes: int = Field(default=10080, alias="JWT_EXPIRE_MINUTES")  # 7 days
+    database_url: str = Field(default="sqlite+aiosqlite:///./ytllm.db", alias="DATABASE_URL")
+
     # Rate limits
     requests_per_minute: int = 30
 
@@ -78,5 +84,9 @@ config = {
     "cleanup_interval_s": settings.cleanup_interval_s,
     "vector_index_ttl_s": settings.vector_index_ttl_s,
     "max_multi_videos": settings.max_multi_videos,
+    "jwt_secret": settings.jwt_secret,
+    "jwt_algorithm": settings.jwt_algorithm,
+    "jwt_expire_minutes": settings.jwt_expire_minutes,
+    "database_url": settings.database_url,
     "requests_per_minute": settings.requests_per_minute,
 }

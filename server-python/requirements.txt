@@ -38,3 +38,11 @@ python-dotenv>=1.0.0
 
 # XML parsing
 xmltodict>=0.13.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.0
+aiosqlite>=0.20.0
+
+# Auth
+pyjwt>=2.9.0
+passlib[bcrypt]>=1.7.4

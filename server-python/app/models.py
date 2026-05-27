@@ -47,6 +47,52 @@ class ExportRequest(BaseModel):
     chat_history: list[Message] = []
 
 
+class UserCreate(BaseModel):
+    email: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+class SavedVideoResponse(BaseModel):
+    id: str
+    youtube_video_id: str
+    title: str
+    channel_name: str
+    duration: str
+    thumbnail_url: str
+    summary: str
+    created_at: str
+    message_count: int = 0
+
+
+class SavedVideoDetail(BaseModel):
+    id: str
+    youtube_video_id: str
+    title: str
+    channel_name: str
+    duration: str
+    thumbnail_url: str
+    transcript: str
+    summary: str
+    system_prompt: str
+    messages: list[Message]
+
+
 class ApiError(BaseModel):
     error: str
     message: str
