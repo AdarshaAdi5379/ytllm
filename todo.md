@@ -23,16 +23,16 @@
 ## Phase 2 — Memory Layer & AI Integration
 **Goal:** Backend answers questions with full 3-layer context management and streaming.
 
-- [x] Configure `@google/generative-ai` SDK
+- [x] Configure Gemini AI SDK (later replaced with OpenAI)
 - [x] Implement transcript chunking utility (500-word, 50-word overlap)
-- [x] Implement Embedding Service (text-embedding-004 + Vectra per videoId)
+- [x] Implement Embedding Service (OpenAI text-embedding-3-small via ChromaDB)
 - [x] Wire chunking + embedding into `/api/transcript`
-- [x] Add Gemini call for 150-word summary generation
-- [x] Add Gemini call for 5 suggested starter questions
+- [x] Add LLM call for 150-word summary generation
+- [x] Add LLM call for 5 suggested starter questions
 - [x] Implement Memory Service (rolling summary, threshold detection)
-- [x] Implement Gemini Service (context assembly, system prompt, streaming wrapper)
+- [x] Implement LLM Service (context assembly, system prompt, streaming wrapper)
 - [x] Implement `POST /api/chat` route with SSE streaming
-- [x] Retry utility with exponential backoff for all Google API calls
+- [x] Retry utility with exponential backoff for all API calls
 - [x] Session cache (in-memory, 2-hour TTL) for transcript + metadata
 
 **Status: IMPLEMENTED ✅**
@@ -88,15 +88,69 @@
 - [x] Accessibility: ARIA labels on all interactive elements, keyboard navigation
 - [x] Responsive layout (flex-based, sidebar + main panel)
 - [x] Environment variable documentation and `.env.example` finalised
-- [x] Rate limiting middleware (30 req/min per IP via express-rate-limit)
-- [x] Input sanitisation with Zod on all endpoints
+- [x] Rate limiting middleware (30 req/min per IP via slowapi)
+- [x] Input sanitisation with Pydantic on all endpoints
 - [x] CORS locked to configured frontend origin
 - [x] README with full setup and deployment instructions
 - [x] API key never included in any response (server-side only)
 - [x] Graceful error handling on all endpoints with actionable messages
-- [x] Exponential backoff retry on all Google API calls
+- [x] Exponential backoff retry on all API calls
 
 **Status: IMPLEMENTED ✅**
+
+---
+
+## Phase 6 — Migration: Google Gemini → OpenAI
+**Goal:** Replace all Google Gemini API calls with OpenAI equivalents.
+
+- [x] Add `openai` Python SDK dependency
+- [x] Update `config.py` — replace Google config with OpenAI fields
+- [x] Rewrite `embedding_service.py` — `genai.embed_content` → `AsyncOpenAI embeddings`
+- [x] Rewrite `gemini_service.py` → `llm_service.py` — OpenAI chat completions
+- [x] Rewrite `memory_service.py` — OpenAI chat for summarization
+- [x] Update error handling in `transcript.py` — remove Gemini-specific error codes
+- [x] Update `.env`, `.env.example`, docs, and README
+- [x] Clean up tracked `__pycache__` and `client/dist/` from git
+
+**Status: IMPLEMENTED ✅**
+
+---
+
+## Phase 7 — User Authentication
+**Goal:** Users can sign up/in to persist videos and chat history. Guest mode remains for anonymous use.
+
+### Phase 7a — Backend Database & Auth Layer
+- [x] Add SQLAlchemy + aiosqlite + PyJWT + Passlib dependencies
+- [x] Create async database engine and session factory (`database.py`)
+- [x] Create SQLAlchemy ORM models: `User`, `Video`, `ChatMessage` (`db_models.py`)
+- [x] Add auth config: `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRE_MINUTES`, `DATABASE_URL`
+- [x] Add Pydantic schemas: `UserCreate`, `UserLogin`, `TokenResponse`, `SavedVideoResponse`
+- [x] Create `auth_service.py` — password hashing (bcrypt), JWT create/verify, optional user dependency
+- [x] Create `auth.py` routes — `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
+- [x] Register auth router in `main.py`, init DB on startup
+- [x] Update CORS to allow `Authorization` header and `DELETE` method
+
+### Phase 7b — Video Persistence Routes
+- [x] Create `routes/videos.py` — GET (list), GET/{id} (detail with messages), POST (save), DELETE
+- [x] Update `routes/transcript.py` — auto-save video to DB after successful load when JWT present
+- [x] Update `routes/chat.py` — save chat messages to DB after streaming completes when JWT present
+
+### Phase 7c — Frontend Auth UI
+- [x] Create `store/useAuthStore.ts` — Zustand slice for user + token, persisted to localStorage
+- [x] Update `api/client.ts` — `Authorization: Bearer <token>` header, auth API functions, saved videos API
+- [x] Create `components/auth/AuthModal.tsx` — tabbed Login / Signup modal
+- [x] Update `components/layout/Sidebar.tsx` — Sign In button (guest), user email + My Videos + Sign Out (authenticated)
+- [x] Create `components/video/SavedVideosList.tsx` — list user's saved videos with delete
+
+### Phase 7d — Restore Saved Videos
+- [x] Create `hooks/useRestoreVideo.ts` — fetch detail, re-index via transcript endpoint, restore chat history
+
+### Phase 7e — Cleanup & Bugfixes
+- [x] Remove dead YouTube Data API v3 fallback (`google_api_key` config) from `transcript_service.py`
+- [x] Remove stale `server/` (old Node.js backend), `designs/`, `instrument.js`
+- [x] Register `videos.py` router in `main.py`
+
+**Phase 7 Status: IMPLEMENTED ✅**
 
 ---
 
@@ -104,3 +158,4 @@
 - `[x]` = Completed
 - `[ ]` = Pending
 - **Status: IMPLEMENTED ✅** = Full phase done
+- **Status: PARTIALLY IMPLEMENTED 🚧** = Phase in progress

@@ -93,6 +93,17 @@ class SavedVideoDetail(BaseModel):
     messages: list[Message]
 
 
+class SaveVideoRequest(BaseModel):
+    youtube_video_id: str
+    title: str
+    channel_name: str
+    duration: str
+    thumbnail_url: str
+    transcript: str
+    summary: str
+    system_prompt: str
+
+
 class ApiError(BaseModel):
     error: str
     message: str

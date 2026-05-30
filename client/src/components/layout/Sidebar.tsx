@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Plus, Wifi, WifiOff, LayoutDashboard } from 'lucide-react';
+import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2 } from 'lucide-react';
 import { VideoCard } from '../video/VideoCard';
 import { useVideoStore } from '../../store/useVideoStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { checkHealth } from '../../api/client';
+import { AuthModal } from '../auth/AuthModal';
+import { SavedVideosList } from '../video/SavedVideosList';
+import { useRestoreVideo } from '../../hooks/useRestoreVideo';
 
 export function Sidebar() {
   const { videos, openAddVideoModal } = useVideoStore();
+  const { user, isAuthenticated, clearAuth } = useAuthStore();
   const videoIds = Object.keys(videos);
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSavedVideos, setShowSavedVideos] = useState(false);
+  const { restore, restoring } = useRestoreVideo();
 
   useEffect(() => {
     const check = async () => {
@@ -71,6 +79,51 @@ export function Sidebar() {
         )}
       </div>
 
+      {/* Auth section */}
+      <div className="px-3 py-2 border-t border-slate-800/50">
+        {isAuthenticated && user ? (
+          <div className="space-y-2">
+            <button
+              onClick={() => setShowSavedVideos((v) => !v)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all uppercase tracking-widest"
+            >
+              <Bookmark size={14} />
+              My Videos
+            </button>
+            {showSavedVideos && <SavedVideosList onRestore={restore} />}
+            {restoring && (
+              <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400">
+                <Loader2 size={12} className="animate-spin" />
+                Restoring video...
+              </div>
+            )}
+            <div className="flex items-center justify-between px-3 py-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+                  <User size={12} className="text-white" />
+                </div>
+                <span className="text-xs text-slate-400 truncate">{user.email}</span>
+              </div>
+              <button
+                onClick={clearAuth}
+                className="p-1.5 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-all"
+                aria-label="Sign Out"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-slate-700/50 text-xs font-bold text-slate-400 hover:text-white hover:border-slate-500 hover:bg-slate-800/30 transition-all uppercase tracking-widest"
+          >
+            <LogIn size={14} />
+            Sign In
+          </button>
+        )}
+      </div>
+
       {/* Footer */}
       <div className="p-4 border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
         <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
@@ -84,6 +137,9 @@ export function Sidebar() {
           />
         </div>
       </div>
+
+      {/* Auth Modal */}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
     </aside>
   );
 }

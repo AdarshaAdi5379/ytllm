@@ -1,14 +1,9 @@
 import httpx
 import re
-from typing import Any
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from app.config import config
-from app.utils.retry import retry
 from app.utils.chunk_segments import TranscriptSegment
-
-
-YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3"
 
 
 class VideoMetadata:
@@ -36,162 +31,53 @@ class TranscriptResult:
 
 
 async def fetch_video_metadata(video_id: str) -> VideoMetadata:
-    """Fetches video metadata from YouTube Data API v3."""
-    try:
-
-        async def _fetch():
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{YOUTUBE_API_BASE}/videos",
-                    params={
-                        "key": config["google_api_key"],
-                        "id": video_id,
-                        "part": "snippet,contentDetails",
-                    },
-                )
-                response.raise_for_status()
-                return response.json()
-
-        data = await retry(_fetch, max_attempts=3)
-
-        items = data.get("items", [])
-        if not items:
-            raise Exception(f"Video not found: {video_id}")
-
-        item = items[0]
-        snippet = item["snippet"]
-        content_details = item["contentDetails"]
-
-        return VideoMetadata(
-            title=snippet["title"],
-            channel_name=snippet["channelTitle"],
-            duration=_format_duration(content_details["duration"]),
-            thumbnail_url=(
-                snippet.get("thumbnails", {}).get("maxres", {}).get("url")
-                or snippet.get("thumbnails", {}).get("high", {}).get("url")
-                or snippet.get("thumbnails", {}).get("medium", {}).get("url")
-                or f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
-            ),
-        )
-    except Exception as e:
-        print(f"Data API failed for metadata ({video_id}), trying fallback...")
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://www.youtube.com/watch?v={video_id}",
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        "Accept-Language": "en-US,en;q=0.9",
-                    },
-                )
-                html = response.text
-
-                title_match = re.search(r"<title>(.*?)</title>", html)
-                title = (
-                    title_match.group(1).replace(" - YouTube", "")
-                    if title_match
-                    else "Unknown Video"
-                )
-
-                channel_match = re.search(r'"ownerChannelName":"([^"]+)"', html)
-                channel_name = (
-                    channel_match.group(1) if channel_match else "Unknown Channel"
-                )
-
-                length_match = re.search(r'"lengthSeconds":"(\d+)"', html)
-                duration = "0:00"
-                if length_match:
-                    seconds = int(length_match.group(1))
-                    h = seconds // 3600
-                    m = (seconds % 3600) // 60
-                    s = seconds % 60
-                    duration = f"{h}:{m:02d}:{s:02d}" if h > 0 else f"{m}:{s:02d}"
-
-                return VideoMetadata(
-                    title=title,
-                    channel_name=channel_name,
-                    duration=duration,
-                    thumbnail_url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
-                )
-        except Exception as fallback_err:
-            print(f"Fallback metadata fetch failed: {fallback_err}")
-            return VideoMetadata(
-                title="Unknown Video",
-                channel_name="Unknown Channel",
-                duration="0:00",
-                thumbnail_url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
-            )
-
-
-def _format_duration(iso_duration: str) -> str:
-    """Converts ISO 8601 duration (PT1H2M30S) to human-readable format."""
-    match = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", iso_duration)
-    if not match:
-        return "0:00"
-
-    hours = int(match.group(1) or 0)
-    minutes = int(match.group(2) or 0)
-    seconds = int(match.group(3) or 0)
-
-    if hours > 0:
-        return f"{hours}:{minutes:02d}:{seconds:02d}"
-    return f"{minutes}:{seconds:02d}"
-
-
-async def fetch_transcript_via_data_api(video_id: str) -> TranscriptResult | None:
-    """Fetches transcript via YouTube Data API v3 captions."""
+    """Fetches video metadata by scraping YouTube watch page."""
     try:
         async with httpx.AsyncClient() as client:
-            list_response = await client.get(
-                f"{YOUTUBE_API_BASE}/captions",
-                params={
-                    "key": config["google_api_key"],
-                    "videoId": video_id,
-                    "part": "snippet",
+            response = await client.get(
+                f"https://www.youtube.com/watch?v={video_id}",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept-Language": "en-US,en;q=0.9",
                 },
             )
-            list_response.raise_for_status()
-            list_data = list_response.json()
-            captions = list_data.get("items", [])
+            html = response.text
 
-            if not captions:
-                return None
-
-            # Sort by preference: manual over auto, English over other
-            sorted_captions = sorted(
-                captions,
-                key=lambda c: (
-                    0 if c["snippet"]["trackKind"] == "standard" else 1,
-                    0 if c["snippet"]["language"].startswith("en") else 1,
-                ),
+            title_match = re.search(r"<title>(.*?)</title>", html)
+            title = (
+                title_match.group(1).replace(" - YouTube", "")
+                if title_match
+                else "Unknown Video"
             )
 
-            track = sorted_captions[0]
-            is_auto_generated = track["snippet"]["trackKind"] != "standard"
-
-            # Try to download caption
-            download_response = await client.get(
-                f"{YOUTUBE_API_BASE}/captions/{track['id']}",
-                params={
-                    "key": config["google_api_key"],
-                    "tfmt": "vtt",
-                },
+            channel_match = re.search(r'"ownerChannelName":"([^"]+)"', html)
+            channel_name = (
+                channel_match.group(1) if channel_match else "Unknown Channel"
             )
-            download_response.raise_for_status()
 
-            segments = _parse_vtt_to_segments(download_response.text)
-            text = _segments_to_text(segments)
-            if len(text.split()) < config["transcript_min_words"]:
-                return None
+            length_match = re.search(r'"lengthSeconds":"(\d+)"', html)
+            duration = "0:00"
+            if length_match:
+                seconds = int(length_match.group(1))
+                h = seconds // 3600
+                m = (seconds % 3600) // 60
+                s = seconds % 60
+                duration = f"{h}:{m:02d}:{s:02d}" if h > 0 else f"{m}:{s:02d}"
 
-            return TranscriptResult(
-                text=text,
-                language=track["snippet"]["language"],
-                is_auto_generated=is_auto_generated,
-                segments=segments,
+            return VideoMetadata(
+                title=title,
+                channel_name=channel_name,
+                duration=duration,
+                thumbnail_url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
             )
-    except Exception:
-        return None
+    except Exception as e:
+        print(f"Metadata fetch failed for {video_id}: {e}")
+        return VideoMetadata(
+            title="Unknown Video",
+            channel_name="Unknown Channel",
+            duration="0:00",
+            thumbnail_url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+        )
 
 
 async def fetch_transcript_via_timedtext(video_id: str) -> TranscriptResult | None:
@@ -422,12 +308,6 @@ async def fetch_transcript(video_id: str) -> TranscriptResult:
     if timedtext_result:
         print(f"Transcript fetched via timedtext for {video_id}")
         return timedtext_result
-
-    print(f"Trying Data API captions fallback for {video_id}...")
-    data_api_result = await fetch_transcript_via_data_api(video_id)
-    if data_api_result:
-        print(f"Transcript fetched via Data API for {video_id}")
-        return data_api_result
 
     print(f"No captions found for {video_id}")
     error = Exception("No captions available for this video.")

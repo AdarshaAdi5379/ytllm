@@ -7,8 +7,14 @@ interface Props {
   isStreaming?: boolean;
 }
 
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return text.replace(/[&<>"']/g, (c) => map[c]);
+}
+
 function renderMarkdown(text: string): string {
-  return text
+  const escaped = escapeHtml(text);
+  return escaped
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
     .replace(/`([^`]+)`/g, '<code class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-xs font-mono border border-indigo-100/50">$1</code>')
     .replace(/^• (.*)$/gm, '<li class="ml-4 mb-1">$1</li>')

@@ -1,8 +1,14 @@
 import asyncio
 import time
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_db
+from app.db_models import Video as VideoModel
+from app.services.auth_service import get_optional_user
+from app.db_models import User
 from app.utils.youtube_parser import extract_video_id
 from app.services import transcript_service
 from app.services import embedding_service
@@ -19,7 +25,12 @@ class TranscriptRequest(BaseModel):
 
 
 @router.post("/")
-async def load_transcript(req: TranscriptRequest, res: Response):
+async def load_transcript(
+    req: TranscriptRequest,
+    res: Response,
+    user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Load and index a YouTube video transcript."""
     started = time.perf_counter()
     video_id = extract_video_id(req.url)
@@ -93,6 +104,29 @@ async def load_transcript(req: TranscriptRequest, res: Response):
         )
 
         total_ms = int((time.perf_counter() - started) * 1000)
+
+        # Auto-save to DB if user is authenticated
+        if user is not None:
+            existing = await db.execute(
+                select(VideoModel).where(
+                    VideoModel.user_id == user.id,
+                    VideoModel.youtube_video_id == video_id,
+                )
+            )
+            if not existing.scalar_one_or_none():
+                db_video = VideoModel(
+                    user_id=user.id,
+                    youtube_video_id=video_id,
+                    title=metadata.title,
+                    channel_name=metadata.channel_name,
+                    duration=metadata.duration,
+                    thumbnail_url=metadata.thumbnail_url,
+                    transcript=transcript,
+                    summary=summary,
+                    system_prompt=system_prompt,
+                )
+                db.add(db_video)
+                await db.commit()
 
         return {
             "video_id": video_id,

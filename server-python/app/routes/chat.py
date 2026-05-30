@@ -1,10 +1,16 @@
 import json
 import time
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
+from app.database import async_session as db_async_session
+from app.db_models import Video as VideoModel, ChatMessage
+from app.services.auth_service import get_optional_user
+from app.db_models import User
 from app.services import embedding_service
 from app.services import memory_service
 from app.services import llm_service
@@ -50,8 +56,10 @@ class MultiChatRequest(BaseModel):
     video_metadata_filter: Optional[VideoMetadataFilter] = None
 
 
-async def generate_stream(req: ChatRequest):
+async def generate_stream(req: ChatRequest, current_user: User | None = None):
     """Generator function for streaming SSE response."""
+    user_question = req.question
+    full_response = ""
     try:
         # 1. Retrieve relevant transcript chunks
         retrieval_started = time.perf_counter()
@@ -103,6 +111,33 @@ async def generate_stream(req: ChatRequest):
                 meta_json = json.dumps(meta)
                 yield f"data: {meta_json}\n\n"
             yield chunk
+            # Capture token content for persistence
+            if chunk.startswith("data: "):
+                try:
+                    event = json.loads(chunk[6:])
+                    if event.get("type") == "token":
+                        full_response += event.get("content", "")
+                except Exception:
+                    pass
+
+        # Save messages to DB if user is authenticated
+        if current_user is not None:
+            try:
+                async with db_async_session() as save_db:
+                    result = await save_db.execute(
+                        select(VideoModel).where(
+                            VideoModel.user_id == current_user.id,
+                            VideoModel.youtube_video_id == req.video_id,
+                        )
+                    )
+                    db_video = result.scalar_one_or_none()
+                    if db_video is not None:
+                        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                        save_db.add(ChatMessage(video_id=db_video.id, role="user", content=user_question, timestamp=now))
+                        save_db.add(ChatMessage(video_id=db_video.id, role="assistant", content=full_response, timestamp=now))
+                        await save_db.commit()
+            except Exception as save_err:
+                print(f"Failed to save chat messages: {save_err}")
 
     except Exception as e:
         print(f"Chat error: {str(e)}")
@@ -121,10 +156,10 @@ async def generate_stream(req: ChatRequest):
 
 
 @router.post("/")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, user: User | None = Depends(get_optional_user)):
     """Stream a Gemini AI response (SSE)."""
     return StreamingResponse(
-        generate_stream(req),
+        generate_stream(req, current_user=user),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -203,7 +238,7 @@ async def chat_multi(req: MultiChatRequest):
     )
 
 
-async def generate_multi_stream(req: MultiChatRequest):
+async def generate_multi_stream(req: MultiChatRequest, current_user: User | None = None):
     try:
         # Apply metadata filter against loaded sessions (if configured)
         selected_ids = list(dict.fromkeys(req.video_ids))

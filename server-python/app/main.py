@@ -10,13 +10,14 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.config import config
-from app.routes import health, transcript, chat, export
+from app.database import init_db
+from app.routes import health, transcript, chat, export, auth, videos
 from app.services import embedding_service
 from app.utils import session_cache
 
 # Initialize Sentry
 sentry_sdk.init(
-    dsn="",  # Add your Sentry DSN here
+    dsn="",
     environment=config["node_env"],
     traces_sample_rate=1.0,
 )
@@ -42,6 +43,7 @@ async def _cleanup_loop(stop_event: asyncio.Event) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await init_db()
     stop_event = asyncio.Event()
     task = asyncio.create_task(_cleanup_loop(stop_event))
     try:
@@ -61,8 +63,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=config["cors_origins"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Rate limiting
@@ -83,9 +85,11 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 # Include routers
 app.include_router(health.router, prefix="/api/health", tags=["health"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(transcript.router, prefix="/api/transcript", tags=["transcript"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
+app.include_router(videos.router, prefix="/api/videos", tags=["videos"])
 
 
 # Error handler
