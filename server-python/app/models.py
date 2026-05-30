@@ -50,6 +50,7 @@ class ExportRequest(BaseModel):
 class UserCreate(BaseModel):
     email: str
     password: str
+    confirm_password: str = ""
 
 
 class UserLogin(BaseModel):

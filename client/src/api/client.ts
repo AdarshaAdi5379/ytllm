@@ -136,10 +136,10 @@ interface AuthResponse {
   user: { id: string; email: string };
 }
 
-export async function registerUser(email: string, password: string): Promise<AuthResponse> {
+export async function registerUser(email: string, password: string, confirmPassword?: string): Promise<AuthResponse> {
   return apiFetch<AuthResponse>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, confirm_password: confirmPassword || '' }),
   });
 }
 

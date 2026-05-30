@@ -11,6 +11,7 @@ export function AuthModal({ onClose }: Props) {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -29,11 +30,22 @@ export function AuthModal({ onClose }: Props) {
       return;
     }
 
+    if (tab === 'register') {
+      if (!confirmPassword) {
+        setError('Please confirm your password.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const result = tab === 'login'
         ? await loginUser(trimmedEmail, password)
-        : await registerUser(trimmedEmail, password);
+        : await registerUser(trimmedEmail, password, confirmPassword);
       setAuth(result.user, result.access_token);
       onClose();
     } catch (err) {
@@ -62,7 +74,7 @@ export function AuthModal({ onClose }: Props) {
         {/* Tabs */}
         <div className="flex border-b border-gray-200">
           <button
-            onClick={() => { setTab('login'); setError(''); }}
+            onClick={() => { setTab('login'); setError(''); setConfirmPassword(''); }}
             className={`flex-1 py-3 text-sm font-semibold text-center transition-colors ${
               tab === 'login' ? 'text-brand-500 border-b-2 border-brand-500' : 'text-gray-400 hover:text-gray-600'
             }`}
@@ -70,7 +82,7 @@ export function AuthModal({ onClose }: Props) {
             Sign In
           </button>
           <button
-            onClick={() => { setTab('register'); setError(''); }}
+            onClick={() => { setTab('register'); setError(''); setConfirmPassword(''); }}
             className={`flex-1 py-3 text-sm font-semibold text-center transition-colors ${
               tab === 'register' ? 'text-brand-500 border-b-2 border-brand-500' : 'text-gray-400 hover:text-gray-600'
             }`}
@@ -117,6 +129,26 @@ export function AuthModal({ onClose }: Props) {
               />
             </div>
           </div>
+
+          {tab === 'register' && (
+            <div>
+              <label htmlFor="auth-confirm-password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="auth-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                  placeholder="Re-enter your password"
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+          )}
 
           {error && (
             <p className="text-xs text-red-500" role="alert">

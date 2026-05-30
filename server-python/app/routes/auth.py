@@ -15,11 +15,17 @@ router = APIRouter()
 async def register(req: UserCreate, db: AsyncSession = Depends(get_db)):
     email = req.email.strip().lower()
     if not email or not req.password:
-        raise HTTPException(status_code=422, detail={"error": "VALIDATION", "message": "Email and password required"})
+        raise HTTPException(status_code=422, detail={"error": "VALIDATION", "message": "Email and password are required."})
+
+    if len(req.password) < 6:
+        raise HTTPException(status_code=422, detail={"error": "WEAK_PASSWORD", "message": "Password must be at least 6 characters."})
+
+    if req.confirm_password and req.password != req.confirm_password:
+        raise HTTPException(status_code=422, detail={"error": "PASSWORD_MISMATCH", "message": "Passwords do not match."})
 
     result = await db.execute(select(User).where(User.email == email))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail={"error": "EMAIL_EXISTS", "message": "An account with this email already exists"})
+        raise HTTPException(status_code=409, detail={"error": "EMAIL_EXISTS", "message": "An account with this email already exists."})
 
     user = User(
         email=email,
