@@ -146,14 +146,11 @@ async def retrieve_relevant_chunks(
     filters: dict | None = None,
 ) -> list[dict]:
     """Retrieves the top-k most semantically similar chunks for a query."""
-    if video_id not in vector_indexes:
-        print(f"No vector index found for video {video_id}")
-        return []
-
     if top_k is None:
         top_k = config["top_k_chunks"]
 
-    collection = vector_indexes[video_id]
+    # Lazily (re)open the persistent Chroma collection if it isn't cached yet.
+    collection = await get_or_create_index(video_id)
 
     query_embedding = await embed_text(query)
 

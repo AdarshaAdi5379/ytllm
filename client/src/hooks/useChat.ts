@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useVideoStore } from '../store/useVideoStore';
+import { useAuthStore } from '../store/useAuthStore';
 import type { Message } from '../../../shared/types';
 
 export function useChat(videoId: string | null) {
@@ -42,9 +43,13 @@ export function useChat(videoId: string | null) {
                 filters: parsed.filters,
               };
 
+        const token = useAuthStore.getState().token;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
         const response = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(body),
         });
 

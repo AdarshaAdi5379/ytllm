@@ -21,4 +21,6 @@ client/node_modules/.vite/
 *.db
 
 # Chroma (temp/persistent vectors are under /tmp, but ignore if ever copied in)
+server-python/venv/
+venv/
 **/ytllm-vectors/

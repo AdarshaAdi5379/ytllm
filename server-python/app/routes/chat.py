@@ -125,12 +125,14 @@ async def generate_stream(req: ChatRequest, current_user: User | None = None):
             try:
                 async with db_async_session() as save_db:
                     result = await save_db.execute(
-                        select(VideoModel).where(
+                        select(VideoModel)
+                        .where(
                             VideoModel.user_id == current_user.id,
                             VideoModel.youtube_video_id == req.video_id,
                         )
+                        .order_by(VideoModel.created_at.desc())
                     )
-                    db_video = result.scalar_one_or_none()
+                    db_video = result.scalars().first()
                     if db_video is not None:
                         now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                         save_db.add(ChatMessage(video_id=db_video.id, role="user", content=user_question, timestamp=now))
