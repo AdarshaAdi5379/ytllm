@@ -194,6 +194,19 @@
 
 ---
 
+## Phase 10 — Export Reliability Fixes
+**Goal:** Fix PDF/DOCX export failures caused by session cache expiration, encoding errors, and database query issues.
+
+- [x] Add DB fallback in export route when in-memory session cache misses (for authenticated users).
+- [x] Fix `MultipleResultsFound` crash — use `order_by + limit(1) + scalars().first()` instead of `scalar_one_or_none()`.
+- [x] Fix Latin-1 encoding crash for non-ASCII content — replace `.encode("latin-1")` with `.encode("utf-8")`.
+- [x] Extend session cache TTL from 2h to 8h.
+- [x] Improve frontend error propagation — attach error code to thrown Error for better debugging.
+
+**Status: IMPLEMENTED ✅**
+
+---
+
 ## Legend
 - `[x]` = Completed
 - `[ ]` = Pending

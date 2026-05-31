@@ -106,3 +106,55 @@
 ### Notes
 - Pushed persistence fixes to GitHub with commit: "Fix refresh persistence for saved videos and chat".
 
+
+## Session 3 — In-App Video Playback + Export Reliability Fixes
+
+### Date
+2026-05-31
+
+### Features Implemented
+
+**Phase 9 — In-App Video Playback**
+- Created `<VideoPlayer>` component with YouTube iframe embed, 16:9 aspect ratio, collapsible toggle.
+- Replaced external "Watch" link in `VideoHeader` with "Watch" / "Hide Player" toggle button + compact external YouTube link.
+- Wired `/time` command to seek the embedded player to the start time via module-level `seekPlayer()` callback.
+- Per-video tab persistence: player open/close state stored in Zustand `VideoSlice.isPlayerOpen`.
+
+### Problems Solved
+
+**1. PDF export fails with non-ASCII content (emoji, Chinese, Arabic, etc.)**
+- Root cause: `export_service.py` fallback used `.encode("latin-1")` which crashes on any character outside Latin-1's 256-character range.
+- Fix: Replaced `.encode("latin-1")` with `.encode("utf-8")`.
+
+**2. Export fails after 2 hours or server restart**
+- Root cause: Session data stored in-memory `TTLCache` with 2-hour TTL. Any server restart or TTL expiry caused `SESSION_NOT_FOUND` 404.
+- Fix: Extended TTL to 8 hours (28800s). Added DB fallback: when cache misses and user is authenticated, query the `videos` table for the session data and repopulate cache.
+
+**3. Export endpoint crashes with `MultipleResultsFound`**
+- Root cause: DB fallback query used `scalar_one_or_none()` but duplicate `youtube_video_id` rows can exist for the same user (from edge cases in save logic).
+- Fix: Changed to `.order_by(created_at.desc()).limit(1).scalars().first()` to pick the most recently saved row.
+
+**4. Frontend error messages were generic**
+- Root cause: `exportChat()` didn't propagate error codes to the caller.
+- Fix: Attached `.code` property to thrown Error, matching the pattern used by `apiFetch()`.
+
+### Files Changed / Created
+
+| File | Change |
+|------|--------|
+| `client/src/components/video/VideoPlayer.tsx` | **NEW** — YouTube iframe embed, collapsible, seek support, fallback "YouTube" overlay button |
+| `client/src/store/useVideoStore.ts` | Added `isPlayerOpen` to `VideoSlice`, `setPlayerOpen` action, omitted from `addVideo` type |
+| `client/src/components/video/VideoHeader.tsx` | Replaced "Watch" link with player toggle button + external link |
+| `client/src/components/layout/MainPanel.tsx` | Inserted `<VideoPlayer>` between header and content area |
+| `client/src/hooks/useChat.ts` | Imported `seekPlayer`, wire `/time` filter to auto-seek player |
+| `server-python/app/routes/export.py` | Added DB fallback with `order_by + limit(1) + scalars().first()`; added `get_optional_user` + `get_db` deps |
+| `server-python/app/services/export_service.py` | Fixed `.encode("latin-1")` → `.encode("utf-8")` |
+| `server-python/app/config.py` | Extended `session_cache_ttl` and `vector_index_ttl_s` from 7200 → 28800 |
+| `client/src/api/client.ts` | Attached error `.code` to thrown Error in `exportChat()` |
+
+### Key Decisions
+
+- **DB fallback for exports**: Export now gracefully degrades to SQLite data when the in-memory cache expires, but only for authenticated users (guest data is transient).
+- **iframe embed over IFrame Player API**: Simpler implementation, no extra JS library dependency, seek done via `key` prop remount with `?start=N` URL param.
+- **Module-level seek callback**: Avoids circular store dependencies; `useChat` can directly call `seekPlayer(time)` without importing the full `VideoPlayer` component tree.
+
