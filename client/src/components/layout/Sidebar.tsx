@@ -4,7 +4,6 @@ import { VideoCard } from '../video/VideoCard';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { checkHealth } from '../../api/client';
-import { AuthModal } from '../auth/AuthModal';
 import { SavedVideosList } from '../video/SavedVideosList';
 import { useRestoreVideo } from '../../hooks/useRestoreVideo';
 
@@ -13,7 +12,6 @@ export function Sidebar() {
   const { user, isAuthenticated, clearAuth } = useAuthStore();
   const videoIds = Object.keys(videos);
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSavedVideos, setShowSavedVideos] = useState(false);
   const { restore, restoring } = useRestoreVideo();
 
@@ -79,9 +77,9 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Auth section */}
-      <div className="px-3 py-2 border-t border-slate-800/50">
-        {isAuthenticated && user ? (
+      {/* Auth section (logged-in only — guest auth is in the main panel top bar) */}
+      {isAuthenticated && user && (
+        <div className="px-3 py-2 border-t border-slate-800/50">
           <div className="space-y-2">
             <button
               onClick={() => setShowSavedVideos((v) => !v)}
@@ -113,16 +111,8 @@ export function Sidebar() {
               </button>
             </div>
           </div>
-        ) : (
-          <button
-            onClick={() => setShowAuthModal(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-slate-700/50 text-xs font-bold text-slate-400 hover:text-white hover:border-slate-500 hover:bg-slate-800/30 transition-all uppercase tracking-widest"
-          >
-            <LogIn size={14} />
-            Sign In
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
@@ -138,8 +128,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Auth Modal */}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
     </aside>
   );
 }

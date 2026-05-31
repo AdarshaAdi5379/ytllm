@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Download, Youtube } from 'lucide-react';
+import { ExternalLink, Download, Youtube, Monitor, MonitorOff } from 'lucide-react';
 import { useVideoStore } from '../../store/useVideoStore';
 import { getYouTubeUrl } from '../../utils/youtubeParser';
 import { ExportModal } from '../modals/ExportModal';
@@ -10,6 +10,8 @@ interface Props {
 
 export function VideoHeader({ videoId }: Props) {
   const video = useVideoStore((s) => s.videos[videoId]);
+  const setPlayerOpen = useVideoStore((s) => s.setPlayerOpen);
+  const isPlayerOpen = useVideoStore((s) => s.videos[videoId]?.isPlayerOpen ?? false);
   const [showExportModal, setShowExportModal] = useState(false);
 
   if (!video) return null;
@@ -37,14 +39,26 @@ export function VideoHeader({ videoId }: Props) {
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
+          <button
+            onClick={() => setPlayerOpen(videoId, !isPlayerOpen)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+              isPlayerOpen
+                ? 'bg-indigo-100 text-indigo-600 border border-indigo-200 shadow-sm'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200'
+            }`}
+            title={isPlayerOpen ? 'Hide video player' : 'Show video player'}
+          >
+            {isPlayerOpen ? <MonitorOff size={14} /> : <Monitor size={14} />}
+            {isPlayerOpen ? 'Hide Player' : 'Watch'}
+          </button>
           <a
             href={getYouTubeUrl(videoId)}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all text-xs font-bold uppercase tracking-widest"
+            className="flex items-center gap-1.5 px-2 py-2 rounded-xl text-slate-300 hover:text-slate-500 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all"
+            title="Open in YouTube"
           >
             <ExternalLink size={14} />
-            Watch
           </a>
           <button
             onClick={() => setShowExportModal(true)}

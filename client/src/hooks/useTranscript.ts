@@ -1,7 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { fetchTranscript } from '../api/client';
+import { fetchTranscript, saveVideoToServer } from '../api/client';
 import { useVideoStore } from '../store/useVideoStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 export function useTranscript() {
   const addVideo = useVideoStore((s) => s.addVideo);
@@ -22,6 +23,23 @@ export function useTranscript() {
         status: 'ready',
         errorMessage: null,
       });
+
+      const { isAuthenticated } = useAuthStore.getState();
+      if (isAuthenticated) {
+        saveVideoToServer({
+          youtube_video_id: data.videoId,
+          title: data.title,
+          channel_name: data.channelName,
+          duration: data.duration,
+          thumbnail_url: data.thumbnailUrl,
+          transcript: data.transcript,
+          summary: data.summary,
+          system_prompt: data.systemPrompt,
+        }).catch((err) => {
+          console.error('Failed to persist video to server:', err);
+        });
+      }
+
       toast.success('Video loaded successfully!');
     },
     onError: (err: Error & { code?: string }) => {

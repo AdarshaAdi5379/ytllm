@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useVideoStore } from '../store/useVideoStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { seekPlayer } from '../components/video/VideoPlayer';
 import type { Message } from '../../../shared/types';
 
 export function useChat(videoId: string | null) {
@@ -12,6 +13,9 @@ export function useChat(videoId: string | null) {
       if (!videoId) return;
 
       const parsed = parseChatCommand(question, Object.keys(videos));
+      if (parsed.filters?.time_range_s?.[0] != null) {
+        seekPlayer(parsed.filters.time_range_s[0]);
+      }
       const displayQuestion = parsed.displayQuestion;
 
       // Add user message immediately

@@ -154,6 +154,46 @@
 
 ---
 
+## Phase 8 — Auth Persistence & Chat Fixes
+**Goal:** Fix video persistence across refresh, auth rehydration on page load, and allow casual chat with AI.
+
+### Phase 8a — Auth Rehydration Fix
+- [x] Fix `useAuthStore.ts` — include `isAuthenticated` in `partialize()` so it's actually persisted to localStorage and restored on page refresh
+- [x] Remove dead `state.isAuthenticated = ...` mutation from `onRehydrateStorage` (mutates callback param, not the store)
+
+### Phase 8b — Video Persistence on Add
+- [x] Update `useTranscript.ts` — call `saveVideoToServer()` in `onSuccess` when user is authenticated
+- [x] Add `clearVideos()` action to `useVideoStore.ts` for clearing store on logout
+
+### Phase 8c — Store Hydration on Startup
+- [x] Update `App.tsx` — `useEffect` that loads saved videos from server on mount (authenticated) and clears store on logout
+
+### Phase 8d — Casual Chat Support
+- [x] Update `build_system_prompt()` — relax rules 1/2/3 to apply only to factual questions; add rule 7 for casual conversation
+- [x] Update `build_multi_system_prompt()` — same rule changes
+
+### Phase 8e — Bugfix: Server 500 Errors
+- [x] Kill old uvicorn processes running stale code
+- [x] Clear stale `__pycache__` directories
+- [x] Delete old SQLite DB to avoid state conflicts
+
+**Phase 8 Status: IMPLEMENTED ✅**
+
+---
+
+## Phase 9 — In-App Video Playback
+**Goal:** Play the YouTube video inside the app so users can watch while chatting with the AI (no external navigation).
+
+- [x] Replace the external 'Watch' link with an embedded YouTube player toggle button in VideoHeader.
+- [x] Add a collapsible player panel (desktop: split view; mobile: stack) via VideoPlayer component.
+- [x] Persist player UI state per video tab (open/closed via isPlayerOpen in Zustand store).
+- [x] When user uses /time filters, seek the embedded player to the start time via seekPlayer() callback.
+- [x] Add fallback UX — "YouTube" button overlay on the player to open in new tab if embedding fails.
+
+**Status: IMPLEMENTED ✅**
+
+---
+
 ## Legend
 - `[x]` = Completed
 - `[ ]` = Pending

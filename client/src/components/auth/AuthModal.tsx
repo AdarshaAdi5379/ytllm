@@ -5,10 +5,11 @@ import { loginUser, registerUser } from '../../api/client';
 
 interface Props {
   onClose: () => void;
+  initialTab?: 'login' | 'register';
 }
 
-export function AuthModal({ onClose }: Props) {
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+export function AuthModal({ onClose, initialTab }: Props) {
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab || 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

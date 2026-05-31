@@ -16,6 +16,7 @@ export interface VideoSlice {
   status: 'loading' | 'ready' | 'error';
   errorMessage: string | null;
   isStreaming: boolean;
+  isPlayerOpen: boolean;
 }
 
 interface VideoStore {
@@ -24,7 +25,7 @@ interface VideoStore {
   isAddVideoModalOpen: boolean;
 
   // Actions
-  addVideo: (slice: Omit<VideoSlice, 'chatHistory' | 'rollingChatSummary' | 'isStreaming'>) => void;
+  addVideo: (slice: Omit<VideoSlice, 'chatHistory' | 'rollingChatSummary' | 'isStreaming' | 'isPlayerOpen'>) => void;
   removeVideo: (videoId: string) => void;
   setActiveVideo: (videoId: string) => void;
   setVideoStatus: (videoId: string, status: VideoSlice['status'], errorMessage?: string) => void;
@@ -34,6 +35,10 @@ interface VideoStore {
   finaliseStreamingMessage: (videoId: string) => void;
   setStreaming: (videoId: string, isStreaming: boolean) => void;
 
+  setPlayerOpen: (videoId: string, open: boolean) => void;
+
+  clearVideos: () => void;
+
   openAddVideoModal: () => void;
   closeAddVideoModal: () => void;
 }
@@ -41,7 +46,7 @@ interface VideoStore {
 export const useVideoStore = create<VideoStore>((set, get) => ({
   videos: {},
   activeVideoId: null,
-  isAddVideoModalOpen: true, // Open on first load
+  isAddVideoModalOpen: false, // Open only when user clicks "Add New Video"
 
   addVideo: (slice) =>
     set((state) => ({
@@ -52,6 +57,7 @@ export const useVideoStore = create<VideoStore>((set, get) => ({
           chatHistory: [],
           rollingChatSummary: null,
           isStreaming: false,
+          isPlayerOpen: false,
         },
       },
       activeVideoId: slice.videoId,
@@ -72,7 +78,6 @@ export const useVideoStore = create<VideoStore>((set, get) => ({
       return {
         videos,
         activeVideoId: newActive,
-        isAddVideoModalOpen: newActive === null,
       };
     }),
 
@@ -150,6 +155,16 @@ export const useVideoStore = create<VideoStore>((set, get) => ({
         [videoId]: { ...state.videos[videoId], isStreaming },
       },
     })),
+
+  setPlayerOpen: (videoId, open) =>
+    set((state) => ({
+      videos: {
+        ...state.videos,
+        [videoId]: { ...state.videos[videoId], isPlayerOpen: open },
+      },
+    })),
+
+  clearVideos: () => set({ videos: {}, activeVideoId: null }),
 
   openAddVideoModal: () => set({ isAddVideoModalOpen: true }),
   closeAddVideoModal: () => set({ isAddVideoModalOpen: false }),
