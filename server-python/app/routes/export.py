@@ -42,9 +42,11 @@ async def export_chat(
                 VideoModel.user_id == user.id,
                 VideoModel.youtube_video_id == req.video_id,
             )
+            .order_by(VideoModel.created_at.desc())
+            .limit(1)
             .options(selectinload(VideoModel.messages))
         )
-        db_video = result.scalar_one_or_none()
+        db_video = result.scalars().first()
         if db_video is not None:
             session_cache.session_cache.set(
                 req.video_id,
