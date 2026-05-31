@@ -122,7 +122,9 @@ export async function exportChat(data: ExportRequest): Promise<Blob> {
       errorData = { error: 'EXPORT_FAILED', message: 'Export failed' };
     }
     const normalized = parseApiError(errorData, response.status);
-    throw new Error(normalized.message);
+    const err = new Error(normalized.message);
+    (err as Error & { code?: string }).code = normalized.code;
+    throw err;
   }
 
   return response.blob();

@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     transcript_min_words: int = Field(default=100, alias="TRANSCRIPT_MIN_WORDS")
 
     # Cache settings
-    session_cache_ttl: int = Field(default=7200, alias="SESSION_CACHE_TTL")  # seconds
+    session_cache_ttl: int = Field(default=28800, alias="SESSION_CACHE_TTL")  # seconds (8 hours)
     cleanup_interval_s: int = Field(default=600, alias="CLEANUP_INTERVAL_S")  # seconds
-    vector_index_ttl_s: int = Field(default=7200, alias="VECTOR_INDEX_TTL_S")  # seconds
+    vector_index_ttl_s: int = Field(default=28800, alias="VECTOR_INDEX_TTL_S")  # seconds (8 hours)
 
     # Multi-video
     max_multi_videos: int = Field(default=10, alias="MAX_MULTI_VIDEOS")

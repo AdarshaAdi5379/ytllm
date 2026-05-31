@@ -219,7 +219,7 @@ async def generate_pdf(data: ExportData) -> bytes:
     pdf_out = pdf.output(dest="S")
     if isinstance(pdf_out, (bytes, bytearray)):
         return bytes(pdf_out)
-    return str(pdf_out).encode("latin-1")
+    return pdf_out.encode("utf-8")
 
 
 async def generate_docx(data: ExportData) -> bytes:

@@ -1,11 +1,18 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.services import export_service
 from app.utils import session_cache
 from app.models import Message
+from app.database import get_db
+from app.db_models import Video as VideoModel
+from app.services.auth_service import get_optional_user
+from app.db_models import User
 
 
 router = APIRouter()
@@ -19,16 +26,46 @@ class ExportRequest(BaseModel):
 
 
 @router.post("/")
-async def export_chat(req: ExportRequest):
+async def export_chat(
+    req: ExportRequest,
+    user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Generate PDF or DOCX export."""
     session_data = session_cache.session_cache.get(req.video_id)
+
+    # Fallback: try to load from database if cache misses
+    if not session_data and user is not None:
+        result = await db.execute(
+            select(VideoModel)
+            .where(
+                VideoModel.user_id == user.id,
+                VideoModel.youtube_video_id == req.video_id,
+            )
+            .options(selectinload(VideoModel.messages))
+        )
+        db_video = result.scalar_one_or_none()
+        if db_video is not None:
+            session_cache.session_cache.set(
+                req.video_id,
+                {
+                    "video_id": req.video_id,
+                    "transcript": db_video.transcript or "",
+                    "title": db_video.title or "",
+                    "channel_name": db_video.channel_name or "",
+                    "duration": db_video.duration or "",
+                    "thumbnail_url": db_video.thumbnail_url or "",
+                    "summary": db_video.summary or "",
+                },
+            )
+            session_data = session_cache.session_cache.get(req.video_id)
 
     if not session_data:
         raise HTTPException(
             status_code=404,
             detail={
                 "error": "SESSION_NOT_FOUND",
-                "message": "Video session not found. Please reload the video and try again.",
+                "message": "Video session expired. Please reload the video and try again.",
             },
         )
 
