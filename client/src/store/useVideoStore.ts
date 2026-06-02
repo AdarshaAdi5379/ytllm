@@ -17,6 +17,9 @@ export interface VideoSlice {
   errorMessage: string | null;
   isStreaming: boolean;
   isPlayerOpen: boolean;
+  customName?: string;
+  isPinned: boolean;
+  savedVideoId?: string;
 }
 
 interface VideoStore {
@@ -25,7 +28,7 @@ interface VideoStore {
   isAddVideoModalOpen: boolean;
 
   // Actions
-  addVideo: (slice: Omit<VideoSlice, 'chatHistory' | 'rollingChatSummary' | 'isStreaming' | 'isPlayerOpen'>) => void;
+  addVideo: (slice: Omit<VideoSlice, 'chatHistory' | 'rollingChatSummary' | 'isStreaming' | 'isPlayerOpen' | 'isPinned'>) => void;
   removeVideo: (videoId: string) => void;
   setActiveVideo: (videoId: string) => void;
   setVideoStatus: (videoId: string, status: VideoSlice['status'], errorMessage?: string) => void;
@@ -36,6 +39,10 @@ interface VideoStore {
   setStreaming: (videoId: string, isStreaming: boolean) => void;
 
   setPlayerOpen: (videoId: string, open: boolean) => void;
+
+  renameVideo: (videoId: string, name: string) => void;
+  setPinned: (videoId: string, pinned: boolean) => void;
+  setSavedVideoId: (videoId: string, savedId: string) => void;
 
   clearVideos: () => void;
 
@@ -58,6 +65,7 @@ export const useVideoStore = create<VideoStore>((set, get) => ({
           rollingChatSummary: null,
           isStreaming: false,
           isPlayerOpen: false,
+          isPinned: false,
         },
       },
       activeVideoId: slice.videoId,
@@ -161,6 +169,30 @@ export const useVideoStore = create<VideoStore>((set, get) => ({
       videos: {
         ...state.videos,
         [videoId]: { ...state.videos[videoId], isPlayerOpen: open },
+      },
+    })),
+
+  renameVideo: (videoId, name) =>
+    set((state) => ({
+      videos: {
+        ...state.videos,
+        [videoId]: { ...state.videos[videoId], customName: name || undefined },
+      },
+    })),
+
+  setPinned: (videoId, pinned) =>
+    set((state) => ({
+      videos: {
+        ...state.videos,
+        [videoId]: { ...state.videos[videoId], isPinned: pinned },
+      },
+    })),
+
+  setSavedVideoId: (videoId, savedId) =>
+    set((state) => ({
+      videos: {
+        ...state.videos,
+        [videoId]: { ...state.videos[videoId], savedVideoId: savedId },
       },
     })),
 

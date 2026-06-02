@@ -180,6 +180,8 @@ export interface SavedVideoDetail {
   transcript: string;
   summary: string;
   system_prompt: string;
+  custom_name: string;
+  is_pinned: boolean;
   messages: { role: string; content: string; timestamp: string }[];
 }
 
@@ -209,4 +211,14 @@ export async function saveVideoToServer(data: {
 
 export async function deleteSavedVideo(id: string): Promise<void> {
   await apiFetch(`/videos/${id}`, { method: 'DELETE' });
+}
+
+export async function updateSavedVideo(
+  id: string,
+  data: { custom_name?: string; is_pinned?: boolean }
+): Promise<SavedVideoItem> {
+  return apiFetch<SavedVideoItem>(`/videos/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }

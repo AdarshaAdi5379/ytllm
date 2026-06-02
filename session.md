@@ -158,3 +158,60 @@
 - **iframe embed over IFrame Player API**: Simpler implementation, no extra JS library dependency, seek done via `key` prop remount with `?start=N` URL param.
 - **Module-level seek callback**: Avoids circular store dependencies; `useChat` can directly call `seekPlayer(time)` without importing the full `VideoPlayer` component tree.
 
+## Session 4 — Video Card 3-Dot Menu
+
+### Date
+2026-05-31
+
+### Features Implemented
+
+**Phase 11 — Video Card 3-Dot Menu**
+- Replaced the simple X close button on sidebar video tabs with a feature-rich `⋮` 3-dot dropdown menu.
+- Menu options: **Rename**, **Share**, **Pin / Unpin**, **Archive**, **Delete**.
+- Inline rename: clicking "Rename" turns the title into an editable input; Enter/blur saves, Escape cancels.
+- Share modal: shows YouTube URL + App direct link, each with copy-to-clipboard buttons.
+- Pin/Unpin toggles sort priority (pinned videos appear first in the sidebar).
+- All user-specific state (custom name, pin) persists to the server DB for authenticated users via new `PATCH /api/videos/{id}` endpoint.
+
+### Problems Solved
+
+1. **No way to rename video tabs** — Users couldn't assign custom display names to their loaded videos.
+   - Fix: Added `customName` to `VideoSlice`, inline edit UI in `VideoCard`, persisted via `PATCH` when authenticated.
+
+2. **No way to organize video tabs** — No pinning or sorting.
+   - Fix: Added `isPinned` state + sidebar sorting (pinned first). Persisted to server for auth users.
+
+3. **No share functionality** — Users couldn't easily share links.
+   - Fix: Created `ShareModal` with YouTube URL + App link copy-to-clipboard.
+
+4. **Delete had no backend cleanup** — The old X button only removed from Zustand; DB records persisted indefinitely.
+   - Fix: "Delete" menu option removes from Zustand + calls `DELETE /api/videos/{id}` when authenticated. "Archive" keeps the DB record for later restoration.
+
+5. **No PATCH endpoint on server** — Couldn't update individual video fields.
+   - Fix: Added `PATCH /api/videos/{id}` + `UpdateVideoRequest` model + startup DB migration for new columns.
+
+### Files Changed / Created
+
+| File | Change |
+|------|--------|
+| `client/src/components/video/VideoCardMenu.tsx` | **NEW** — 3-dot dropdown with 5 menu actions |
+| `client/src/components/modals/ShareModal.tsx` | **NEW** — Share modal with YouTube + App link copy |
+| `server-python/app/db_models.py` | Added `custom_name`, `is_pinned` columns |
+| `server-python/app/models.py` | Added `UpdateVideoRequest`; updated response models |
+| `server-python/app/routes/videos.py` | Added `PATCH /api/videos/{id}` endpoint |
+| `server-python/app/database.py` | Added `run_migrations()` for new columns |
+| `server-python/app/main.py` | Call `run_migrations()` on startup; allow `PATCH` in CORS |
+| `client/src/store/useVideoStore.ts` | Added `customName`, `isPinned`, `savedVideoId` fields + actions |
+| `client/src/api/client.ts` | Added `updateVideo()`; updated `SavedVideoDetail` type |
+| `client/src/hooks/useTranscript.ts` | Store DB `id` after save via `setSavedVideoId` |
+| `client/src/App.tsx` | Restore `savedVideoId`, `customName`, `isPinned` on refresh |
+| `client/src/components/video/VideoCard.tsx` | Removed X button; added 3-dot menu + inline rename |
+| `client/src/components/layout/Sidebar.tsx` | Sort pinned videos first |
+
+### Key Decisions
+
+- **Replace X with 3-dot menu**: Cleaner UI — all actions in one dropdown rather than a separate X button and hidden context menu.
+- **Archive vs Delete**: Archive = close tab + keep DB record (restorable from "My Videos"). Delete = close tab + remove from DB entirely.
+- **Inline rename over modal**: Renaming happens directly on the card title (becomes an `<input>`) — faster and more intuitive than opening a separate dialog.
+- **LucideIcon type**: Used `LucideIcon` type from lucide-react for the `MenuItem` icon prop to avoid type compatibility issues with ForwardRefExoticComponent.
+

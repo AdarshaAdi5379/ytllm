@@ -73,7 +73,15 @@ export function Sidebar() {
             <p className="text-xs text-slate-500 mt-2">Start by adding your first YouTube URL</p>
           </div>
         ) : (
-          videoIds.map((id) => <VideoCard key={id} videoId={id} />)
+          [...videoIds]
+            .sort((a, b) => {
+              const va = videos[a];
+              const vb = videos[b];
+              if (va?.isPinned && !vb?.isPinned) return -1;
+              if (!va?.isPinned && vb?.isPinned) return 1;
+              return 0;
+            })
+            .map((id) => <VideoCard key={id} videoId={id} />)
         )}
       </div>
 

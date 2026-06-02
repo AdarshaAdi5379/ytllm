@@ -10,7 +10,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.config import config
-from app.database import init_db
+from app.database import init_db, run_migrations
 from app.routes import health, transcript, chat, export, auth, videos
 from app.services import embedding_service
 from app.utils import session_cache
@@ -44,6 +44,7 @@ async def _cleanup_loop(stop_event: asyncio.Event) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    await run_migrations()
     stop_event = asyncio.Event()
     task = asyncio.create_task(_cleanup_loop(stop_event))
     try:
@@ -63,7 +64,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=config["cors_origins"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 

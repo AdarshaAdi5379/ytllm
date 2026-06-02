@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export function useTranscript() {
   const addVideo = useVideoStore((s) => s.addVideo);
+  const setSavedVideoId = useVideoStore((s) => s.setSavedVideoId);
 
   return useMutation({
     mutationFn: (url: string) => fetchTranscript(url),
@@ -35,9 +36,13 @@ export function useTranscript() {
           transcript: data.transcript,
           summary: data.summary,
           system_prompt: data.systemPrompt,
-        }).catch((err) => {
-          console.error('Failed to persist video to server:', err);
-        });
+        })
+          .then((saved) => {
+            setSavedVideoId(data.videoId, saved.id);
+          })
+          .catch((err) => {
+            console.error('Failed to persist video to server:', err);
+          });
       }
 
       toast.success('Video loaded successfully!');

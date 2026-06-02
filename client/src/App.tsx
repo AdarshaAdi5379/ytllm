@@ -13,6 +13,9 @@ export default function App() {
   const addVideo = useVideoStore((s) => s.addVideo);
   const addMessage = useVideoStore((s) => s.addMessage);
   const clearVideos = useVideoStore((s) => s.clearVideos);
+  const renameVideo = useVideoStore((s) => s.renameVideo);
+  const setPinned = useVideoStore((s) => s.setPinned);
+  const setSavedVideoId = useVideoStore((s) => s.setSavedVideoId);
 
   // Make auth header wiring robust across refresh/rehydration timing.
   useEffect(() => {
@@ -50,6 +53,14 @@ export default function App() {
             status: 'ready',
             errorMessage: null,
           });
+
+          setSavedVideoId(detail.youtube_video_id, detail.id);
+          if (detail.custom_name) {
+            renameVideo(detail.youtube_video_id, detail.custom_name);
+          }
+          if (detail.is_pinned) {
+            setPinned(detail.youtube_video_id, true);
+          }
 
           for (const msg of detail.messages) {
             addMessage(detail.youtube_video_id, {

@@ -77,8 +77,15 @@ class SavedVideoResponse(BaseModel):
     duration: str
     thumbnail_url: str
     summary: str
+    custom_name: str = ""
+    is_pinned: bool = False
     created_at: str
     message_count: int = 0
+
+
+class UpdateVideoRequest(BaseModel):
+    custom_name: str | None = None
+    is_pinned: bool | None = None
 
 
 class SavedVideoDetail(BaseModel):
@@ -91,6 +98,8 @@ class SavedVideoDetail(BaseModel):
     transcript: str
     summary: str
     system_prompt: str
+    custom_name: str = ""
+    is_pinned: bool = False
     messages: list[Message]
 
 
@@ -103,6 +112,8 @@ class SaveVideoRequest(BaseModel):
     transcript: str
     summary: str
     system_prompt: str
+    custom_name: str = ""
+    is_pinned: bool = False
 
 
 class ApiError(BaseModel):

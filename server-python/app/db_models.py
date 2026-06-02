@@ -36,6 +36,8 @@ class Video(Base):
     transcript = Column(Text, default="")
     summary = Column(Text, default="")
     system_prompt = Column(Text, default="")
+    custom_name = Column(String, default="")
+    is_pinned = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

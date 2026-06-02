@@ -207,6 +207,34 @@
 
 ---
 
+## Phase 11 — Video Card 3-Dot Menu
+**Goal:** Replace the simple X close button with a feature-rich 3-dot dropdown menu on each sidebar video tab.
+
+### Backend
+- [x] Add `custom_name` (String) and `is_pinned` (Integer) columns to `Video` DB model
+- [x] Add `UpdateVideoRequest` Pydantic model with optional `custom_name`, `is_pinned` fields
+- [x] Add `PATCH /api/videos/{id}` endpoint — updates custom_name and/or is_pinned
+- [x] Update `SavedVideoResponse` and `SavedVideoDetail` to include new fields
+- [x] Add startup DB migration for `custom_name` and `is_pinned` columns
+- [x] Allow `PATCH` method in CORS middleware
+
+### Frontend State
+- [x] Add `customName?`, `isPinned`, `savedVideoId?` to `VideoSlice` in Zustand store
+- [x] Add `renameVideo`, `setPinned`, `setSavedVideoId` actions to store
+- [x] Add `updateVideo()` PATCH API call to client
+- [x] Wire `savedVideoId` storage after video save (`useTranscript.ts`)
+- [x] Wire `savedVideoId`, `customName`, `isPinned` restoration on page refresh (`App.tsx`)
+
+### Frontend Components
+- [x] **NEW** `VideoCardMenu.tsx` — 3-dot dropdown with Rename, Share, Pin/Unpin, Archive, Delete
+- [x] **NEW** `ShareModal.tsx` — modal with YouTube URL + App URL, each with copy-to-clipboard
+- [x] **UPDATE** `VideoCard.tsx` — removed X button, added 3-dot menu trigger + inline rename input
+- [x] **UPDATE** `Sidebar.tsx` — sort pinned videos to top of list
+
+**Status: IMPLEMENTED ✅**
+
+---
+
 ## Legend
 - `[x]` = Completed
 - `[ ]` = Pending
