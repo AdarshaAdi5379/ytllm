@@ -8,7 +8,7 @@ import { SavedVideosList } from '../video/SavedVideosList';
 import { useRestoreVideo } from '../../hooks/useRestoreVideo';
 
 export function Sidebar() {
-  const { videos, openAddVideoModal } = useVideoStore();
+  const { videos, openAddVideoModal, clearVideos } = useVideoStore();
   const { user, isAuthenticated, clearAuth } = useAuthStore();
   const videoIds = Object.keys(videos);
   const [connected, setConnected] = useState<boolean | null>(null);
@@ -111,7 +111,7 @@ export function Sidebar() {
                 <span className="text-xs text-slate-400 truncate">{user.email}</span>
               </div>
               <button
-                onClick={clearAuth}
+                onClick={() => { clearAuth(); clearVideos(); }}
                 className="p-1.5 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-all"
                 aria-label="Sign Out"
               >

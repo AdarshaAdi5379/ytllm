@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { MainPanel } from './components/layout/MainPanel';
 import { URLInputModal } from './components/modals/URLInputModal';
@@ -17,16 +17,23 @@ export default function App() {
   const setPinned = useVideoStore((s) => s.setPinned);
   const setSavedVideoId = useVideoStore((s) => s.setSavedVideoId);
 
-  // Make auth header wiring robust across refresh/rehydration timing.
+  // Track previous auth state to detect actual logout (not initial mount)
+  const prevAuthRef = useRef(isAuthenticated);
+
   useEffect(() => {
     setAuthToken(token);
   }, [token]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Clear videos only on actual logout (transition true→false), never on initial mount
+    if (prevAuthRef.current && !isAuthenticated) {
       clearVideos();
+      prevAuthRef.current = false;
       return;
     }
+    prevAuthRef.current = isAuthenticated;
+
+    if (!isAuthenticated) return;
 
     let cancelled = false;
 
@@ -39,9 +46,27 @@ export default function App() {
 
         if (cancelled) return;
 
+        // Use current store state to check existing videos (avoids stale closure)
+        const currentVideos = useVideoStore.getState().videos;
+
         for (const detail of details) {
+          const videoId = detail.youtube_video_id;
+
+          // Only add if not already restored from localStorage
+          if (currentVideos[videoId]) {
+            // Sync server data into existing local entry
+            setSavedVideoId(videoId, detail.id);
+            if (detail.custom_name) {
+              renameVideo(videoId, detail.custom_name);
+            }
+            if (detail.is_pinned) {
+              setPinned(videoId, true);
+            }
+            continue;
+          }
+
           addVideo({
-            videoId: detail.youtube_video_id,
+            videoId,
             title: detail.title,
             channelName: detail.channel_name,
             duration: detail.duration,
@@ -54,16 +79,16 @@ export default function App() {
             errorMessage: null,
           });
 
-          setSavedVideoId(detail.youtube_video_id, detail.id);
+          setSavedVideoId(videoId, detail.id);
           if (detail.custom_name) {
-            renameVideo(detail.youtube_video_id, detail.custom_name);
+            renameVideo(videoId, detail.custom_name);
           }
           if (detail.is_pinned) {
-            setPinned(detail.youtube_video_id, true);
+            setPinned(videoId, true);
           }
 
           for (const msg of detail.messages) {
-            addMessage(detail.youtube_video_id, {
+            addMessage(videoId, {
               role: msg.role as 'user' | 'assistant',
               content: msg.content,
               timestamp: msg.timestamp,
@@ -78,7 +103,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, addVideo, addMessage, clearVideos]);
+  }, [isAuthenticated]);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
