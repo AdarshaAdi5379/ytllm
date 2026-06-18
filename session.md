@@ -215,3 +215,94 @@
 - **Inline rename over modal**: Renaming happens directly on the card title (becomes an `<input>`) — faster and more intuitive than opening a separate dialog.
 - **LucideIcon type**: Used `LucideIcon` type from lucide-react for the `MenuItem` icon prop to avoid type compatibility issues with ForwardRefExoticComponent.
 
+## Session 5 — Full Video & Chat Persistence Across Page Refresh
+
+### Date
+2026-06-09
+
+### Problems Solved
+
+**1. Videos and chat history lost on every page refresh**
+
+- Root cause: `useVideoStore` was purely in-memory with no persistence middleware. On refresh, the Zustand store was reconstructed empty — all loaded videos, transcripts, summaries, and chat histories were lost.
+- Guest users had zero fallback (no server to save to).
+- Even for authenticated users, the restoration flow was broken.
+
+**2. `App.tsx` destructively called `clearVideos()` on initial mount**
+
+- Root cause: The `useEffect` checked `if (!isAuthenticated) { clearVideos(); return; }`. On every page load, before Zustand's `persist` middleware finished rehydrating the auth store from localStorage, `isAuthenticated` was `false`. This wiped the entire video store BEFORE the server restoration could run.
+- This also meant that even if `useVideoStore` were persisted to localStorage, `clearVideos()` would overwrite the persisted state with empty data.
+
+**3. Auth server-sync had a stale closure race condition**
+
+- Root cause: The async restoration function captured the `videos` object from the React closure. Both `useAuthStore` and `useVideoStore` use async `persist` middleware. If the video store hadn't rehydrated yet when the auth effect fired, `videos` was an empty `{}`, causing all server videos to be re-added as duplicates.
+
+**4. Logout didn't clear the video store**
+
+- Root cause: `Sidebar.tsx` only called `clearAuth()` on sign-out, leaving the previous user's video data in the in-memory store and localStorage.
+
+### Root Cause Analysis
+
+The persistence system had three independent but compounding failures:
+
+| # | Bug | Impact |
+|---|-----|--------|
+| 1 | `useVideoStore` not persisted to localStorage | All data lost on refresh for guest and auth users alike |
+| 2 | `clearVideos()` ran on every mount (before auth rehydration) | Wiped the store before server sync could run |
+| 3 | Stale `videos` closure in restoration effect | Caused duplicate video entries on auth rehydration |
+| 4 | Logout didn't clear video store | Previous user's data leaked into next session |
+
+### Fixes
+
+**Bug 1 — Add Zustand persist middleware to `useVideoStore`:**
+- Imported `persist` from `zustand/middleware` and wrapped the store definition.
+- `partialize`: Only persist `videos` (Record<videoId, VideoSlice>) and `activeVideoId` to localStorage under key `ytllm-videos`. Transient UI state (`isAddVideoModalOpen`) is excluded.
+- `merge`: Custom merge function sanitizes rehydrated data — resets `isStreaming: false`, `isPlayerOpen: false`, `status: 'ready'`, `errorMessage: null` on every video slice. This prevents stale streaming/loading states from persisting across refreshes.
+
+**Bug 2 — Guard `clearVideos()` with auth transition detection:**
+- Added `useRef` to track `prevAuthRef` — the previous value of `isAuthenticated`.
+- `clearVideos()` is now called **only** on an actual logout transition (`true → false`), never on initial mount.
+- On initial mount with `isAuthenticated: false` (before rehydration), the effect simply returns without clearing anything.
+- This allows the persisted store (from localStorage) to survive the mount cycle intact.
+
+**Bug 3 — Use live store state instead of closure:**
+- Inside the async server-sync function, replaced closure-captured `videos[videoId]` with `useVideoStore.getState().videos[videoId]`.
+- This reads the **current** Zustand state at execution time, which is guaranteed to have the fully rehydrated data (from localStorage) by the time the async function runs.
+
+**Bug 4 — Wire `clearVideos()` into logout flow:**
+- Updated `Sidebar.tsx` logout button `onClick` to call `clearVideos()` alongside `clearAuth()`.
+- Both the in-memory store and the localStorage-backed persist store are cleared atomically.
+
+### How Persistence Works Now
+
+**All users (guest + authenticated):**
+- The `useVideoStore` is persisted to `localStorage` under key `ytllm-videos`.
+- On refresh: Zustand persist middleware rehydrates from localStorage → all videos, transcripts, summaries, chat histories are restored instantly.
+- No server round-trip needed for basic restoration.
+
+**Authenticated users (additional layer):**
+- Videos are also saved to the server DB via `saveVideoToServer()` on transcript load.
+- Chat messages are saved to the server DB via `ChatMessage` records in `chat.py`.
+- On refresh, after local persistence restores videos, the `App.tsx` effect syncs metadata from the server (`savedVideoId`, `custom_name`, `is_pinned`).
+- Existing videos in the local store are not duplicated — server entries matching an existing `youtube_video_id` only update server-link metadata.
+
+**On logout:**
+- `clearVideos()` resets the Zustand store AND its localStorage persisted data.
+- `clearAuth()` resets auth state.
+- Next user (or guest) starts with a clean slate.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `client/src/store/useVideoStore.ts` | Added `persist` middleware: `partialize` (persist `videos` + `activeVideoId` only), `merge` (sanitize transient fields on rehydration) |
+| `client/src/App.tsx` | Replaced destructive `if (!isAuthenticated) { clearVideos(); return; }` with `useRef`-based auth transition detection; replaced closure-captured `videos` with `useVideoStore.getState().videos` to avoid stale closure; skip duplicate server entries when already in local store |
+| `client/src/components/layout/Sidebar.tsx` | Logout now calls `clearAuth(); clearVideos();` together; destructured `clearVideos` from store |
+
+### Key Decisions
+
+- **localStorage over server-only persistence**: For the primary use case (guest users + fast local recovery), localStorage is essential. Server-only persistence would leave guests with zero recovery on refresh, and even auth users would have a ~500ms-2s loading delay while server data fetches.
+- **Sanitize transient state in merge**: Rather than hoping all states are clean at save time, the `merge` callback explicitly resets `isStreaming`, `isPlayerOpen`, `status`, and `errorMessage` to safe defaults. This is a defense-in-depth measure against any stale transient state being persisted.
+- **Dual-layer architecture**: localStorage for instant recovery, server DB for cross-device sync and backup. The two are kept in sync via the App.tsx server-sync effect, which gracefully updates existing local entries rather than duplicating them.
+- **getState() over closure**: Using `useVideoStore.getState()` inside async callbacks is the idiomatic Zustand pattern for reading current state outside of React's render cycle. It eliminates entire classes of stale-closure bugs.
+

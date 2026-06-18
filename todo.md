@@ -235,6 +235,25 @@
 
 ---
 
+## Phase 12 — Full Video & Chat Persistence Across Page Refresh
+**Goal:** Videos and their chat histories survive page refresh for ALL users (guest and authenticated).
+
+### Backend
+- [x] No backend changes needed — existing `POST /api/videos/` and `POST /api/chat/` persistence already works
+
+### Frontend State
+- [x] Add `zustand/middleware/persist` to `useVideoStore` — persist `videos` and `activeVideoId` to localStorage under key `ytllm-videos`
+- [x] Custom `partialize` — only persist `videos` and `activeVideoId` (exclude transient UI state)
+- [x] Custom `merge` — sanitize rehydrated data: reset `isStreaming`, `isPlayerOpen`, `status`, `errorMessage`
+- [x] Fix `App.tsx` — replace `clearVideos()` on every mount with `useRef`-based auth transition detection (only clear on actual logout)
+- [x] Fix `App.tsx` — use `useVideoStore.getState().videos` inside async server-sync to avoid stale closure race condition
+- [x] Fix `App.tsx` — skip duplicate server entries when video already exists in local store; only sync metadata (`savedVideoId`, `custom_name`, `is_pinned`)
+- [x] Fix `Sidebar.tsx` — logout calls both `clearAuth()` and `clearVideos()` together
+
+**Status: IMPLEMENTED ✅**
+
+---
+
 ## Legend
 - `[x]` = Completed
 - `[ ]` = Pending
