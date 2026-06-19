@@ -132,9 +132,9 @@ routes/
 
 ### Error Handling
 
-- [ ] **[REFACTOR]** Move global exception handler to dedicated `middleware/error_handler.py`
-- [ ] Add structured error response format with unique error IDs for debugging
-- [ ] **[REUSE]** Keep existing error codes (INVALID_URL, NO_CAPTIONS, etc.) for backward compat
+- [x] **[REFACTOR]** Move global exception handler to dedicated `middleware/error_handler.py`
+- [x] Add structured error response format with unique error IDs for debugging
+- [x] **[REUSE]** Keep existing error codes (INVALID_URL, NO_CAPTIONS, etc.) for backward compat
 - [x] Add Sentry only if DSN is configured (remove empty DSN init)
 
 ---

@@ -12,6 +12,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import config
 from app.database import init_db, run_migrations
+from app.middleware.error_handler import register_error_handlers
 from app.routes import health, transcript, chat, export, auth, videos
 from app.services import embedding_service
 from app.utils import session_cache
@@ -97,18 +98,8 @@ app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(videos.router, prefix="/api/videos", tags=["videos"])
 
-
-# Error handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled error on {} {}: {}", request.method, request.url.path, exc)
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "INTERNAL_ERROR",
-            "message": "An unexpected error occurred",
-        },
-    )
+# Register error handlers (must be after routers)
+register_error_handlers(app)
 
 
 if __name__ == "__main__":

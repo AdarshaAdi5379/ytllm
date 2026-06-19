@@ -49,8 +49,9 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **[REFACTOR]** Extract shared Python types into `backend/shared/` (Pydantic models)
 - [ ] **Add Dockerfile** for backend + docker-compose with PostgreSQL + vector DB
 - [ ] **Add CI/CD** (GitHub Actions: lint, typecheck, test, build, deploy)
-- [ ] **[REUSE]** Keep FastAPI lifespan, CORS, rate limiting, health endpoint
+- [x] **[REUSE]** Keep FastAPI lifespan, CORS, rate limiting, health endpoint
 - [x] **Add environment validation** on startup (fail fast if API keys missing)
+- [x] **Move global exception handler** to dedicated middleware with structured error IDs
 
 ### Frontend Architecture
 - [ ] **[REFACTOR]** Restructure `frontend/src/`:
