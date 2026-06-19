@@ -48,6 +48,14 @@
 - Auth is optional for transcript/chat/export flows. Do not accidentally make guest flows require JWTs.
 - Persistent saved-video behavior is additive on top of local Zustand persistence. Keep both layers working.
 
+## Build Protocol
+- Build exactly one feature at a time. Never batch multiple features in a single session.
+- After completing each feature, notify the user with a summary of what was built.
+- Update `todo.md` checkboxes immediately after finishing each feature.
+- Do not start the next feature until the user acknowledges the current one.
+- Before starting a new feature, run security checks on the codebase.
+- After each feature is complete, commit and push to GitHub with meaningful commit messages that describe the changes made. Each commit should focus on a coherent set of changes with a clear message.
+
 ## Coding Preferences
 - Prefer the smallest change that fully fixes the problem, but do not preserve a messy implementation if a slightly larger refactor makes the flow clearer and safer.
 - When a change touches request/response shapes, update both the Python Pydantic models and the TypeScript mapping in `client/src/api/client.ts` in the same edit.

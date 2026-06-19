@@ -1,261 +1,450 @@
-# YouTube AI Chat Agent — Implementation Tracker
+# KnowledgeOS — Implementation Tracker
+**Your Personal AI Learning Operating System**
 
-## Phase 1 — Project Setup & Backend Foundation
-**Goal:** Working Express server that accepts a YouTube URL and returns a clean transcript.
-
-- [x] Initialise monorepo: `/client`, `/server`, `/shared` directories
-- [x] Configure TypeScript, ESLint, Prettier, `.editorconfig`
-- [x] Set up Express server with CORS, Helmet, Morgan, Zod middleware
-- [x] Implement `GET /api/health` endpoint
-- [x] Implement YouTube URL parser utility (all URL formats → videoId)
-- [x] Implement Transcript Service: YouTube Data API v3 captions.list + captions.download
-- [x] Implement timedtext fallback (VTT parsing + deduplication)
-- [x] Implement transcript cleaning pipeline (strip artifacts, normalise whitespace)
-- [x] Implement `videos.list` call for title, channel, duration, thumbnail
-- [x] Implement `POST /api/transcript` route (wires all services)
-- [x] Shared TypeScript types in `/shared`
-- [x] `.env.example` file
-
-**Status: IMPLEMENTED ✅**
+Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one searchable AI tutor that remembers everything.
 
 ---
 
-## Phase 2 — Memory Layer & AI Integration
-**Goal:** Backend answers questions with full 3-layer context management and streaming.
+## Foundation (v0) — Legacy Product
+*YouTube AI Chat Agent — 12 phases completed. These built the core AI chat infrastructure (transcript extraction, vector search, SSE streaming, JWT auth, export engine, Zustand persistence). All code exists in the repo and will be [REUSE]d or [REFACTOR]ed.*
 
-- [x] Configure Gemini AI SDK (later replaced with OpenAI)
-- [x] Implement transcript chunking utility (500-word, 50-word overlap)
-- [x] Implement Embedding Service (OpenAI text-embedding-3-small via ChromaDB)
-- [x] Wire chunking + embedding into `/api/transcript`
-- [x] Add LLM call for 150-word summary generation
-- [x] Add LLM call for 5 suggested starter questions
-- [x] Implement Memory Service (rolling summary, threshold detection)
-- [x] Implement LLM Service (context assembly, system prompt, streaming wrapper)
-- [x] Implement `POST /api/chat` route with SSE streaming
-- [x] Retry utility with exponential backoff for all API calls
-- [x] Session cache (in-memory, 2-hour TTL) for transcript + metadata
+**Source code:** `server-python/app/` (FastAPI), `client/src/` (React 18), `shared/types.ts`
 
-**Status: IMPLEMENTED ✅**
+**Key assets to [REUSE]:**
+- SSE streaming chat infrastructure
+- OpenAI integration (llm_service, embedding_service)
+- ChromaDB vector search utilities
+- PDF/DOCX export engine
+- JWT auth service
+- YouTube transcript extraction (youtube-transcript-api + timedtext)
+- Zustand persist middleware pattern
+- Multi-video tab isolation pattern
 
----
-
-## Phase 3 — Export Engine
-**Goal:** Users can export conversations as professionally formatted PDF or DOCX.
-
-- [x] Implement thumbnail fetch utility (img.youtube.com → base64)
-- [x] Implement PDF Export (pdfkit): cover page, summary, Q&A, optional transcript appendix
-- [x] Implement DOCX Export (docx npm): same structure with Word styles
-- [x] Implement `POST /api/export` route (validates input, selects generator, streams file)
-
-**Status: IMPLEMENTED ✅**
+**Status: COMPLETE ✅**
 
 ---
 
-## Phase 4 — React Frontend
-**Goal:** Full React UI connecting to backend — load videos, chat, export, multi-tab.
+## V1 — Rebrand & Architecture Overhaul
+**Goal:** Rename, restructure, and production-harden the codebase for multi-source support.
 
-- [x] Initialise Vite + React 18 + TypeScript in `/client`
-- [x] Configure TailwindCSS with design tokens
-- [x] Set up Zustand store with full VideoSlice schema
-- [x] Set up TanStack Query + QueryClient
-- [x] Build API client module (`/api/client.ts`)
-- [x] Build `App.tsx` layout shell (sidebar + main panel)
-- [x] Build `URLInputModal` (URL validation, loading, error states)
-- [x] Build `VideoCard` (sidebar: thumbnail, title, status badge, close button)
-- [x] Build `VideoHeader` (metadata, YouTube link, export button)
-- [x] Build `SummaryCard` (collapsible, suggested question chips)
-- [x] Build `TranscriptPanel` (collapsible raw transcript viewer)
-- [x] Build `ChatWindow` (message list, auto-scroll, empty state)
-- [x] Build `UserMessage` and `AIMessage` components
-- [x] Build `AIMessage` streaming animation (cursor blink)
-- [x] Build `ChatInput` (auto-resize textarea, send button, Cmd/Ctrl+Enter)
-- [x] Build `ExportModal` (format toggle, include transcript checkbox)
-- [x] Build `Sidebar` (video list, add video button, connection status)
-- [x] Build `StatusBadge` and `LoadingSkeleton` shared components
-- [x] Wire transcript loading via TanStack Query mutation
-- [x] Wire SSE streaming for chat (fetch ReadableStream → Zustand)
-- [x] Wire export download (POST → blob → browser download)
-- [x] Wire multi-video tab switching with state isolation
-- [x] Add loading skeletons and toast notifications
+### Project Rename
+- [ ] Rename root package: `ytllm` → `knowledgeos` in package.json, name fields, workspace config
+- [ ] Rename `server-python/` directory to `backend/` (or keep as-is, update all references)
+- [ ] Rename `client/` directory to `frontend/` (optional, update references)
+- [ ] Update all env files, .env.example, README with new product name
+- [ ] Update all `package.json` scripts (`npm run dev:server` etc.) to new path conventions
+- [ ] Update docker-compose, Dockerfile service names
+- [ ] Create new `docs/` structure with roadmap files
 
-**Status: IMPLEMENTED ✅**
+### Backend Architecture
+- [ ] **[REFACTOR]** Replace flat route structure with multi-source architecture:
+  - `backend/app/routes/sources/` — youtube, pdf, website, github, markdown, text, docx, pptx
+  - `backend/app/routes/workspace/` — folders, sources, search
+  - `backend/app/routes/ai/` — chat, summary, actions, notes
+- [ ] **[REFACTOR]** Replace `config` dict with proper dependency injection container
+- [ ] **[REFACTOR]** Replace `print()` with structured logging (loguru or structlog)
+- [ ] **Replace SQLite with PostgreSQL** via SQLAlchemy async + asyncpg
+- [ ] **Replace ephemeral ChromaDB** (temp dir) with persistent PGvector or Pinecone integration
+- [ ] **Add Alembic** for database migration management (remove the hacky `run_migrations()`)
+- [ ] **[REFACTOR]** Extract shared Python types into `backend/shared/` (Pydantic models)
+- [ ] **Add Dockerfile** for backend + docker-compose with PostgreSQL + vector DB
+- [ ] **Add CI/CD** (GitHub Actions: lint, typecheck, test, build, deploy)
+- [ ] **[REUSE]** Keep FastAPI lifespan, CORS, rate limiting, health endpoint
+- [ ] **Add environment validation** on startup (fail fast if API keys missing)
 
----
+### Frontend Architecture
+- [ ] **[REFACTOR]** Restructure `frontend/src/`:
+  - `components/workspace/` — folders, source list
+  - `components/sources/` — youtube, pdf, website, github import UIs
+  - `components/ai/` — chat, summary, notes, actions
+  - `store/` — workspace store, auth store (Google/GitHub/Email)
+  - `api/` — multi-source API client modules
+- [ ] **Replace Vite proxy** with explicit backend URL configuration
+- [ ] **Add React Router** for workspace views (dashboard, workspace, settings)
+- [ ] **[REUSE]** Keep Zustand persist middleware pattern
+- [ ] **[REUSE]** Keep TailwindCSS configuration and design tokens
+- [ ] **Add error boundaries** to all major sections
+- [ ] **Add PWA support** (manifest, service worker, offline fallback)
 
-## Phase 5 — Polish, Testing & Launch Prep
-**Goal:** Production-ready with all edge cases handled and deployment configured.
+### Data Model
+- [ ] **Create Workspace model** (id, name, owner_id, created_at, updated_at)
+- [ ] **Create Folder model** (id, workspace_id, name, parent_id, sort_order)
+- [ ] **Create Source model** (polymorphic: youtube_video, pdf_document, website_page, github_repo, markdown_note, text_note, docx_document, pptx_document)
+- [ ] **Create SourceChunk model** (source_id, chunk_index, text, embedding vector, metadata JSON)
+- [ ] **Create ChatSession model** (workspace_id, folder_id?, source_ids[], title, created_at)
+- [ ] **Create ChatMessage model** (session_id, role, content, citations JSON, timestamp)
+- [ ] **Create Note model** (id, source_id?, user_id, content, tags[], topic, difficulty, importance)
+- [ ] **Create Summary model** (source_id, type ENUM: short|detailed|executive|eli5|interview|revision, content, created_at)
+- [ ] **Create Migration for v0→v1**: migrate existing User, Video, ChatMessage tables to new schema
+- [ ] **Add proper indexes** on all foreign keys, user_id, source_type, created_at
 
-- [x] Accessibility: ARIA labels on all interactive elements, keyboard navigation
-- [x] Responsive layout (flex-based, sidebar + main panel)
-- [x] Environment variable documentation and `.env.example` finalised
-- [x] Rate limiting middleware (30 req/min per IP via slowapi)
-- [x] Input sanitisation with Pydantic on all endpoints
-- [x] CORS locked to configured frontend origin
-- [x] README with full setup and deployment instructions
-- [x] API key never included in any response (server-side only)
-- [x] Graceful error handling on all endpoints with actionable messages
-- [x] Exponential backoff retry on all API calls
+### Rename Tasks (Code Changes)
+- [ ] Update `main.py` app title from "YouTube AI Chat Agent" to "KnowledgeOS"
+- [ ] Update all route prefixes if needed
+- [ ] Update all docstrings and comments referencing old product name
+- [ ] Update client `index.html` title, meta tags
+- [ ] Update shared types namespaces
 
-**Status: IMPLEMENTED ✅**
-
----
-
-## Phase 6 — Migration: Google Gemini → OpenAI
-**Goal:** Replace all Google Gemini API calls with OpenAI equivalents.
-
-- [x] Add `openai` Python SDK dependency
-- [x] Update `config.py` — replace Google config with OpenAI fields
-- [x] Rewrite `embedding_service.py` — `genai.embed_content` → `AsyncOpenAI embeddings`
-- [x] Rewrite `gemini_service.py` → `llm_service.py` — OpenAI chat completions
-- [x] Rewrite `memory_service.py` — OpenAI chat for summarization
-- [x] Update error handling in `transcript.py` — remove Gemini-specific error codes
-- [x] Update `.env`, `.env.example`, docs, and README
-- [x] Clean up tracked `__pycache__` and `client/dist/` from git
-
-**Status: IMPLEMENTED ✅**
-
----
-
-## Phase 7 — User Authentication
-**Goal:** Users can sign up/in to persist videos and chat history. Guest mode remains for anonymous use.
-
-### Phase 7a — Backend Database & Auth Layer
-- [x] Add SQLAlchemy + aiosqlite + PyJWT + Passlib dependencies
-- [x] Create async database engine and session factory (`database.py`)
-- [x] Create SQLAlchemy ORM models: `User`, `Video`, `ChatMessage` (`db_models.py`)
-- [x] Add auth config: `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRE_MINUTES`, `DATABASE_URL`
-- [x] Add Pydantic schemas: `UserCreate`, `UserLogin`, `TokenResponse`, `SavedVideoResponse`
-- [x] Create `auth_service.py` — password hashing (bcrypt), JWT create/verify, optional user dependency
-- [x] Create `auth.py` routes — `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
-- [x] Register auth router in `main.py`, init DB on startup
-- [x] Update CORS to allow `Authorization` header and `DELETE` method
-
-### Phase 7b — Video Persistence Routes
-- [x] Create `routes/videos.py` — GET (list), GET/{id} (detail with messages), POST (save), DELETE
-- [x] Update `routes/transcript.py` — auto-save video to DB after successful load when JWT present
-- [x] Update `routes/chat.py` — save chat messages to DB after streaming completes when JWT present
-
-### Phase 7c — Frontend Auth UI
-- [x] Create `store/useAuthStore.ts` — Zustand slice for user + token, persisted to localStorage
-- [x] Update `api/client.ts` — `Authorization: Bearer <token>` header, auth API functions, saved videos API
-- [x] Create `components/auth/AuthModal.tsx` — tabbed Login / Signup modal
-- [x] Update `components/layout/Sidebar.tsx` — Sign In button (guest), user email + My Videos + Sign Out (authenticated)
-- [x] Create `components/video/SavedVideosList.tsx` — list user's saved videos with delete
-
-### Phase 7d — Restore Saved Videos
-- [x] Create `hooks/useRestoreVideo.ts` — fetch detail, re-index via transcript endpoint, restore chat history
-
-### Phase 7e — Cleanup & Bugfixes
-- [x] Remove dead YouTube Data API v3 fallback (`google_api_key` config) from `transcript_service.py`
-- [x] Remove stale `server/` (old Node.js backend), `designs/`, `instrument.js`
-- [x] Register `videos.py` router in `main.py`
-
-**Phase 7 Status: IMPLEMENTED ✅**
+**See full details:** `docs/roadmap-v1.md`
 
 ---
 
-## Phase 8 — Auth Persistence & Chat Fixes
-**Goal:** Fix video persistence across refresh, auth rehydration on page load, and allow casual chat with AI.
+## V2 — AI Learning Workspace (MVP)
+**Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-### Phase 8a — Auth Rehydration Fix
-- [x] Fix `useAuthStore.ts` — include `isAuthenticated` in `partialize()` so it's actually persisted to localStorage and restored on page refresh
-- [x] Remove dead `state.isAuthenticated = ...` mutation from `onRehydrateStorage` (mutates callback param, not the store)
+### Authentication
+- [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
+- [ ] **GitHub OAuth login** — FastAPI + httpx OAuth flow with GitHub API
+- [ ] **[REUSE]** Email/password login with bcrypt
+- [ ] **Profile page**: avatar, display name, email, auth provider badge
+- [ ] **Session management**: refresh tokens, token rotation, expiry handling
+- [ ] **Password reset flow** (for email auth users)
 
-### Phase 8b — Video Persistence on Add
-- [x] Update `useTranscript.ts` — call `saveVideoToServer()` in `onSuccess` when user is authenticated
-- [x] Add `clearVideos()` action to `useVideoStore.ts` for clearing store on logout
+### Workspace & Folders
+- [ ] **Workspace CRUD** — create, rename, delete workspaces
+- [ ] **Folder CRUD** — create, rename, delete, reorder folders
+- [ ] **Drag-and-drop folder reordering** in sidebar
+- [ ] **Breadcrumb navigation** for deep folder paths
+- [ ] **Workspace switcher** — dropdown in sidebar header
 
-### Phase 8c — Store Hydration on Startup
-- [x] Update `App.tsx` — `useEffect` that loads saved videos from server on mount (authenticated) and clears store on logout
+### Multi-Source Import
+- [ ] **[REUSE]** YouTube: existing transcript pipeline adapted to new Source model
+- [ ] **PDF import**: PyMuPDF (fitz) for text extraction, OCR fallback via Tesseract
+- [ ] **Website import**: httpx + beautifulsoup4 + readability-lxml for main content extraction
+- [ ] **Markdown import**: file upload or direct paste into editor
+- [ ] **Text import**: direct paste or file upload (.txt)
+- [ ] **GitHub Repository import**: clone repo or fetch via GitHub API, parse file tree
+- [ ] **DOCX import**: python-docx for text extraction
+- [ ] **PowerPoint import**: python-pptx for text extraction
+- [ ] **Import progress UI**: progress bar per source, status indicators (queued/processing/ready/error)
+- [ ] **Background ingestion** with async task queue (Celery or simple asyncio background tasks)
+- [ ] **Source deletion** — remove source and all its chunks, embeddings, and associated notes
 
-### Phase 8d — Casual Chat Support
-- [x] Update `build_system_prompt()` — relax rules 1/2/3 to apply only to factual questions; add rule 7 for casual conversation
-- [x] Update `build_multi_system_prompt()` — same rule changes
+### AI Chat
+- [ ] **[REUSE]** Chat with single source (existing pattern adapted to new models)
+- [ ] **Chat with multiple sources** — retrieve chunks across N sources, assemble unified context
+- [ ] **Chat with entire workspace** — search all sources in the current workspace
+- [ ] **Chat with entire folder** — search all sources within a folder
+- [ ] **[REUSE]** SSE streaming for all chat modes
+- [ ] **Chat session management**:
+  - Create new session (select which sources to include)
+  - Rename session (auto-name from first question)
+  - Delete session
+  - List and reopen past sessions
+  - Session history sidebar
 
-### Phase 8e — Bugfix: Server 500 Errors
-- [x] Kill old uvicorn processes running stale code
-- [x] Clear stale `__pycache__` directories
-- [x] Delete old SQLite DB to avoid state conflicts
+### Citation System
+- [ ] **Every answer shows citations**: source name, video timestamp, PDF page number, website section heading, GitHub file path with line numbers
+- [ ] **Clickable citations** — open source at exact location (seek YouTube video, scroll PDF to page, open GitHub file at line)
+- [ ] **"Open Source" button** on each citation — one click opens the source material
+- [ ] **Citation confidence indicator** — subtle relevance or similarity score
+- [ ] **Source type icon** next to each citation (YouTube, PDF, Web, GitHub, etc.)
 
-**Phase 8 Status: IMPLEMENTED ✅**
+### AI Summary
+- [ ] **Short summary** — 2-3 sentence TL;DR
+- [ ] **Detailed summary** — comprehensive multi-paragraph (~500 words)
+- [ ] **Executive summary** — bullet-point format for quick scanning
+- [ ] **ELI5 summary** — "Explain Like I'm 5" — extreme simplification
+- [ ] **Interview summary** — Q&A format extracted from source content
+- [ ] **Revision summary** — key facts, dates, formulas, concepts, terminology
+- [ ] **Summary type selector** — dropdown/tab UI per source
+- [ ] **Copy or download summary** as text, markdown, or PDF
+
+### Notes
+- [ ] **Text highlight** — select text in any source → auto-create note with source citation
+- [ ] **Free-form note creation** — rich markdown editor with preview
+- [ ] **AI auto-organization**:
+  - Topic classification (what subject does this belong to?)
+  - Tag suggestions (auto-tag from content)
+  - Difficulty estimation (beginner / intermediate / advanced)
+  - Importance scoring (how critical is this information?)
+- [ ] **Note browser**: grid view or list view, filterable by source/topic/tag/difficulty
+- [ ] **Note search** — full-text search across all notes in workspace
+- [ ] **Export notes** — as markdown file, PDF, or plain text
+
+### Smart Search
+- [ ] **Semantic search** — vector similarity across all sources in workspace
+- [ ] **Keyword search** — full-text search via PostgreSQL tsvector
+- [ ] **Hybrid search** — weighted combination of semantic + keyword results
+- [ ] **Search filters** — by date range, tag, folder, source type
+- [ ] **Search results UI**: grouped by source, snippet preview with highlighted match, relevance badge
+
+### AI Actions
+- [ ] **Explain** — break down a selected concept step-by-step
+- [ ] **Simplify** — reduce complexity to plain language
+- [ ] **Translate** — translate selected content to another language
+- [ ] **Expand** — elaborate on a topic with more detail and examples
+- [ ] **Compare** — compare two concepts, papers, code implementations side-by-side
+- [ ] **Generate Examples** — produce real-world examples for any concept
+- [ ] **Generate Code** — generate code snippets from natural language description
+- [ ] **Generate Quiz** — auto-generate quiz questions from selected source content
+- [ ] **Action selector toolbar** — appears when viewing any source or selecting text
+
+**See full details:** `docs/roadmap-v2.md`
 
 ---
 
-## Phase 9 — In-App Video Playback
-**Goal:** Play the YouTube video inside the app so users can watch while chatting with the AI (no external navigation).
+## V3 — AI Tutor
+**Goal:** Increase retention. Active learning tools built on top of the knowledge base.
 
-- [x] Replace the external 'Watch' link with an embedded YouTube player toggle button in VideoHeader.
-- [x] Add a collapsible player panel (desktop: split view; mobile: stack) via VideoPlayer component.
-- [x] Persist player UI state per video tab (open/closed via isPlayerOpen in Zustand store).
-- [x] When user uses /time filters, seek the embedded player to the start time via seekPlayer() callback.
-- [x] Add fallback UX — "YouTube" button overlay on the player to open in new tab if embedding fails.
+### Flashcards
+- [ ] **Auto-generate flashcards** from sources — AI extracts question-answer pairs
+- [ ] **Manual flashcard creation** — user writes custom Q&A
+- [ ] **Difficulty tagging** — easy / medium / hard (auto-detected by AI)
+- [ ] **Flashcard review session** — cue card UI with flip animation, self-rating (again/hard/good/easy)
+- [ ] **Review interval tracking** — next review date calculated per card
 
-**Status: IMPLEMENTED ✅**
+### Spaced Repetition
+- [ ] **SM-2 algorithm implementation** for optimal review scheduling
+- [ ] **Today's review queue** — cards due for review today, shown on dashboard
+- [ ] **Tomorrow's preview** — upcoming cards for next session
+- [ ] **Next week / Next month** — calendar-style view of scheduled reviews
+- [ ] **Review statistics** — cards reviewed today, retention rate, streak count
+
+### Quiz Generator
+- [ ] **Multiple Choice Questions (MCQ)** — 4 options, one correct answer
+- [ ] **Coding questions** — problem description + expected solution pattern
+- [ ] **Short answer questions** — with expected answer for self-assessment
+- [ ] **Long answer questions** — essay-style prompts with rubric
+- [ ] **Case study analysis** — scenario-based questions from video/paper content
+- [ ] **Interview questions** — role-specific questions (SWE, ML, PM, etc.)
+- [ ] **Quiz modes**:
+  - Timed mode (countdown timer)
+  - Practice mode (hints available on request)
+  - Review mode (show correct answer immediately after answering)
+  - Exam mode (all questions, no hints, scored at end)
+
+### Learning Path
+- [ ] **Skill assessment** — initial quiz to determine current knowledge level
+- [ ] **AI analysis** — identify knowledge gaps from imported sources
+- [ ] **Personalized roadmap** — ordered list of topics to learn, with source recommendations
+- [ ] **Progress tracking** — mark topics complete, log time spent
+- [ ] **Roadmap visualization** — progress bar per milestone, overall completion percentage
+
+### Daily Revision
+- [ ] **Weak topics identification** — computed from quiz and flashcard performance
+- [ ] **Strong topics tracking** — what you've demonstrated mastery of
+- [ ] **Missed questions review** — curated list of all incorrect answers
+- [ ] **AI suggestions** — "Based on your weak areas, review these 3 sources"
+- [ ] **Daily digest email** (optional) — "Your 5-minute daily review summary"
+
+### Progress Dashboard
+- [ ] **Learning hours** — total tracked time + per-topic breakdown
+- [ ] **Completed topics** — count and percentage of roadmap completed
+- [ ] **Accuracy** — quiz and flashcard correct percentage over time (line chart)
+- [ ] **Revision streak** — consecutive calendar days with review activity
+- [ ] **Knowledge score** — composite score (0-1000) from all metrics combined
+- [ ] **Consistency graph** — GitHub-style daily activity heatmap
+- [ ] **Weekly/monthly reports** — auto-generated progress summaries
+
+### AI Mentor
+- [ ] **Reverse interaction** — AI asks YOU questions instead of answering
+- [ ] **Topic select** — choose a topic and AI quizzes you on it
+- [ ] **Follow-up questions** — "Why is BFS better than DFS here?" which adapts based on your answer
+- [ ] **Problem-solving sessions** — AI presents a problem, you solve it, AI evaluates
+- [ ] **Gap detection** — AI identifies what you got wrong and suggests remedial sources
+- [ ] **Mentor session history** — review past mentor sessions with improvement tracking
+
+**See full details:** `docs/roadmap-v3.md`
 
 ---
 
-## Phase 10 — Export Reliability Fixes
-**Goal:** Fix PDF/DOCX export failures caused by session cache expiration, encoding errors, and database query issues.
+## V4 — Developer Mode
+**Goal:** GitHub-aware AI that understands codebases.
 
-- [x] Add DB fallback in export route when in-memory session cache misses (for authenticated users).
-- [x] Fix `MultipleResultsFound` crash — use `order_by + limit(1) + scalars().first()` instead of `scalar_one_or_none()`.
-- [x] Fix Latin-1 encoding crash for non-ASCII content — replace `.encode("latin-1")` with `.encode("utf-8")`.
-- [x] Extend session cache TTL from 2h to 8h.
-- [x] Improve frontend error propagation — attach error code to thrown Error for better debugging.
+### GitHub Import
+- [ ] **Repo URL import** — clone repository or fetch file tree via GitHub API
+- [ ] **File tree browser** — navigate imported repo structure in the UI
+- [ ] **Smart file selection** — import only relevant files (exclude node_modules, .git, build artifacts)
+- [ ] **Language-aware chunking** — split code by function/class boundaries, not word count
+- [ ] **Multi-repo workspace** — import and compare across multiple repositories
+- [ ] **Auto-documentation** — generate README, API docs from imported code
+- [ ] **Issue/Blog import** — import GitHub issues, StackOverflow threads, technical blog posts
 
-**Status: IMPLEMENTED ✅**
+### Codebase Chat
+- [ ] **Chat with entire repository** — semantic search across all imported code files
+- [ ] **Chat with specific folder** — narrow context to a subdirectory
+- [ ] **Chat with specific file** — focused QA about one file
+- [ ] **Chat with specific function/class** — understand a single code unit
+- [ ] **Code citation** — answer shows exact file path, line numbers, code snippet
+- [ ] **"Open in GitHub" button** — one click to exact file and line on GitHub
+- [ ] **Syntax-highlighted code** in answers
 
----
+### AI Coding Tutor
+- [ ] **Explain code** — natural language explanation of selected code block
+- [ ] **Optimize code** — suggest performance improvements with before/after comparison
+- [ ] **Refactor code** — propose better structure, patterns, naming
+- [ ] **Visualize code** — generate flowcharts, call graphs, dependency diagrams (Mermaid.js)
+- [ ] **Generate diagrams** — architecture diagrams, ERDs, sequence diagrams from code
+- [ ] **Create tests** — auto-generate unit tests for functions and classes
+- [ ] **Generate interview questions** — from code patterns and algorithms found in repo
+- [ ] **Find bugs** — static analysis via LLM with suggested fixes
+- [ ] **Compare implementations** — two functions or algorithms side-by-side
+- [ ] **Create learning roadmap** — from repo contents (what to study to understand this codebase)
 
-## Phase 11 — Video Card 3-Dot Menu
-**Goal:** Replace the simple X close button with a feature-rich 3-dot dropdown menu on each sidebar video tab.
-
-### Backend
-- [x] Add `custom_name` (String) and `is_pinned` (Integer) columns to `Video` DB model
-- [x] Add `UpdateVideoRequest` Pydantic model with optional `custom_name`, `is_pinned` fields
-- [x] Add `PATCH /api/videos/{id}` endpoint — updates custom_name and/or is_pinned
-- [x] Update `SavedVideoResponse` and `SavedVideoDetail` to include new fields
-- [x] Add startup DB migration for `custom_name` and `is_pinned` columns
-- [x] Allow `PATCH` method in CORS middleware
-
-### Frontend State
-- [x] Add `customName?`, `isPinned`, `savedVideoId?` to `VideoSlice` in Zustand store
-- [x] Add `renameVideo`, `setPinned`, `setSavedVideoId` actions to store
-- [x] Add `updateVideo()` PATCH API call to client
-- [x] Wire `savedVideoId` storage after video save (`useTranscript.ts`)
-- [x] Wire `savedVideoId`, `customName`, `isPinned` restoration on page refresh (`App.tsx`)
-
-### Frontend Components
-- [x] **NEW** `VideoCardMenu.tsx` — 3-dot dropdown with Rename, Share, Pin/Unpin, Archive, Delete
-- [x] **NEW** `ShareModal.tsx` — modal with YouTube URL + App URL, each with copy-to-clipboard
-- [x] **UPDATE** `VideoCard.tsx` — removed X button, added 3-dot menu trigger + inline rename input
-- [x] **UPDATE** `Sidebar.tsx` — sort pinned videos to top of list
-
-**Status: IMPLEMENTED ✅**
+**See full details:** `docs/roadmap-v4.md`
 
 ---
 
-## Phase 12 — Full Video & Chat Persistence Across Page Refresh
-**Goal:** Videos and their chat histories survive page refresh for ALL users (guest and authenticated).
+## V5 — Team Workspace
+**Goal:** Collaborative learning and knowledge sharing.
 
-### Backend
-- [x] No backend changes needed — existing `POST /api/videos/` and `POST /api/chat/` persistence already works
+### Shared Workspace
+- [ ] **Team workspace creation** — invite members by email
+- [ ] **Workspace types** — Engineering Team, Research Team, Study Group, Class
+- [ ] **Real-time presence** — see who's currently online in the workspace
+- [ ] **Activity feed** — recent imports, chats, notes, changes per workspace member
 
-### Frontend State
-- [x] Add `zustand/middleware/persist` to `useVideoStore` — persist `videos` and `activeVideoId` to localStorage under key `ytllm-videos`
-- [x] Custom `partialize` — only persist `videos` and `activeVideoId` (exclude transient UI state)
-- [x] Custom `merge` — sanitize rehydrated data: reset `isStreaming`, `isPlayerOpen`, `status`, `errorMessage`
-- [x] Fix `App.tsx` — replace `clearVideos()` on every mount with `useRef`-based auth transition detection (only clear on actual logout)
-- [x] Fix `App.tsx` — use `useVideoStore.getState().videos` inside async server-sync to avoid stale closure race condition
-- [x] Fix `App.tsx` — skip duplicate server entries when video already exists in local store; only sync metadata (`savedVideoId`, `custom_name`, `is_pinned`)
-- [x] Fix `Sidebar.tsx` — logout calls both `clearAuth()` and `clearVideos()` together
+### Shared Collections
+- [ ] **Collaborative source collection** — everyone adds videos, notes, PDFs, links
+- [ ] **Collection approval flow** (optional) — moderator reviews before content is added
+- [ ] **Collection categories** — topical grouping within a collection
+- [ ] **Contribution analytics** — who added what, top contributors
 
-**Status: IMPLEMENTED ✅**
+### Team AI
+- [ ] **Team chat** — AI answers using all team sources as context
+- [ ] **Shared summaries** — generated for the whole team (meeting summaries, research synthesis)
+- [ ] **Weekly team report** — auto-generated knowledge summary of team activity
+- [ ] **Meeting notes import** — upload meeting transcripts, AI extracts key decisions and action items
+
+### Permissions
+- [ ] **Owner** — full control, billing, workspace deletion, member removal
+- [ ] **Admin** — manage members, modify all content, change settings
+- [ ] **Editor** — add/edit sources, create notes, start chat sessions
+- [ ] **Viewer** — read-only access to workspace content
+- [ ] **Role-based UI** — hide admin features from viewers/editors
+
+**See full details:** `docs/roadmap-v5.md`
+
+---
+
+## V6 — Enterprise & Platform
+**Goal:** Revenue, scale, and ecosystem.
+
+### Private Knowledge Base
+- [ ] **Company content import**: training videos, policy PDFs, technical documentation
+- [ ] **Confluence integration** — OAuth + Confluence REST API connector
+- [ ] **Slack integration** — import Slack threads and messages as sources
+- [ ] **Notion integration** — OAuth + Notion API connector for pages and databases
+- [ ] **Google Drive integration** — OAuth + Google Drive API for Docs and PDFs
+
+### AI Employee Assistant
+- [ ] **"How do I deploy?"** — answers sourced from internal deployment documentation
+- [ ] **"What's the vacation policy?"** — answers from HR documents
+- [ ] **"Who handles security incidents?"** — org chart and runbooks from Confluence
+- [ ] **"What are my benefits?"** — personalized answers from employee handbook
+- [ ] **Company-wide search** — one query across all internal knowledge bases
+
+### Admin Dashboard
+- [ ] **Usage analytics**: total API calls, active users, storage consumption
+- [ ] **Popular questions** — most frequently asked queries across the organization
+- [ ] **Knowledge gaps** — questions with low-confidence answers or no results
+- [ ] **User management** — invite, suspend, role changes, bulk operations
+- [ ] **Billing management** — subscription status, invoice history, seat count
+
+### Browser Extension
+- [ ] **Chrome extension** (Manifest V3)
+- [ ] **Works on**: YouTube, GitHub, documentation sites, Medium, Dev.to, Wikipedia
+- [ ] **Floating AI button** — appears on supported pages
+- [ ] **Quick actions**:
+  - Summarize current page
+  - Explain this article / video
+  - Save to KnowledgeOS
+  - Highlight text → save as note
+  - Generate notes from page content
+- [ ] **Extension auth** — logs in via OAuth (same session as web app)
+- [ ] **Context menu** — right-click any text → "Save to KnowledgeOS"
+
+### Mobile App
+- [ ] **React Native (or Flutter)** mobile application
+- [ ] **Offline notes** — create and edit notes offline, sync when online
+- [ ] **Voice chat** — speak questions aloud, hear AI answers via TTS
+- [ ] **Camera scan PDF** — snap a photo of a document page, AI extracts and processes text
+- [ ] **Quick review** — mobile-optimized flashcard review with push notifications
+- [ ] **Mobile progress** — dashboard view, streak tracking, daily revision summary
+
+### AI Platform Features
+- [ ] **AI Notebook** — every interaction saved permanently:
+  - Question, answer, summary, tags, sources, difficulty
+  - Full-text searchable history across all sessions
+  - Export notebook as PDF or DOCX
+- [ ] **AI Memory** — cross-source context persistence:
+  - Remember context across videos, PDFs, websites, notes within a session
+  - Session continuity: "Earlier you asked about X, here's related information"
+- [ ] **AI Connections** — multi-source synthesis:
+  - "Compare React Hooks with Vue Composition API using my saved notes, the YouTube playlist I watched, and the official documentation"
+- [ ] **AI Knowledge Graph**:
+  - Visual concept map: React → Hooks → useEffect → Dependency Array → Closures
+  - Auto-extracted relationships from all sources
+  - Interactive graph: click a node → show all related sources, notes, and chats
+  - Export graph as image or interactive HTML
+- [ ] **Content Generation**:
+  - Blog post from sources
+  - LinkedIn post / Twitter thread from source content
+  - Study notes and revision notes generation
+  - Presentation export (PPTX)
+  - Mind map generation (export as image/PDF)
+
+### Analytics (Personal)
+- [ ] **Study time tracking** — per source, per topic, daily/weekly/monthly views
+- [ ] **Topic coverage** — what you've studied vs what's available across your sources
+- [ ] **Retention rate** — flashcard and quiz score trends over time
+- [ ] **Weak areas** — topics flagged for review
+- [ ] **Learning velocity** — topics completed per week, knowledge score growth
+- [ ] **AI usage stats** — questions asked, summaries generated, actions used per session
+
+### Gamification
+- [ ] **XP system** — points for: importing sources, reviewing flashcards, completing quizzes, consistent daily usage
+- [ ] **Levels** — Bronze → Silver → Gold → Platinum → Diamond (with milestone rewards)
+- [ ] **Achievements** — "First Import", "7-Day Streak", "Quiz Master", "1000 Cards Reviewed", "Knowledge Seeker"
+- [ ] **Daily streak** — consecutive day login bonus (multiplier on XP)
+- [ ] **Challenges** — "Review 50 cards this week", "Complete 3 quizzes", "Import 5 sources"
+- [ ] **Leaderboard** (optional, team workspaces) — friendly competition between members
+
+### Marketplace (Future / Post-V6)
+- [ ] **Learning Packs** — user-created topic bundles (curated sources + notes + flashcards + quiz)
+- [ ] **Interview Packs** — company-specific interview prep (curated by community)
+- [ ] **Research Collections** — paper + AI summary + analysis + discussion questions
+- [ ] **Course Notes** — full course breakdowns from YouTube playlists, textbooks, slides
+- [ ] **Prompt Packs** — custom AI prompt templates for specific learning tasks
+- [ ] **Rating and review system** for marketplace packs
+- [ ] **Revenue share** model (70% creator, 30% platform)
+
+### Integrations
+- [ ] **Google Drive** — import Docs/PDFs, export notes
+- [ ] **Notion** — bidirectional note sync
+- [ ] **Slack** — "/ask-knowledgeos" slash command
+- [ ] **Discord** — bot for server-based learning groups and Q&A
+- [ ] **GitHub** — import repos, post code summaries as PR comments
+- [ ] **Obsidian** — export notes as markdown vault
+- [ ] **OneDrive** — import and export Office documents
+- [ ] **Dropbox** — file sync for import
+- [ ] **Confluence** — import pages, bi-directional sync
+- [ ] **Jira** — link tickets to learning resources
+
+### Public API
+- [ ] **REST API** with API key authentication
+- [ ] **Endpoints**:
+  - `POST /api/v2/sources` — upload new source
+  - `GET /api/v2/search?q=...` — search across all user sources
+  - `POST /api/v2/notes/generate` — generate notes from source
+  - `POST /api/v2/quiz/generate` — generate quiz from source
+  - `POST /api/v2/summarize` — generate summary with type selector
+  - `POST /api/v2/chat` — chat with sources
+  - `POST /api/v2/export` — generate PDF/DOCX export
+- [ ] **Rate limiting per API key**
+- [ ] **API usage dashboard** in admin panel
+- [ ] **API documentation** (OpenAPI/Swagger)
+
+**See full details:** `docs/roadmap-v6.md`
 
 ---
 
 ## Legend
-- `[x]` = Completed
 - `[ ]` = Pending
-- **Status: IMPLEMENTED ✅** = Full phase done
-- **Status: PARTIALLY IMPLEMENTED 🚧** = Phase in progress
+- `[x]` = Completed
+- **[REUSE]** = Keep existing code with minimal changes
+- **[REFACTOR]** = Significantly rework existing code
+- _(no tag)_ = **[NEW]** — build from scratch
+- **Status: COMPLETE ✅** = Done
+- **Status: IN PROGRESS 🚧** = Actively building

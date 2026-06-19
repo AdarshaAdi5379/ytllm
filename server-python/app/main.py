@@ -15,12 +15,13 @@ from app.routes import health, transcript, chat, export, auth, videos
 from app.services import embedding_service
 from app.utils import session_cache
 
-# Initialize Sentry
-sentry_sdk.init(
-    dsn="",
-    environment=config["node_env"],
-    traces_sample_rate=1.0,
-)
+# Initialize Sentry (only if DSN is configured)
+if config.get("sentry_dsn"):
+    sentry_sdk.init(
+        dsn=config["sentry_dsn"],
+        environment=config["node_env"],
+        traces_sample_rate=0.1,
+    )
 
 async def _cleanup_loop(stop_event: asyncio.Event) -> None:
     interval_s = int(config.get("cleanup_interval_s", 600))

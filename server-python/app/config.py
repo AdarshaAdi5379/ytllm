@@ -14,6 +14,7 @@ class Settings(BaseSettings):
         default="development", alias="NODE_ENV"
     )
     cors_origins: str = Field(default="http://localhost:5173,http://localhost:5174", alias="CORS_ORIGINS")
+    sentry_dsn: str = Field(default="", alias="SENTRY_DSN")
 
     # Memory settings
     chat_history_threshold: int = 10
@@ -39,7 +40,7 @@ class Settings(BaseSettings):
     max_multi_videos: int = Field(default=10, alias="MAX_MULTI_VIDEOS")
 
     # Auth settings
-    jwt_secret: str = Field(default="change-me-to-a-random-secret", alias="JWT_SECRET")
+    jwt_secret: str = Field(default="", alias="JWT_SECRET")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_expire_minutes: int = Field(default=10080, alias="JWT_EXPIRE_MINUTES")  # 7 days
     database_url: str = Field(default="sqlite+aiosqlite:///./ytllm.db", alias="DATABASE_URL")
@@ -62,6 +63,18 @@ except Exception as e:
     sys.exit(1)
 
 
+# Validate required config
+_required_in_prod = {
+    "openai_api_key": "OPENAI_API_KEY",
+    "jwt_secret": "JWT_SECRET",
+}
+if settings.node_env == "production":
+    for val, name in _required_in_prod.items():
+        if not getattr(settings, val, None):
+            print(f"❌ {name} is required in production mode")
+            import sys
+            sys.exit(1)
+
 config = {
     "openai_api_key": settings.openai_api_key,
     "openai_model": settings.openai_model,
@@ -71,6 +84,7 @@ config = {
     "port": settings.port,
     "node_env": settings.node_env,
     "cors_origins": [origin.strip() for origin in settings.cors_origins.split(",")],
+    "sentry_dsn": settings.sentry_dsn,
     "chat_history_threshold": settings.chat_history_threshold,
     "chat_window_size": settings.chat_window_size,
     "max_tokens_in_window": settings.max_tokens_in_window,
