@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
+from loguru import logger
 from pydantic import BaseModel
 from typing import List
 from sqlalchemy import select
@@ -115,7 +116,7 @@ async def export_chat(
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
-        print(f"Export error: {str(e)}")
+        logger.exception("Export error: {}", str(e))
         raise HTTPException(
             status_code=500,
             detail={

@@ -1,4 +1,5 @@
 import asyncio
+from loguru import logger
 from typing import TypeVar, Callable, Any
 
 T = TypeVar("T")
@@ -48,19 +49,21 @@ async def retry(
             )
 
             if is_client_error and not is_rate_limit:
-                print(f"Client error {status} encountered, aborting retries: {err}")
+                logger.warning("Client error {} encountered, aborting retries: {}", status, err)
                 break
 
             if attempt < max_attempts:
                 if is_rate_limit:
                     delay = base_delay_ms * (2 ** (attempt - 1))
-                    print(
-                        f"Rate limit hit. Retrying in {delay}ms (attempt {attempt}/{max_attempts})"
+                    logger.warning(
+                        "Rate limit hit. Retrying in {}ms (attempt {}/{})",
+                        delay, attempt, max_attempts,
                     )
                 else:
                     delay = base_delay_ms * attempt
-                    print(
-                        f"Request failed. Retrying in {delay}ms (attempt {attempt}/{max_attempts}): {err}"
+                    logger.warning(
+                        "Request failed. Retrying in {}ms (attempt {}/{}): {}",
+                        delay, attempt, max_attempts, err,
                     )
                 await asyncio.sleep(delay / 1000)
             else:

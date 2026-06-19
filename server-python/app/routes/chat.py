@@ -2,6 +2,7 @@ import json
 import time
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import StreamingResponse
+from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -139,10 +140,10 @@ async def generate_stream(req: ChatRequest, current_user: User | None = None):
                         save_db.add(ChatMessage(video_id=db_video.id, role="assistant", content=full_response, timestamp=now))
                         await save_db.commit()
             except Exception as save_err:
-                print(f"Failed to save chat messages: {save_err}")
+                logger.warning("Failed to save chat messages: {}", save_err)
 
     except Exception as e:
-        print(f"Chat error: {str(e)}")
+        logger.exception("Chat error: {}", str(e))
         detail = (
             f"{type(e).__name__}: {str(e)}"
             if config.get("node_env") == "development"
@@ -355,7 +356,7 @@ async def generate_multi_stream(req: MultiChatRequest, current_user: User | None
             yield chunk
 
     except Exception as e:
-        print(f"Multi chat error: {str(e)}")
+        logger.exception("Multi chat error: {}", str(e))
         detail = (
             f"{type(e).__name__}: {str(e)}"
             if config.get("node_env") == "development"

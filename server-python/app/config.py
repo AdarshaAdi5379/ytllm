@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from loguru import logger
 from typing import Literal, Optional
 
 
@@ -15,6 +16,8 @@ class Settings(BaseSettings):
     )
     cors_origins: str = Field(default="http://localhost:5173,http://localhost:5174", alias="CORS_ORIGINS")
     sentry_dsn: str = Field(default="", alias="SENTRY_DSN")
+    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    json_logs: bool = Field(default=False, alias="JSON_LOGS")
 
     # Memory settings
     chat_history_threshold: int = 10
@@ -57,7 +60,7 @@ class Settings(BaseSettings):
 try:
     settings = Settings()
 except Exception as e:
-    print(f"❌ Invalid environment variables: {e}")
+    logger.error("Invalid environment variables: {}", e)
     import sys
 
     sys.exit(1)
@@ -71,7 +74,7 @@ _required_in_prod = {
 if settings.node_env == "production":
     for val, name in _required_in_prod.items():
         if not getattr(settings, val, None):
-            print(f"❌ {name} is required in production mode")
+            logger.error("{} is required in production mode", name)
             import sys
             sys.exit(1)
 
@@ -85,6 +88,8 @@ config = {
     "node_env": settings.node_env,
     "cors_origins": [origin.strip() for origin in settings.cors_origins.split(",")],
     "sentry_dsn": settings.sentry_dsn,
+    "log_level": settings.log_level,
+    "json_logs": settings.json_logs,
     "chat_history_threshold": settings.chat_history_threshold,
     "chat_window_size": settings.chat_window_size,
     "max_tokens_in_window": settings.max_tokens_in_window,

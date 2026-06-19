@@ -42,7 +42,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
   - `backend/app/routes/workspace/` — folders, sources, search
   - `backend/app/routes/ai/` — chat, summary, actions, notes
 - [ ] **[REFACTOR]** Replace `config` dict with proper dependency injection container
-- [ ] **[REFACTOR]** Replace `print()` with structured logging (loguru or structlog)
+- [x] **[REFACTOR]** Replace `print()` with structured logging (loguru)
 - [ ] **Replace SQLite with PostgreSQL** via SQLAlchemy async + asyncpg
 - [ ] **Replace ephemeral ChromaDB** (temp dir) with persistent PGvector or Pinecone integration
 - [ ] **Add Alembic** for database migration management (remove the hacky `run_migrations()`)
@@ -50,7 +50,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **Add Dockerfile** for backend + docker-compose with PostgreSQL + vector DB
 - [ ] **Add CI/CD** (GitHub Actions: lint, typecheck, test, build, deploy)
 - [ ] **[REUSE]** Keep FastAPI lifespan, CORS, rate limiting, health endpoint
-- [ ] **Add environment validation** on startup (fail fast if API keys missing)
+- [x] **Add environment validation** on startup (fail fast if API keys missing)
 
 ### Frontend Architecture
 - [ ] **[REFACTOR]** Restructure `frontend/src/`:

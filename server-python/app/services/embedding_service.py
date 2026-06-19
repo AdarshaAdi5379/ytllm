@@ -2,6 +2,7 @@ import os
 import tempfile
 import shutil
 import time
+from loguru import logger
 from openai import AsyncOpenAI
 import chromadb
 from chromadb.config import Settings as ChromaSettings
@@ -61,7 +62,7 @@ async def index_transcript(video_id: str, transcript: str) -> int:
         TranscriptChunk(chunk_index=i, text=chunk, start_s=float(i), end_s=float(i))
         for i, chunk in enumerate(chunks)
     ]
-    print(f"Indexing {len(chunk_objs)} chunks for video {video_id}")
+    logger.info("Indexing {} chunks for video {}", len(chunk_objs), video_id)
 
     if video_id in vector_indexes:
         del vector_indexes[video_id]
@@ -91,7 +92,7 @@ async def index_transcript(video_id: str, transcript: str) -> int:
         if i + config["embedding_batch_size"] < len(chunks):
             await sleep(int(config["embedding_batch_delay"] * 1000))
 
-    print(f"Indexed {len(chunk_objs)} chunks for video {video_id}")
+    logger.info("Indexed {} chunks for video {}", len(chunk_objs), video_id)
     return len(chunk_objs)
 
 
@@ -105,7 +106,7 @@ async def index_transcript_segments(
     if not chunk_objs:
         return await index_transcript(video_id, transcript_text)
 
-    print(f"Indexing {len(chunk_objs)} chunks for video {video_id}")
+    logger.info("Indexing {} chunks for video {}", len(chunk_objs), video_id)
 
     if video_id in vector_indexes:
         del vector_indexes[video_id]
@@ -135,7 +136,7 @@ async def index_transcript_segments(
         if i + config["embedding_batch_size"] < len(chunk_objs):
             await sleep(int(config["embedding_batch_delay"] * 1000))
 
-    print(f"Indexed {len(chunk_objs)} chunks for video {video_id}")
+    logger.info("Indexed {} chunks for video {}", len(chunk_objs), video_id)
     return len(chunk_objs)
 
 

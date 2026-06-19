@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -14,6 +15,7 @@ from app.database import init_db, run_migrations
 from app.routes import health, transcript, chat, export, auth, videos
 from app.services import embedding_service
 from app.utils import session_cache
+from app.utils.logging import setup_logging
 
 # Initialize Sentry (only if DSN is configured)
 if config.get("sentry_dsn"):
@@ -31,10 +33,10 @@ async def _cleanup_loop(stop_event: asyncio.Event) -> None:
         try:
             active_ids = set(session_cache.session_cache.keys())
             removed = embedding_service.cleanup_orphaned_indexes(active_ids, max_age_s=max_age_s)
-            if removed and config.get("node_env") != "production":
-                print(f"🧹 Cleanup removed {removed} orphaned vector index dirs")
+            if removed:
+                logger.info("Cleanup removed {} orphaned vector index dirs", removed)
         except Exception as e:
-            print(f"Cleanup loop error: {e}")
+            logger.exception("Cleanup loop error: {}", e)
 
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=interval_s)
@@ -44,6 +46,8 @@ async def _cleanup_loop(stop_event: asyncio.Event) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
+    logger.info("Starting KnowledgeOS (env={})", config["node_env"])
     await init_db()
     await run_migrations()
     stop_event = asyncio.Event()
@@ -97,7 +101,7 @@ app.include_router(videos.router, prefix="/api/videos", tags=["videos"])
 # Error handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    print(f"Unhandled error: {exc}")
+    logger.exception("Unhandled error on {} {}: {}", request.method, request.url.path, exc)
     return JSONResponse(
         status_code=500,
         content={
@@ -110,7 +114,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 if __name__ == "__main__":
     import uvicorn
 
-    print(f"🚀 Server running on port {config['port']} ({config['node_env']})")
+    setup_logging()
+    logger.info("KnowledgeOS starting on port {} ({})", config["port"], config["node_env"])
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

@@ -1,5 +1,6 @@
 import httpx
 import re
+from loguru import logger
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from app.config import config
@@ -71,7 +72,7 @@ async def fetch_video_metadata(video_id: str) -> VideoMetadata:
                 thumbnail_url=f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
             )
     except Exception as e:
-        print(f"Metadata fetch failed for {video_id}: {e}")
+        logger.warning("Metadata fetch failed for {}: {}", video_id, e)
         return VideoMetadata(
             title="Unknown Video",
             channel_name="Unknown Channel",
@@ -97,9 +98,9 @@ async def fetch_transcript_via_timedtext(video_id: str) -> TranscriptResult | No
             if list_resp.text:
                 lang_matches = re.findall(r'lang_code="([^"]+)"', list_resp.text)
                 available_langs = lang_matches
-                print(f"Available caption languages for {video_id}: {available_langs}")
+                logger.debug("Available caption languages for {}: {}", video_id, available_langs)
     except Exception as e:
-        print(f"Failed to list captions for {video_id}: {e}")
+        logger.warning("Failed to list captions for {}: {}", video_id, e)
 
     # Try common languages first
     lang_candidates = ["en", "en-US", "en-GB"]
@@ -118,9 +119,7 @@ async def fetch_transcript_via_timedtext(video_id: str) -> TranscriptResult | No
                         segments = _parse_vtt_to_segments(response.text)
                         text = _segments_to_text(segments)
                         if len(text.split()) >= config["transcript_min_words"]:
-                            print(
-                                f"Found captions via timedtext ({lang}) for {video_id}"
-                            )
+                            logger.info("Found captions via timedtext ({}) for {}", lang, video_id)
                             return TranscriptResult(
                                 text=text,
                                 language=lang,
@@ -139,7 +138,7 @@ async def fetch_transcript_via_timedtext(video_id: str) -> TranscriptResult | No
                     segments = _parse_vtt_to_segments(response.text)
                     text = _segments_to_text(segments)
                     if len(text.split()) >= config["transcript_min_words"]:
-                        print(f"Found captions via timedtext ({lang}) for {video_id}")
+                        logger.info("Found captions via timedtext ({}) for {}", lang, video_id)
                         return TranscriptResult(
                             text=text,
                             language=lang,
@@ -266,7 +265,7 @@ def _clean_transcript_text(text: str) -> str:
 
 async def fetch_transcript(video_id: str) -> TranscriptResult:
     """Main transcript fetch function."""
-    print(f"Fetching transcript for video: {video_id}")
+    logger.info("Fetching transcript for video: {}", video_id)
 
     # Try youtube-transcript library
     try:
@@ -278,7 +277,7 @@ async def fetch_transcript(video_id: str) -> TranscriptResult:
             transcript_items = api.fetch(video_id).to_raw_data()
             
         if transcript_items and len(transcript_items) > 0:
-            print(f"Transcript fetched via youtube-transcript for {video_id}")
+            logger.info("Transcript fetched via youtube-transcript for {}", video_id)
             segments: list[TranscriptSegment] = []
             for item in transcript_items:
                 text = _clean_transcript_text((item.get("text") or "").replace("\n", " "))
@@ -299,17 +298,17 @@ async def fetch_transcript(video_id: str) -> TranscriptResult:
                 segments=segments,
             )
     except Exception as e:
-        print(f"youtube-transcript failed for {video_id}: {e}")
+        logger.warning("youtube-transcript failed for {}: {}", video_id, e)
 
-    print(f"Trying timedtext fallback for {video_id}...")
+    logger.info("Trying timedtext fallback for {}...", video_id)
 
     # Fall back to timedtext
     timedtext_result = await fetch_transcript_via_timedtext(video_id)
     if timedtext_result:
-        print(f"Transcript fetched via timedtext for {video_id}")
+        logger.info("Transcript fetched via timedtext for {}", video_id)
         return timedtext_result
 
-    print(f"No captions found for {video_id}")
+    logger.warning("No captions found for {}", video_id)
     error = Exception("No captions available for this video.")
     error.code = "NO_CAPTIONS"
     raise error

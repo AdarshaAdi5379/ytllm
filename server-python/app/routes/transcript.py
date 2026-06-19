@@ -1,6 +1,7 @@
 import asyncio
 import time
 from fastapi import APIRouter, Depends, HTTPException, Response
+from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -149,7 +150,7 @@ async def load_transcript(
 
     except Exception as e:
         error_msg = str(e)
-        print(f"Transcript fetch error: {error_msg}")
+        logger.exception("Transcript fetch error: {}", error_msg)
 
         # Handle specific error cases
         if hasattr(e, "code") and e.code == "NO_CAPTIONS":

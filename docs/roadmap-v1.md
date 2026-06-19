@@ -36,10 +36,10 @@ The codebase was renamed `ytllm` → `knowledgeos` across all configuration file
 ## Backend Architecture
 
 ### Dependency Injection & Configuration
-- [ ] **[REFACTOR]** Replace `config` dict in `config.py` with a proper dependency injection container (e.g., `dependency-injector` or manual FastAPI `Depends`)
-- [ ] **[REFACTOR]** Use `functools.lru_cache` or `@lru_cache` on settings loader instead of try/except `sys.exit(1)`
-- [ ] Add environment validation on startup — fail fast if `OPENAI_API_KEY`, `JWT_SECRET`, `DATABASE_URL` are missing or invalid
-- [ ] Replace all `print()` calls with structured logging (loguru or structlog):
+- [x] **[REFACTOR]** Replace `config` dict in `config.py` with a proper dependency injection container (e.g., `dependency-injector` or manual FastAPI `Depends`)
+- [ ] Use `functools.lru_cache` or `@lru_cache` on settings loader instead of try/except `sys.exit(1)`
+- [x] Add environment validation on startup — fail fast if `OPENAI_API_KEY`, `JWT_SECRET`, `DATABASE_URL` are missing or invalid
+- [x] Replace all `print()` calls with structured logging (loguru or structlog):
   - Request logging with timing
   - Error logging with stack traces
   - Debug logs gated by `DEBUG` env var
@@ -135,7 +135,7 @@ routes/
 - [ ] **[REFACTOR]** Move global exception handler to dedicated `middleware/error_handler.py`
 - [ ] Add structured error response format with unique error IDs for debugging
 - [ ] **[REUSE]** Keep existing error codes (INVALID_URL, NO_CAPTIONS, etc.) for backward compat
-- [ ] Add Sentry only if DSN is configured (remove empty DSN init)
+- [x] Add Sentry only if DSN is configured (remove empty DSN init)
 
 ---
 
