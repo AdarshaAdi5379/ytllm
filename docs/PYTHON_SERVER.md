@@ -1,6 +1,6 @@
-# YouTube AI Chat Agent - Python Server
+# KnowledgeOS - Python Backend
 
-A Python-based backend for the YouTube AI Chat Agent project, originally built with Node.js/Express and now converted to Python/FastAPI.
+A Python-based backend for the KnowledgeOS project, originally built with Node.js/Express and now converted to Python/FastAPI.
 
 ## Overview
 

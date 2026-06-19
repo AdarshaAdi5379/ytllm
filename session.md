@@ -256,7 +256,7 @@ The persistence system had three independent but compounding failures:
 
 **Bug 1 — Add Zustand persist middleware to `useVideoStore`:**
 - Imported `persist` from `zustand/middleware` and wrapped the store definition.
-- `partialize`: Only persist `videos` (Record<videoId, VideoSlice>) and `activeVideoId` to localStorage under key `ytllm-videos`. Transient UI state (`isAddVideoModalOpen`) is excluded.
+- `partialize`: Only persist `videos` (Record<videoId, VideoSlice>) and `activeVideoId` to localStorage under key `knowledgeos-videos`. Transient UI state (`isAddVideoModalOpen`) is excluded.
 - `merge`: Custom merge function sanitizes rehydrated data — resets `isStreaming: false`, `isPlayerOpen: false`, `status: 'ready'`, `errorMessage: null` on every video slice. This prevents stale streaming/loading states from persisting across refreshes.
 
 **Bug 2 — Guard `clearVideos()` with auth transition detection:**
@@ -276,7 +276,7 @@ The persistence system had three independent but compounding failures:
 ### How Persistence Works Now
 
 **All users (guest + authenticated):**
-- The `useVideoStore` is persisted to `localStorage` under key `ytllm-videos`.
+- The `useVideoStore` is persisted to `localStorage` under key `knowledgeos-videos`.
 - On refresh: Zustand persist middleware rehydrates from localStorage → all videos, transcripts, summaries, chat histories are restored instantly.
 - No server round-trip needed for basic restoration.
 

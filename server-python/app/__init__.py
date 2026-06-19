@@ -1,1 +1,1 @@
-# YouTube AI Chat Agent - Python Server
+# KnowledgeOS - Python Backend

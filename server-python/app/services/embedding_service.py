@@ -22,7 +22,7 @@ vector_indexes = {}
 
 def get_index_path(video_id: str) -> str:
     """Get the path for storing the vector index."""
-    return os.path.join(tempfile.gettempdir(), "ytllm-vectors", video_id)
+    return os.path.join(tempfile.gettempdir(), "knowledgeos-vectors", video_id)
 
 
 async def get_or_create_index(video_id: str):
@@ -194,7 +194,7 @@ def cleanup_orphaned_indexes(
     active_video_ids: set[str],
     max_age_s: int,
 ) -> int:
-    root = os.path.join(tempfile.gettempdir(), "ytllm-vectors")
+    root = os.path.join(tempfile.gettempdir(), "knowledgeos-vectors")
     if not os.path.isdir(root):
         return 0
 

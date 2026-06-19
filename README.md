@@ -1,6 +1,8 @@
-# YouTube AI Chat Agent
+# KnowledgeOS
 
-Turn any YouTube video into an interactive, AI-powered knowledge base. Paste a URL, ask questions, export your conversation as PDF or DOCX.
+Your Personal AI Learning Operating System. Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one searchable AI tutor that remembers everything.
+
+Paste a YouTube URL, upload a PDF, or import a GitHub repo — ask questions, get cited answers, generate flashcards and quizzes, export as PDF or DOCX.
 
 ## Prerequisites
 
@@ -15,7 +17,7 @@ Turn any YouTube video into an interactive, AI-powered knowledge base. Paste a U
 
 ```bash
 git clone <your-repo-url>
-cd ytllm
+cd knowledgeos
 npm run install:all
 ```
 
@@ -38,7 +40,7 @@ npm run dev
 ## Project Structure
 
 ```
-ytllm/
+knowledgeos/
 ├── client/                — React 18 + Vite + TailwindCSS + TypeScript frontend
 │   └── src/
 │       ├── api/           — Typed API client with auth header injection
@@ -171,7 +173,7 @@ All configuration lives in `server-python/.env`. Copy from `server-python/.env.e
 | `OPENAI_EMBEDDING_MODEL` | No | `text-embedding-3-small` | Embedding model name |
 | `OPENAI_BASE_URL` | No | — | Custom API base (e.g. OpenRouter) |
 | `JWT_SECRET` | Yes | `change-me...` | Secret key for JWT tokens |
-| `DATABASE_URL` | No | `sqlite+aiosqlite:///./ytllm.db` | Database connection string |
+| `DATABASE_URL` | No | `sqlite+aiosqlite:///./knowledgeos.db` | Database connection string |
 | `PORT` | No | `3001` | Server port |
 | `CORS_ORIGINS` | No | `http://localhost:5173,...` | Comma-separated allowed origins |
 | `NODE_ENV` | No | `development` | `development` or `production` |

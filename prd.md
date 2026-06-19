@@ -1,4 +1,4 @@
-# 📺 YouTube AI Chat Agent
+# 📺 KnowledgeOS (formerly YouTube AI Chat Agent)
 ## Full Product Requirements Document
 > System Design • Memory Architecture • Implementation Phases
 

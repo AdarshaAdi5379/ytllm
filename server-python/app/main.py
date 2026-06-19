@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI):
             task.cancel()
 
 
-app = FastAPI(title="YouTube AI Chat Agent", lifespan=lifespan)
+app = FastAPI(title="KnowledgeOS", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(

@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthStore>()(
       },
     }),
     {
-      name: 'ytllm-auth',
+      name: 'knowledgeos-auth',
       partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
       onRehydrateStorage: () => (state) => {
         if (state) {

@@ -203,7 +203,7 @@ export const useVideoStore = create<VideoStore>()(
       closeAddVideoModal: () => set({ isAddVideoModalOpen: false }),
     }),
     {
-      name: 'ytllm-videos',
+      name: 'knowledgeos-videos',
       partialize: (state) => ({
         videos: state.videos,
         activeVideoId: state.activeVideoId,

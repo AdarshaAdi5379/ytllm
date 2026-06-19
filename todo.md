@@ -28,7 +28,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 **Goal:** Rename, restructure, and production-harden the codebase for multi-source support.
 
 ### Project Rename
-- [ ] Rename root package: `ytllm` → `knowledgeos` in package.json, name fields, workspace config
+- [x] Rename root package: `ytllm` → `knowledgeos` in package.json, name fields, workspace config
 - [ ] Rename `server-python/` directory to `backend/` (or keep as-is, update all references)
 - [ ] Rename `client/` directory to `frontend/` (optional, update references)
 - [ ] Update all env files, .env.example, README with new product name
@@ -79,7 +79,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **Add proper indexes** on all foreign keys, user_id, source_type, created_at
 
 ### Rename Tasks (Code Changes)
-- [ ] Update `main.py` app title from "YouTube AI Chat Agent" to "KnowledgeOS"
+- [x] Update `main.py` app title from "YouTube AI Chat Agent" to "KnowledgeOS"
 - [ ] Update all route prefixes if needed
 - [ ] Update all docstrings and comments referencing old product name
 - [ ] Update client `index.html` title, meta tags

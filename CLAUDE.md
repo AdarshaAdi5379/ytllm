@@ -1,7 +1,7 @@
 # Project Instructions
 
 ## Overview
-- `ytllm` is a monorepo with a React/Vite frontend in `client/` and a FastAPI backend in `server-python/`.
+- `knowledgeos` is a monorepo with a React/Vite frontend in `client/` and a FastAPI backend in `server-python/`.
 - The active backend is `server-python/`. Treat `server/` as stale unless the user explicitly says otherwise.
 - The app loads YouTube transcripts, indexes transcript chunks in Chroma, streams chat responses over SSE, and optionally persists videos/messages for authenticated users.
 

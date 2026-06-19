@@ -1,7 +1,7 @@
 [project]
-name = "ytllm-server"
+name = "knowledgeos-server"
 version = "1.0.0"
-description = "YouTube AI Chat Agent - Python Backend"
+description = "KnowledgeOS - Python Backend"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",

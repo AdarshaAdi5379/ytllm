@@ -1,7 +1,7 @@
 {
-  "name": "ytllm",
+  "name": "knowledgeos",
   "version": "1.0.0",
-  "description": "YouTube AI Chat Agent — monorepo root",
+  "description": "KnowledgeOS — Your Personal AI Learning Operating System",
   "private": true,
   "scripts": {
     "dev:server": "cd server-python && python3 -m uvicorn app.main:app --reload --port 3001",

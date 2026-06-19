@@ -6,34 +6,30 @@
 
 ---
 
-## Project Rename
+## Project Rename (✅ Complete)
 
-The codebase is currently named `ytllm` everywhere. Before any feature work, rename everything to reflect the new product identity.
+The codebase was renamed `ytllm` → `knowledgeos` across all configuration files, package manifests, application titles, database defaults, vector storage paths, and localStorage keys.
 
-- [ ] Rename root `package.json`: `name: "ytllm"` → `"knowledgeos"`
-- [ ] Rename root `.env.example` content references (or delete if stale)
-- [ ] Rename `server-python/` directory to `backend/` (update all scripts in root `package.json`)
-- [ ] Rename `client/` directory to `frontend/` (update all scripts)
-- [ ] Update `package.json` scripts:
-  - `dev:server` → `dev:backend`
-  - `install:server:py` → `install:backend`
-  - All path references
-- [ ] Update `main.py` app title: "YouTube AI Chat Agent" → "KnowledgeOS"
-- [ ] Update `client/index.html` title, meta description, og tags
-- [ ] Update all Python module docstrings referencing "YouTube AI Chat Agent"
-- [ ] Update all README files across the monorepo
-- [ ] Update `server-python/.env.example` references
-- [ ] Update `docs/PYTHON_SERVER.md` and `docs/SESSION.md` or mark them as superseded
-- [ ] Add new `docs/` structure:
-  - `docs/roadmap-v1.md` (this file)
-  - `docs/roadmap-v2.md`
-  - `docs/roadmap-v3.md`
-  - `docs/roadmap-v4.md`
-  - `docs/roadmap-v5.md`
-  - `docs/roadmap-v6.md`
-- [ ] Create `PRICING.md` at repo root
-- [ ] Update docker-compose service names if applicable
-- [ ] Commit rename with message: "chore: rebrand project to KnowledgeOS"
+**Completed:**
+- Root `package.json`: `name: "ytllm"` → `"knowledgeos"`
+- `client/package.json`: `name: "ytllm-client"` → `"knowledgeos-client"`
+- `server-python/pyproject.toml`: `name: "ytllm-server"` → `"knowledgeos-server"`
+- `main.py` app title: "YouTube AI Chat Agent" → "KnowledgeOS"
+- `client/index.html` <title>: "YouTube AI Chat Agent" → "KnowledgeOS"
+- `README.md` title and description updated
+- `CLAUDE.md` project description updated
+- `server-python/app/__init__.py` docstring updated
+- `docs/PYTHON_SERVER.md` title updated
+- `prd.md` title updated
+- `config.py` database_url default: `ytllm.db` → `knowledgeos.db`
+- `embedding_service.py` temp dir path: `ytllm-vectors` → `knowledgeos-vectors`
+- localStorage keys: `ytllm-videos` → `knowledgeos-videos`, `ytllm-auth` → `knowledgeos-auth`
+- `server-python/.env.example` references updated
+
+**Not in this scope (separate V1 tasks):**
+- Directory rename (`server-python/` → `backend/`, `client/` → `frontend/`)
+- Script rename (`dev:server` → `dev:backend`, etc.)
+- Docker-compose service names
 
 ---
 
