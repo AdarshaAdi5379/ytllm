@@ -110,7 +110,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 
 ### Multi-Source Import
 - [x] **[REUSE]** YouTube: existing transcript pipeline adapted to new Source model (commit 1ed431e4)
-- [ ] **PDF import**: PyMuPDF (fitz) for text extraction, OCR fallback via Tesseract
+- [x] **PDF import**: `POST /api/sources/pdf/import` — fetches PDF URL, extracts via PyMuPDF, indexes in Chroma (commit faa48d61)
 - [x] **Website import**: `POST /api/sources/website/import` — fetches URL, extracts via readability-lxml, indexes in Chroma, creates Source with `index_key` (commit da66ba42)
 - [ ] **Markdown import**: file upload or direct paste into editor
 - [ ] **Text import**: direct paste or file upload (.txt)
