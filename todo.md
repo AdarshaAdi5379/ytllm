@@ -125,7 +125,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **[REUSE]** Chat with single source — clicking a source in sidebar scopes chat via `source_ids` filter (commit 638e5dce)
 - [ ] **Chat with multiple sources** — retrieve chunks across N sources, assemble unified context
 - [x] **Chat with entire workspace** — SSE endpoint retrieves chunks from all workspace sources (commit b0c202b6)
-- [ ] **Chat with entire folder** — search all sources within a folder
+- [x] **Chat with entire folder** — recursively resolves folder + descendant sources (commit fd0e23a0)
 - [x] **[REUSE]** SSE streaming for all chat modes
 - [x] **Chat session management** (commit b0c202b6):
   - Create new session (select which sources to include)
