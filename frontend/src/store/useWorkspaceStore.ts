@@ -5,6 +5,8 @@ import * as workspaceApi from '../api/workspace';
 interface WorkspaceStore {
   workspaces: WorkspaceItem[];
   activeWorkspaceId: string | null;
+  activeSourceId: string | null;
+  activeSourceTitle: string;
   folderTree: FolderTreeItem[];
   loading: boolean;
   error: string | null;
@@ -19,11 +21,16 @@ interface WorkspaceStore {
   createFolder: (workspaceId: string, name: string, parentId?: string) => Promise<void>;
   renameFolder: (workspaceId: string, folderId: string, name: string) => Promise<void>;
   removeFolder: (workspaceId: string, folderId: string) => Promise<void>;
+
+  setActiveSource: (sourceId: string | null, sourceTitle?: string) => void;
+  clearActiveSource: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   workspaces: [],
   activeWorkspaceId: null,
+  activeSourceId: null,
+  activeSourceTitle: "",
   folderTree: [],
   loading: false,
   error: null,
@@ -47,7 +54,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   setActiveWorkspace: async (id: string) => {
-    set({ activeWorkspaceId: id, folderTree: [] });
+    set({ activeWorkspaceId: id, folderTree: [], activeSourceId: null, activeSourceTitle: "" });
     await get().loadFolderTree(id);
   },
 
@@ -95,5 +102,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   removeFolder: async (workspaceId: string, folderId: string) => {
     await workspaceApi.deleteFolder(workspaceId, folderId);
     await get().loadFolderTree(workspaceId);
+  },
+
+  setActiveSource: (sourceId: string | null, sourceTitle: string = "") => {
+    set({ activeSourceId: sourceId, activeSourceTitle: sourceTitle });
+  },
+
+  clearActiveSource: () => {
+    set({ activeSourceId: null, activeSourceTitle: "" });
   },
 }));

@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, Youtube } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export function WorkspaceChatPanel() {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { activeWorkspaceId, activeSourceId, activeSourceTitle, clearActiveSource } = useWorkspaceStore();
   const {
     sessions, activeSessionId, messages, streaming,
     loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming,
@@ -44,7 +44,12 @@ export function WorkspaceChatPanel() {
 
     streamWorkspaceChat(
       activeWorkspaceId,
-      { session_id: activeSessionId || undefined, question, chat_history: history },
+      {
+        session_id: activeSessionId || undefined,
+        question,
+        chat_history: history,
+        source_ids: activeSourceId ? [activeSourceId] : undefined,
+      },
       (token) => {
         // Accumulate token into the last assistant message
         const { messages: msgs } = useChatSessionStore.getState();
@@ -78,6 +83,7 @@ export function WorkspaceChatPanel() {
 
   const handleNewChat = async () => {
     if (!activeWorkspaceId) return;
+    clearActiveSource();
     const session = await useChatSessionStore.getState().createSession(activeWorkspaceId);
     await setActiveSession(activeWorkspaceId, session.id);
   };
@@ -156,11 +162,23 @@ export function WorkspaceChatPanel() {
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
-                  <MessageSquare size={32} className="mx-auto text-gray-300 mb-3" />
-                  <h2 className="text-lg font-semibold text-gray-700 mb-1">Workspace Chat</h2>
-                  <p className="text-sm text-gray-400">
-                    Ask questions about all YouTube sources in this workspace.
-                  </p>
+                  {activeSourceId ? (
+                    <>
+                      <Youtube size={28} className="mx-auto text-red-400 mb-3" />
+                      <h2 className="text-lg font-semibold text-gray-700 mb-1 truncate max-w-xs mx-auto">{activeSourceTitle}</h2>
+                      <p className="text-sm text-gray-400">
+                        Ask questions about this source.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare size={32} className="mx-auto text-gray-300 mb-3" />
+                      <h2 className="text-lg font-semibold text-gray-700 mb-1">Workspace Chat</h2>
+                      <p className="text-sm text-gray-400">
+                        Ask questions about all YouTube sources in this workspace.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (

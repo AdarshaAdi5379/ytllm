@@ -422,16 +422,25 @@ function SourceItemRow({
   ) : (
     <ExternalLink size={10} className="text-slate-500 flex-shrink-0" />
   );
+  const { activeSourceId, setActiveSource } = useWorkspaceStore();
 
   return (
     <div
-      className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs group hover:bg-slate-800/30 transition-all"
+      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs group transition-all cursor-pointer ${
+        activeSourceId === source.id
+          ? 'bg-indigo-500/20 text-indigo-300'
+          : 'hover:bg-slate-800/30 text-slate-400'
+      }`}
       style={{ paddingLeft: `${28 + depth * 16}px` }}
+      onClick={() => setActiveSource(
+        activeSourceId === source.id ? null : source.id,
+        activeSourceId === source.id ? "" : source.title
+      )}
     >
       {icon}
-      <span className="flex-1 truncate text-slate-400">{source.title}</span>
+      <span className="flex-1 truncate">{source.title}</span>
       <button
-        onClick={onDelete}
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
         className="p-0.5 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 transition-all"
         title="Remove source"
       >
