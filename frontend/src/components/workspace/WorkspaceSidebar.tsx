@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -184,6 +184,7 @@ function FolderTreeNode({
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(folder.name);
   const [showMenu, setShowMenu] = useState(false);
+  const { setActiveFolder } = useWorkspaceStore();
   const [sources, setSources] = useState<SourceItem[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
   const [showImportInput, setShowImportInput] = useState(false);
@@ -305,11 +306,17 @@ function FolderTreeNode({
               <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
               <div className="absolute right-0 top-4 z-20 bg-slate-800 rounded-lg border border-slate-700 shadow-xl py-1 min-w-[100px]">
                 <button
-                  onClick={() => { setEditName(folder.name); setEditing(true); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
-                >
-                  <Pencil size={10} /> Rename
-                </button>
+                    onClick={() => { setActiveFolder(folder.id, folder.name); setShowMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+                  >
+                    <MessageSquare size={10} /> Chat with folder
+                  </button>
+                  <button
+                    onClick={() => { setEditName(folder.name); setEditing(true); setShowMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+                  >
+                    <Pencil size={10} /> Rename
+                  </button>
                 <button
                   onClick={() => { onDelete(workspaceId, folder.id); setShowMenu(false); }}
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10"

@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from app.database import async_session as db_async_session
 from app.database import get_db
-from app.db_models import Video as VideoModel, ChatMessage, Source, ChatSession, ChatMessageNew, Workspace
+from app.db_models import Video as VideoModel, ChatMessage, Source, ChatSession, ChatMessageNew, Workspace, Folder
 from app.services.auth_service import get_optional_user, get_current_user
 from app.db_models import User
 from app.services import embedding_service
@@ -302,6 +302,34 @@ def _format_retrieved_chunk(chunk: dict) -> str:
     return f"[{_format_time(start_s)}–{_format_time(end_s)}] {text}"
 
 
+async def _collect_folder_source_ids(
+    db: AsyncSession, workspace_id: str, folder_id: str,
+) -> list[str]:
+    """Recursively collect all source IDs from a folder and its descendants."""
+    source_ids: list[str] = []
+
+    # Sources directly in this folder
+    src_result = await db.execute(
+        select(Source.id).where(
+            Source.workspace_id == workspace_id,
+            Source.folder_id == folder_id,
+        )
+    )
+    source_ids.extend(row[0] for row in src_result.fetchall())
+
+    # Child folders
+    child_result = await db.execute(
+        select(Folder.id).where(
+            Folder.workspace_id == workspace_id,
+            Folder.parent_id == folder_id,
+        )
+    )
+    for (child_id,) in child_result.fetchall():
+        source_ids.extend(await _collect_folder_source_ids(db, workspace_id, child_id))
+
+    return source_ids
+
+
 def _format_time(seconds: float) -> str:
     s = max(0, int(seconds))
     h = s // 3600
@@ -355,8 +383,15 @@ async def chat_workspace(
                 return
 
             # Determine source IDs
+            source_id_list: list[str] | None = None
             if req.source_ids:
                 source_id_list = req.source_ids
+            elif req.folder_id:
+                source_id_list = await _collect_folder_source_ids(db, workspace_id, req.folder_id)
+                if not source_id_list:
+                    error_json = json.dumps({"type": "error", "message": "No sources found in this folder."})
+                    yield f"data: {error_json}\n\n"
+                    return
             elif req.session_id:
                 sess_result = await db.execute(
                     select(ChatSession).where(

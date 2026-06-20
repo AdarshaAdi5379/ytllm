@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, Youtube } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, Youtube, FolderOpen } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export function WorkspaceChatPanel() {
-  const { activeWorkspaceId, activeSourceId, activeSourceTitle, clearActiveSource } = useWorkspaceStore();
+  const { activeWorkspaceId, activeSourceId, activeSourceTitle, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder } = useWorkspaceStore();
   const {
     sessions, activeSessionId, messages, streaming,
     loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming,
@@ -49,6 +49,7 @@ export function WorkspaceChatPanel() {
         question,
         chat_history: history,
         source_ids: activeSourceId ? [activeSourceId] : undefined,
+        folder_id: activeFolderId || undefined,
       },
       (token) => {
         // Accumulate token into the last assistant message
@@ -84,6 +85,7 @@ export function WorkspaceChatPanel() {
   const handleNewChat = async () => {
     if (!activeWorkspaceId) return;
     clearActiveSource();
+    clearActiveFolder();
     const session = await useChatSessionStore.getState().createSession(activeWorkspaceId);
     await setActiveSession(activeWorkspaceId, session.id);
   };
@@ -166,9 +168,13 @@ export function WorkspaceChatPanel() {
                     <>
                       <Youtube size={28} className="mx-auto text-red-400 mb-3" />
                       <h2 className="text-lg font-semibold text-gray-700 mb-1 truncate max-w-xs mx-auto">{activeSourceTitle}</h2>
-                      <p className="text-sm text-gray-400">
-                        Ask questions about this source.
-                      </p>
+                      <p className="text-sm text-gray-400">Ask questions about this source.</p>
+                    </>
+                  ) : activeFolderId ? (
+                    <>
+                      <FolderOpen size={28} className="mx-auto text-amber-400 mb-3" />
+                      <h2 className="text-lg font-semibold text-gray-700 mb-1 truncate max-w-xs mx-auto">{activeFolderTitle}</h2>
+                      <p className="text-sm text-gray-400">Ask questions about all sources in this folder.</p>
                     </>
                   ) : (
                     <>

@@ -199,6 +199,7 @@ export interface WorkspaceChatRequest {
   question: string;
   chat_history: { role: string; content: string; timestamp: string }[];
   source_ids?: string[];
+  folder_id?: string;
 }
 
 export function streamWorkspaceChat(

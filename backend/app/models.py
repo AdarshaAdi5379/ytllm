@@ -212,6 +212,7 @@ class WorkspaceChatRequest(BaseModel):
     question: str
     chat_history: list[WorkspaceChatMessage] = []
     source_ids: list[str] | None = None
+    folder_id: str | None = None
 
 
 class ApiError(BaseModel):

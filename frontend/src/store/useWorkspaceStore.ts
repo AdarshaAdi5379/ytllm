@@ -7,6 +7,8 @@ interface WorkspaceStore {
   activeWorkspaceId: string | null;
   activeSourceId: string | null;
   activeSourceTitle: string;
+  activeFolderId: string | null;
+  activeFolderTitle: string;
   folderTree: FolderTreeItem[];
   loading: boolean;
   error: string | null;
@@ -24,6 +26,8 @@ interface WorkspaceStore {
 
   setActiveSource: (sourceId: string | null, sourceTitle?: string) => void;
   clearActiveSource: () => void;
+  setActiveFolder: (folderId: string | null, folderTitle?: string) => void;
+  clearActiveFolder: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -31,6 +35,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   activeWorkspaceId: null,
   activeSourceId: null,
   activeSourceTitle: "",
+  activeFolderId: null,
+  activeFolderTitle: "",
   folderTree: [],
   loading: false,
   error: null,
@@ -54,7 +60,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   setActiveWorkspace: async (id: string) => {
-    set({ activeWorkspaceId: id, folderTree: [], activeSourceId: null, activeSourceTitle: "" });
+    set({ activeWorkspaceId: id, folderTree: [], activeSourceId: null, activeSourceTitle: "", activeFolderId: null, activeFolderTitle: "" });
     await get().loadFolderTree(id);
   },
 
@@ -105,10 +111,18 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   setActiveSource: (sourceId: string | null, sourceTitle: string = "") => {
-    set({ activeSourceId: sourceId, activeSourceTitle: sourceTitle });
+    set({ activeSourceId: sourceId, activeSourceTitle: sourceTitle, activeFolderId: null, activeFolderTitle: "" });
   },
 
   clearActiveSource: () => {
     set({ activeSourceId: null, activeSourceTitle: "" });
+  },
+
+  setActiveFolder: (folderId: string | null, folderTitle: string = "") => {
+    set({ activeFolderId: folderId, activeFolderTitle: folderTitle, activeSourceId: null, activeSourceTitle: "" });
+  },
+
+  clearActiveFolder: () => {
+    set({ activeFolderId: null, activeFolderTitle: "" });
   },
 }));
