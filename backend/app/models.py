@@ -181,6 +181,12 @@ class YouTubeImportRequest(BaseModel):
     folder_id: str | None = None
 
 
+class WebsiteImportRequest(BaseModel):
+    url: str
+    workspace_id: str
+    folder_id: str | None = None
+
+
 class ChatSessionResponse(BaseModel):
     id: str
     workspace_id: str

@@ -443,8 +443,8 @@ async def chat_workspace(
                 except Exception:
                     pass
 
-                video_id = meta.get("video_id", "")
-                if not video_id:
+                collection_key = meta.get("video_id") or meta.get("index_key", "")
+                if not collection_key:
                     continue
 
                 source_infos.append({
@@ -454,7 +454,7 @@ async def chat_workspace(
                 })
 
                 retrieved = await embedding_service.retrieve_relevant_chunks(
-                    video_id, req.question,
+                    collection_key, req.question,
                 )
                 for idx, c in enumerate(retrieved):
                     prefix = f"[{src.title} | Section {idx + 1}] "

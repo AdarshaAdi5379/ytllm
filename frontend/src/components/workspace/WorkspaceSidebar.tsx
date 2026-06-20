@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
 import {
-  fetchSources, deleteSource, importYouTubeSource,
+  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
 
@@ -22,6 +22,9 @@ export function WorkspaceSidebarContent() {
 
   const [newFolderName, setNewFolderName] = useState('');
   const [addingFolder, setAddingFolder] = useState(false);
+  const [showWebsiteImport, setShowWebsiteImport] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [importingWebsite, setImportingWebsite] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -38,6 +41,21 @@ export function WorkspaceSidebarContent() {
       console.error('Import failed:', err);
     }
   }, [activeWorkspaceId, loadFolderTree]);
+
+  const handleImportWebsite = async () => {
+    if (!activeWorkspaceId || !websiteUrl.trim()) return;
+    setImportingWebsite(true);
+    try {
+      await importWebsiteSource(activeWorkspaceId, websiteUrl.trim());
+      setWebsiteUrl('');
+      setShowWebsiteImport(false);
+      await loadFolderTree(activeWorkspaceId);
+    } catch (err: any) {
+      console.error('Website import failed:', err);
+    } finally {
+      setImportingWebsite(false);
+    }
+  };
 
   if (!isAuthenticated) return null;
 
@@ -94,8 +112,8 @@ export function WorkspaceSidebarContent() {
         </div>
       </div>
 
-      {/* Add YouTube video (workspace-level) */}
-      <div className="px-3 mb-1">
+      {/* Add source buttons (workspace-level) */}
+      <div className="px-3 mb-1 space-y-1">
         <button
           onClick={openAddVideoModal}
           className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 transition-all"
@@ -103,6 +121,41 @@ export function WorkspaceSidebarContent() {
           <Youtube size={12} />
           <span>Add YouTube Video</span>
         </button>
+        <button
+          onClick={() => setShowWebsiteImport(!showWebsiteImport)}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 transition-all"
+        >
+          <Globe size={12} />
+          <span>Import Website</span>
+        </button>
+        {showWebsiteImport && (
+          <div className="flex items-center gap-1 pt-1">
+            <input
+              autoFocus
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleImportWebsite();
+                if (e.key === 'Escape') { setShowWebsiteImport(false); setWebsiteUrl(''); }
+              }}
+              placeholder="https://..."
+              className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-emerald-500"
+            />
+            <button
+              onClick={handleImportWebsite}
+              disabled={importingWebsite}
+              className="p-0.5 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+            >
+              {importingWebsite ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+            </button>
+            <button
+              onClick={() => { setShowWebsiteImport(false); setWebsiteUrl(''); }}
+              className="p-0.5 text-slate-500 hover:text-slate-300"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Folders */}
