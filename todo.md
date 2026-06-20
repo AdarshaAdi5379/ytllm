@@ -109,7 +109,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **Workspace switcher** — dropdown in sidebar header
 
 ### Multi-Source Import
-- [ ] **[REUSE]** YouTube: existing transcript pipeline adapted to new Source model
+- [x] **[REUSE]** YouTube: existing transcript pipeline adapted to new Source model
 - [ ] **PDF import**: PyMuPDF (fitz) for text extraction, OCR fallback via Tesseract
 - [ ] **Website import**: httpx + beautifulsoup4 + readability-lxml for main content extraction
 - [ ] **Markdown import**: file upload or direct paste into editor
