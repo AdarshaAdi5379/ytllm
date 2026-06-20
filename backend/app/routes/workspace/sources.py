@@ -7,6 +7,7 @@ from app.database import get_db
 from app.services.auth_service import get_current_user
 from app.db_models import User, Source, Workspace
 from app.models import SourceResponse
+from app.services import embedding_service
 
 router = APIRouter()
 
@@ -89,6 +90,17 @@ async def delete_source(
     s = result.scalar_one_or_none()
     if not s:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Source not found."})
+
+    # Clean up ChromaDB vector index if this source has one
+    try:
+        meta = json.loads(s.metadata_json)
+        video_id = meta.get("video_id", "") if isinstance(meta, dict) else ""
+        if video_id:
+            embedding_service.delete_index_files(video_id)
+            embedding_service.delete_index(video_id)
+    except (json.JSONDecodeError, TypeError):
+        pass
+
     await db.delete(s)
     await db.commit()
     return {"status": "deleted"}
