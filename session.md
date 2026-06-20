@@ -306,3 +306,79 @@ The persistence system had three independent but compounding failures:
 - **Dual-layer architecture**: localStorage for instant recovery, server DB for cross-device sync and backup. The two are kept in sync via the App.tsx server-sync effect, which gracefully updates existing local entries rather than duplicating them.
 - **getState() over closure**: Using `useVideoStore.getState()` inside async callbacks is the idiomatic Zustand pattern for reading current state outside of React's render cycle. It eliminates entire classes of stale-closure bugs.
 
+## Session 6 — Security, Rebrand, Logging & Error Handler
+
+### Date
+2026-06-19
+
+### Features Implemented
+
+**Feature 1 — Security Hardening:**
+- Removed stale `server/.env` containing leaked Google API key (AIzaSyAmh3ToFOvoUp3a1gFND19G3W8zYtZ3V9Y) — file deleted from disk and git.
+- Changed JWT_SECRET default from `"change-me-to-a-random-secret"` to `""` (empty), preventing forged tokens when env var isn't set.
+- Added production-mode validation: FastAPI fails to boot if `OPENAI_API_KEY` or `JWT_SECRET` are empty in NODE_ENV=production.
+- Made Sentry init conditional on `SENTRY_DSN` being set (removed empty DSN initialization).
+- Added `sentry_dsn` config field to Settings and config dict.
+
+**Feature 2 — Project Rename (ytllm → KnowledgeOS):**
+- Updated 17 files across the monorepo: root/client/server package manifests, FastAPI app title, HTML title, Python module docstrings, README, CLAUDE.md, PYTHON_SERVER.md, prd.md.
+- Updated config.py database default path: `ytllm.db` → `knowledgeos.db`.
+- Updated embedding_service.py vector storage path: `ytllm-vectors` → `knowledgeos-vectors`.
+- Changed localStorage keys in useVideoStore and useAuthStore.
+- Updated docs/roadmap-v1.md rename section to mark all checklist items complete.
+
+**Feature 3 — Structured Logging (loguru):**
+- Replaced all 29 `print()` calls across 8 files with loguru logger calls at appropriate levels.
+- Created `app/utils/logging.py` with `setup_logging()`: colored dev output, JSON production output, unhandled exception hook.
+- Added `LOG_LEVEL` and `JSON_LOGS` env vars to Settings/config and .env.example.
+- Initialized logging in both FastAPI lifespan and `__main__` entry point.
+
+**Feature 4 — Error Handler Middleware:**
+- Created `app/middleware/error_handler.py` with `AppError` exception class and `register_error_handlers()`.
+- Structured JSON response: `{error, message, error_id, ...details}` with 16-char hex UUID.
+- Dev-mode traceback appended to error responses (not exposed in production).
+- Moved global exception handler from `main.py` to dedicated middleware module.
+- All 19 existing error codes preserved untouched.
+
+### Files Changed / Created
+
+| File | Change |
+|------|--------|
+| `server/.env` | **DELETED** — stale file with leaked Google API key |
+| `server-python/app/config.py` | JWT default `""`; added sentry_dsn, log_level, json_logs fields; production validation; loguru import |
+| `server-python/app/main.py` | Sentry conditional init; loguru setup in lifespan; moved global exception handler to middleware |
+| `server-python/.env.example` | Added SENTRY_DSN, LOG_LEVEL, JSON_LOGS |
+| `CLAUDE.md` | Updated project description for KnowledgeOS |
+| `README.md` | Rewrote title and description |
+| `docs/PYTHON_SERVER.md` | Updated title |
+| `prd.md` | Updated title |
+| `package.json` | name → knowledgeos |
+| `client/package.json` | name → knowledgeos-client |
+| `client/index.html` | title → KnowledgeOS |
+| `server-python/pyproject.toml` | name → knowledgeos-server, added loguru dep |
+| `server-python/app/__init__.py` | Updated docstring |
+| `server-python/app/utils/logging.py` | **NEW** — loguru configuration module |
+| `server-python/app/middleware/error_handler.py` | **NEW** — AppError + register_error_handlers |
+| `server-python/app/routes/chat.py` | print() → logger.exception/warning |
+| `server-python/app/routes/export.py` | print() → logger.exception |
+| `server-python/app/routes/transcript.py` | print() → logger.exception |
+| `server-python/app/services/transcript_service.py` | All print() → logger.info/warning/debug |
+| `server-python/app/services/embedding_service.py` | All print() → logger.info |
+| `server-python/app/utils/retry.py` | All print() → logger.warning |
+| `docs/roadmap-v1.md` | Marked rename, logging, error handler, env validation as done |
+| `todo.md` | Marked completed tasks |
+| `.gitignore` | Added .venv/ and *.egg-info/ |
+
+### Commits Pushed
+
+1. `b3ea38ef` — security fixes + roadmap documentation
+2. `2d5a14de` — rename project from ytllm to KnowledgeOS
+3. `d1563325` — replace print() with structured logging (loguru)
+4. `4d4a5fbe` — error handler middleware with structured error IDs
+
+### Key Decisions
+
+- **Empty string for JWT_SECRET default**: A non-obvious default string like "change-me" could accidentally be used in production if the env var is forgotten. An empty string causes an immediate boot failure in production mode.
+- **Lazy import in logging.py**: The logging module imports config inside `setup_logging()` rather than at module level, avoiding circular import issues when used early in the boot sequence.
+- **register_error_handlers() over decorators**: By using function calls instead of `@app.exception_handler` decorators, the middleware can be composed and tested independently without depending on global app state.
+

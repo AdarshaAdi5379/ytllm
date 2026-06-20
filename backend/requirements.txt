@@ -1,0 +1,54 @@
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Validation
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
+
+# HTTP client
+httpx>=0.27.0
+
+# OpenAI
+openai>=1.55.0
+
+# Vector store
+chromadb>=0.5.0
+
+# PDF generation
+fpdf2>=2.7.0
+
+# DOCX generation
+python-docx>=1.1.0
+
+# YouTube transcript
+youtube-transcript-api>=1.0.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# Error tracking
+sentry-sdk>=2.0.0
+
+# Cache
+cachetools>=5.5.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# XML parsing
+xmltodict>=0.13.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.0
+aiosqlite>=0.20.0
+
+# Logging
+loguru>=0.7.0
+
+# Migrations
+alembic>=1.13.0
+
+# Auth
+pyjwt>=2.9.0
+bcrypt>=4.0.0

@@ -20,7 +20,7 @@ This is a FastAPI-based backend that provides:
 ### 1. Install Dependencies
 
 ```bash
-cd server-python
+cd backend
 pip install -r requirements.txt
 ```
 
@@ -46,7 +46,7 @@ The server will start at `http://localhost:3001`
 ## Project Structure
 
 ```
-server-python/
+backend/
 ├── app/
 │   ├── main.py              # FastAPI app entrypoint
 │   ├── config.py            # Environment configuration
@@ -213,7 +213,7 @@ To run the full application with the React frontend:
 
 ```bash
 # Terminal 1 - Start Python backend
-cd server-python
+cd backend
 python -m uvicorn app.main:app --reload --port 3001
 
 # Terminal 2 - Start React frontend

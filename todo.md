@@ -29,12 +29,12 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 
 ### Project Rename
 - [x] Rename root package: `ytllm` → `knowledgeos` in package.json, name fields, workspace config
-- [ ] Rename `server-python/` directory to `backend/` (or keep as-is, update all references)
-- [ ] Rename `client/` directory to `frontend/` (optional, update references)
-- [ ] Update all env files, .env.example, README with new product name
-- [ ] Update all `package.json` scripts (`npm run dev:server` etc.) to new path conventions
+- [x] Rename `server-python/` directory to `backend/` (or keep as-is, update all references)
+- [x] Rename `client/` directory to `frontend/` (optional, update references)
+- [x] Update all env files, .env.example, README with new product name
+- [x] Update all `package.json` scripts (`npm run dev:server` etc.) to new path conventions
 - [ ] Update docker-compose, Dockerfile service names
-- [ ] Create new `docs/` structure with roadmap files
+- [x] Create new `docs/` structure with roadmap files
 
 ### Backend Architecture
 - [ ] **[REFACTOR]** Replace flat route structure with multi-source architecture:
@@ -44,8 +44,8 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **[REFACTOR]** Replace `config` dict with proper dependency injection container
 - [x] **[REFACTOR]** Replace `print()` with structured logging (loguru)
 - [ ] **Replace SQLite with PostgreSQL** via SQLAlchemy async + asyncpg
-- [ ] **Replace ephemeral ChromaDB** (temp dir) with persistent PGvector or Pinecone integration
-- [ ] **Add Alembic** for database migration management (remove the hacky `run_migrations()`)
+- [x] **Make ChromaDB persistent** (from `/tmp` to `./data/vectors/`)
+- [x] **Add Alembic** for database migration management (removed the hacky `run_migrations()`)
 - [ ] **[REFACTOR]** Extract shared Python types into `backend/shared/` (Pydantic models)
 - [ ] **Add Dockerfile** for backend + docker-compose with PostgreSQL + vector DB
 - [ ] **Add CI/CD** (GitHub Actions: lint, typecheck, test, build, deploy)
@@ -68,16 +68,16 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **Add PWA support** (manifest, service worker, offline fallback)
 
 ### Data Model
-- [ ] **Create Workspace model** (id, name, owner_id, created_at, updated_at)
-- [ ] **Create Folder model** (id, workspace_id, name, parent_id, sort_order)
-- [ ] **Create Source model** (polymorphic: youtube_video, pdf_document, website_page, github_repo, markdown_note, text_note, docx_document, pptx_document)
-- [ ] **Create SourceChunk model** (source_id, chunk_index, text, embedding vector, metadata JSON)
-- [ ] **Create ChatSession model** (workspace_id, folder_id?, source_ids[], title, created_at)
-- [ ] **Create ChatMessage model** (session_id, role, content, citations JSON, timestamp)
-- [ ] **Create Note model** (id, source_id?, user_id, content, tags[], topic, difficulty, importance)
-- [ ] **Create Summary model** (source_id, type ENUM: short|detailed|executive|eli5|interview|revision, content, created_at)
-- [ ] **Create Migration for v0→v1**: migrate existing User, Video, ChatMessage tables to new schema
-- [ ] **Add proper indexes** on all foreign keys, user_id, source_type, created_at
+- [x] **Create Workspace model** (id, name, owner_id, created_at, updated_at)
+- [x] **Create Folder model** (id, workspace_id, name, parent_id, sort_order)
+- [x] **Create Source model** (polymorphic: youtube_video, pdf_document, website_page, github_repo, markdown_note, text_note, docx_document, pptx_document)
+- [x] **Create SourceChunk model** (source_id, chunk_index, text, embedding vector, metadata JSON)
+- [x] **Create ChatSession model** (workspace_id, folder_id?, source_ids[], title, created_at)
+- [x] **Create ChatMessage model** (session_id, role, content, citations JSON, timestamp)
+- [x] **Create Note model** (id, source_id?, user_id, content, tags[], topic, difficulty, importance)
+- [x] **Create Summary model** (source_id, type ENUM: short|detailed|executive|eli5|interview|revision, content, created_at)
+- [x] **Create Migration for v0→v1**: migrate existing User, Video, ChatMessage tables to new schema
+- [x] **Add proper indexes** on all foreign keys, user_id, source_type, created_at
 
 ### Rename Tasks (Code Changes)
 - [x] Update `main.py` app title from "YouTube AI Chat Agent" to "KnowledgeOS"

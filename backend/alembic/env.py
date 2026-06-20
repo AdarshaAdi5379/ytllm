@@ -1,0 +1,73 @@
+from logging.config import fileConfig
+
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import async_engine_from_config
+
+from alembic import context
+
+from app.db_models import Base
+
+config = context.config
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+target_metadata = Base.metadata
+
+
+def run_migrations_offline() -> None:
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def do_run_migrations(connection):
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online() -> None:
+    section = config.get_section(config.config_ini_section, {})
+    url = section.get("sqlalchemy.url", "")
+
+    # SQLite: use sync engine to avoid nested event-loop issues
+    if url.startswith("sqlite"):
+        sync_url = url.replace("+aiosqlite", "")
+        from sqlalchemy import create_engine
+        engine = create_engine(sync_url, poolclass=pool.NullPool)
+        with engine.connect() as connection:
+            do_run_migrations(connection)
+        engine.dispose()
+        return
+
+    # Async path for PostgreSQL etc.
+    connectable = async_engine_from_config(
+        section,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    async def run():
+        async with connectable.connect() as connection:
+            await connection.run_sync(do_run_migrations)
+        await connectable.dispose()
+
+    import asyncio
+    try:
+        asyncio.run(run())
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(run())
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()

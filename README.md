@@ -24,8 +24,8 @@ npm run install:all
 ### 2. Configure environment
 
 ```bash
-cp server-python/.env.example server-python/.env
-# Edit server-python/.env and set OPENAI_API_KEY=<your key>
+cp backend/.env.example backend/.env
+# Edit backend/.env and set OPENAI_API_KEY=<your key>
 ```
 
 ### 3. Start development servers
@@ -55,7 +55,7 @@ knowledgeos/
 │       ├── hooks/         — useChat, useTranscript, useExport, useRestoreVideo
 │       ├── store/         — Zustand stores (useVideoStore, useAuthStore)
 │       └── utils/         — youtubeParser, cn utility
-├── server-python/         — Python + FastAPI backend
+├── backend/               — Python + FastAPI backend
 │   └── app/
 │       ├── routes/        — health, transcript, chat, export, auth, videos
 │       ├── services/      — transcript_service, embedding_service, llm_service,
@@ -71,7 +71,7 @@ knowledgeos/
 ├── prd.md                 — Full product requirements document
 ├── todo.md                — Implementation tracker
 ├── session.md             — Session logs
-├── .env.example           — (stale reference — use server-python/.env.example)
+├── .env.example           — (stale reference — use backend/.env.example)
 └── package.json           — Root monorepo scripts (concurrently for dev)
 ```
 
@@ -164,7 +164,7 @@ knowledgeos/
 
 ## Environment Variables
 
-All configuration lives in `server-python/.env`. Copy from `server-python/.env.example`.
+All configuration lives in `backend/.env`. Copy from `backend/.env.example`.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -185,7 +185,7 @@ All configuration lives in `server-python/.env`. Copy from `server-python/.env.e
 1. Set `NODE_ENV=production` and `CORS_ORIGINS=https://your-frontend.vercel.app`
 2. Set `JWT_SECRET` to a random secure string
 3. Add `OPENAI_API_KEY` as a secret environment variable
-4. Deploy the `/server-python` directory with start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Deploy the `/backend` directory with start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
 ### Frontend (Vercel)
 

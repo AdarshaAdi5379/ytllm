@@ -3,8 +3,8 @@
 .env.*
 !.env.example
 !**/.env.example
-server-python/.env
-server-python/**/.env
+backend/.env
+backend/**/.env
 server/**/.env
 
 # Python
@@ -14,14 +14,16 @@ server/**/.env
 
 # Node / Vite
 **/node_modules/
-client/dist/
-client/node_modules/.vite/
+frontend/dist/
+frontend/node_modules/.vite/
 
 # Database
 *.db
 
-# Chroma (temp/persistent vectors are under /tmp, but ignore if ever copied in)
-server-python/venv/
+# Chroma persistent vectors
+data/vectors/
+
+# Python venv
 venv/
 .venv/
 **/.venv/
