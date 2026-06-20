@@ -125,6 +125,21 @@ export async function deleteSource(workspaceId: string, sourceId: string): Promi
   await apiFetch(`/workspace/${workspaceId}/sources/${sourceId}`, { method: 'DELETE' });
 }
 
+export async function importPdfSource(
+  workspaceId: string,
+  url: string,
+  folderId?: string,
+): Promise<SourceItem> {
+  return apiFetch<SourceItem>('/sources/pdf/import', {
+    method: 'POST',
+    body: JSON.stringify({
+      url,
+      workspace_id: workspaceId,
+      folder_id: folderId ?? null,
+    }),
+  });
+}
+
 export async function importWebsiteSource(
   workspaceId: string,
   url: string,

@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
 import {
-  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource,
+  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
 
@@ -25,6 +25,9 @@ export function WorkspaceSidebarContent() {
   const [showWebsiteImport, setShowWebsiteImport] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [importingWebsite, setImportingWebsite] = useState(false);
+  const [showPdfImport, setShowPdfImport] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [importingPdf, setImportingPdf] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -54,6 +57,21 @@ export function WorkspaceSidebarContent() {
       console.error('Website import failed:', err);
     } finally {
       setImportingWebsite(false);
+    }
+  };
+
+  const handleImportPdf = async () => {
+    if (!activeWorkspaceId || !pdfUrl.trim()) return;
+    setImportingPdf(true);
+    try {
+      await importPdfSource(activeWorkspaceId, pdfUrl.trim());
+      setPdfUrl('');
+      setShowPdfImport(false);
+      await loadFolderTree(activeWorkspaceId);
+    } catch (err: any) {
+      console.error('PDF import failed:', err);
+    } finally {
+      setImportingPdf(false);
     }
   };
 
@@ -150,6 +168,41 @@ export function WorkspaceSidebarContent() {
             </button>
             <button
               onClick={() => { setShowWebsiteImport(false); setWebsiteUrl(''); }}
+              className="p-0.5 text-slate-500 hover:text-slate-300"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => setShowPdfImport(!showPdfImport)}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/20 text-rose-300 hover:bg-rose-600/30 transition-all"
+        >
+          <FileText size={12} />
+          <span>Import PDF</span>
+        </button>
+        {showPdfImport && (
+          <div className="flex items-center gap-1 pt-1">
+            <input
+              autoFocus
+              value={pdfUrl}
+              onChange={(e) => setPdfUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleImportPdf();
+                if (e.key === 'Escape') { setShowPdfImport(false); setPdfUrl(''); }
+              }}
+              placeholder="https://... (PDF URL)"
+              className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-rose-500"
+            />
+            <button
+              onClick={handleImportPdf}
+              disabled={importingPdf}
+              className="p-0.5 text-rose-400 hover:text-rose-300 disabled:opacity-50"
+            >
+              {importingPdf ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+            </button>
+            <button
+              onClick={() => { setShowPdfImport(false); setPdfUrl(''); }}
               className="p-0.5 text-slate-500 hover:text-slate-300"
             >
               <X size={10} />
