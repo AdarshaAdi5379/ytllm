@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 4 features completed out of ~25.
+**Status: ACTIVE 🚧** — 9 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services

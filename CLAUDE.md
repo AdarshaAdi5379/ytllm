@@ -129,31 +129,49 @@
 - Confirm docs stay honest when commands, environment variables, or behavior change.
 - Confirm workspace chat path (SSE endpoint `POST /api/ai/chat/workspace/{id}`) when changing chat behavior.
 
-## Session Context — V2 Features (as of Jun 20 2026)
-Three commits on this branch:
+## Session Context — V2 Features (as of Jun 21 2026)
+
+### First Session (Jun 20)
 1. `ea10ec72` — Workspace & Folder CRUD
 2. `1ed431e4` — YouTube import as Source into workspace folders
 3. `b0c202b6` — Workspace chat with session management
 
+### Second Session (Jun 21) — 5 new features + security
+4. `5f2ce8cd` — Source deletion cleanup (ChromaDB vector removal)
+5. `638e5dce` — Chat with single source via `source_ids` filter
+6. `fd0e23a0` — Chat with entire folder (recursive source resolution)
+7. `da66ba42` — Website import as Source (readability-lxml extraction)
+8. `faa48d61` — PDF import as Source (PyMuPDF extraction)
+9. `115c44ce` — SSRF protection for URL-based imports
+
 ### Key Files Added/Modified
 - `backend/app/routes/workspace/workspaces.py` — Workspace CRUD
 - `backend/app/routes/workspace/folders.py` — Folder CRUD + tree builder
-- `backend/app/routes/workspace/sources.py` — Source list/get/delete under workspace
+- `backend/app/routes/workspace/sources.py` — Source list/get/delete (with vector cleanup in this session)
 - `backend/app/routes/workspace/sessions.py` — Chat session CRUD
 - `backend/app/routes/sources/youtube.py` — YouTube import as Source (new) + legacy transcript
-- `backend/app/routes/ai/chat.py` — Workspace SSE chat (added workspace endpoint)
+- `backend/app/routes/sources/website.py` — Website import (created this session)
+- `backend/app/routes/sources/pdf.py` — PDF import (created this session)
+- `backend/app/routes/ai/chat.py` — Workspace SSE chat, folder-scoped chat, `index_key` metadata support
 - `backend/app/routes/auth.py` — Auto-create default workspace on register
-- `backend/app/models.py` — Added Workspace, Folder, Source, SourceChunk, ChatSession, ChatMessageNew, Note, Summary Pydantic models
-- `backend/app/db_models.py` — Added corresponding SQLAlchemy models
-- `frontend/src/api/workspace.ts` — Full workspace API client
-- `frontend/src/store/useWorkspaceStore.ts` — Workspace/folder Zustand store
+- `backend/app/services/website_service.py` — Webpage fetch + extraction (created this session)
+- `backend/app/services/pdf_service.py` — PDF fetch + extraction (created this session)
+- `backend/app/utils/ssrf.py` — SSRF validation utility (created this session)
+- `backend/app/models.py` — Added `WebsiteImportRequest`; `WorkspaceChatRequest.folder_id`
+- `frontend/src/api/workspace.ts` — Workspace API + website/pdf import + `folder_id` on chat request
+- `frontend/src/store/useWorkspaceStore.ts` — Added `activeSourceId/activeFolderId` state
 - `frontend/src/store/useChatSessionStore.ts` — Chat session Zustand store
-- `frontend/src/components/workspace/WorkspaceSidebar.tsx` — Workspace sidebar UI
-- `frontend/src/components/workspace/WorkspaceChatPanel.tsx` — Workspace chat UI
+- `frontend/src/components/workspace/WorkspaceSidebar.tsx` — Import buttons for YouTube/Website/PDF, source click-to-chat, folder chat context menu
+- `frontend/src/components/workspace/WorkspaceChatPanel.tsx` — Source/folder scoped chat via `source_ids`/`folder_id`
+
+### Dependencies Added
+- `readability-lxml` — main content extraction for website import
+- `PyMuPDF` — PDF text extraction
 
 ## Change Guidance
-- Before editing chat behavior, inspect both single-video and multi-video paths AND workspace chat.
+- Before editing chat behavior, inspect both single-video and multi-video paths AND workspace chat (`routes/ai/chat.py`). The workspace chat resolves sources via `video_id` (YouTube) or `index_key` (website/PDF) in `metadata_json`.
+- Before adding a new import type, follow the pattern in `routes/sources/website.py` or `pdf.py`: create a service with `fetch_*`, generate `index_key` from URL hash, call `embedding_service.index_transcript(index_key, text)`, create `Source` with `metadata_json` containing `index_key`.
 - Before editing transcript retrieval/indexing, inspect `transcript_service.py`, `embedding_service.py`, and `chunk_segments.py` together.
 - Before editing persistence flows, inspect both backend DB routes and frontend restore/auth store behavior.
-- Before editing workspace/chat/sources, inspect the new V2 routes in `routes/workspace/`, `routes/sources/`, and `routes/ai/chat.py`.
+- Before editing workspace/chat/sources, inspect the V2 routes in `routes/workspace/`, `routes/sources/`, and `routes/ai/chat.py`.
 - Avoid introducing a new backend stack or duplicating logic into the stale `server/` directory.
