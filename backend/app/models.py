@@ -161,6 +161,26 @@ class FolderTreeItem(BaseModel):
     source_count: int = 0
 
 
+class SourceResponse(BaseModel):
+    id: str
+    workspace_id: str
+    folder_id: str | None = None
+    source_type: str
+    title: str
+    metadata_json: str = "{}"
+    raw_text: str = ""
+    status: str = "ready"
+    error_message: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class YouTubeImportRequest(BaseModel):
+    url: str
+    workspace_id: str
+    folder_id: str | None = None
+
+
 class ApiError(BaseModel):
     error: str
     message: str

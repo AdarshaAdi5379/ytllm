@@ -1,19 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
-import type { FolderTreeItem } from '../../api/workspace';
+import { useVideoStore } from '../../store/useVideoStore';
+import {
+  fetchSources, deleteSource, importYouTubeSource,
+  type FolderTreeItem, type SourceItem,
+} from '../../api/workspace';
 
 export function WorkspaceSidebarContent() {
   const {
     workspaces, activeWorkspaceId, folderTree, loading, error,
     loadWorkspaces, setActiveWorkspace, createWorkspace, renameWorkspace, removeWorkspace,
-    createFolder, renameFolder, removeFolder,
+    createFolder, renameFolder, removeFolder, loadFolderTree,
   } = useWorkspaceStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const openAddVideoModal = useVideoStore((s) => s.openAddVideoModal);
 
   const [newFolderName, setNewFolderName] = useState('');
   const [addingFolder, setAddingFolder] = useState(false);
@@ -23,6 +28,16 @@ export function WorkspaceSidebarContent() {
       loadWorkspaces();
     }
   }, [isAuthenticated]);
+
+  const handleImportYoutube = useCallback(async (url: string, folderId?: string) => {
+    if (!activeWorkspaceId || !url.trim()) return;
+    try {
+      await importYouTubeSource(activeWorkspaceId, url.trim(), folderId);
+      await loadFolderTree(activeWorkspaceId);
+    } catch (err: any) {
+      console.error('Import failed:', err);
+    }
+  }, [activeWorkspaceId, loadFolderTree]);
 
   if (!isAuthenticated) return null;
 
@@ -39,8 +54,6 @@ export function WorkspaceSidebarContent() {
       <div className="p-4 text-center text-xs text-rose-400">{error}</div>
     );
   }
-
-  const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
 
   const handleAddFolder = async () => {
     if (!activeWorkspaceId || !newFolderName.trim()) return;
@@ -79,6 +92,17 @@ export function WorkspaceSidebarContent() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Add YouTube video (workspace-level) */}
+      <div className="px-3 mb-1">
+        <button
+          onClick={openAddVideoModal}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 transition-all"
+        >
+          <Youtube size={12} />
+          <span>Add YouTube Video</span>
+        </button>
       </div>
 
       {/* Folders */}
@@ -134,6 +158,7 @@ export function WorkspaceSidebarContent() {
           workspaceId={activeWorkspaceId!}
           onRename={renameFolder}
           onDelete={removeFolder}
+          onImport={handleImportYoutube}
         />
       ))}
     </div>
@@ -146,17 +171,24 @@ function FolderTreeNode({
   depth = 0,
   onRename,
   onDelete,
+  onImport,
 }: {
   folder: FolderTreeItem;
   workspaceId: string;
   depth?: number;
   onRename: (wsId: string, folderId: string, name: string) => Promise<void>;
   onDelete: (wsId: string, folderId: string) => Promise<void>;
+  onImport: (url: string, folderId?: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(folder.name);
   const [showMenu, setShowMenu] = useState(false);
+  const [sources, setSources] = useState<SourceItem[]>([]);
+  const [loadingSources, setLoadingSources] = useState(false);
+  const [showImportInput, setShowImportInput] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importing, setImporting] = useState(false);
 
   const hasChildren = folder.children.length > 0;
 
@@ -167,25 +199,71 @@ function FolderTreeNode({
     setEditing(false);
   };
 
+  const loadSources = useCallback(async () => {
+    setLoadingSources(true);
+    try {
+      const items = await fetchSources(workspaceId, folder.id);
+      setSources(items);
+    } catch {
+      setSources([]);
+    } finally {
+      setLoadingSources(false);
+    }
+  }, [workspaceId, folder.id]);
+
+  useEffect(() => {
+    if (expanded && folder.source_count > 0 && sources.length === 0) {
+      loadSources();
+    }
+  }, [expanded, folder.source_count]);
+
+  const handleDeleteSource = async (sourceId: string) => {
+    await deleteSource(workspaceId, sourceId);
+    setSources((prev) => prev.filter((s) => s.id !== sourceId));
+  };
+
+  const handleImport = async () => {
+    if (!importUrl.trim()) return;
+    setImporting(true);
+    try {
+      await onImport(importUrl.trim(), folder.id);
+      setImportUrl('');
+      setShowImportInput(false);
+      await loadSources();
+    } catch {
+      // handled by parent
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const toggleExpand = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && sources.length === 0 && folder.source_count > 0) {
+      await loadSources();
+    }
+  };
+
   return (
     <div>
+      {/* Folder row */}
       <div
         className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs group hover:bg-slate-800/50 transition-all cursor-pointer"
         style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
-        {/* Expand/collapse */}
         {hasChildren ? (
-          <button onClick={() => setExpanded(!expanded)} className="p-0.5 text-slate-500 hover:text-slate-300">
+          <button onClick={toggleExpand} className="p-0.5 text-slate-500 hover:text-slate-300">
             {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
           </button>
         ) : (
-          <span className="w-4" />
+          <button onClick={toggleExpand} className="p-0.5 text-slate-500 hover:text-slate-300">
+            {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+          </button>
         )}
 
-        {/* Folder icon */}
         {expanded ? <FolderOpen size={12} className="text-amber-400 flex-shrink-0" /> : <Folder size={12} className="text-amber-400 flex-shrink-0" />}
 
-        {/* Name */}
         {editing ? (
           <input
             autoFocus
@@ -207,13 +285,18 @@ function FolderTreeNode({
           </span>
         )}
 
-        {/* Source count */}
         {folder.source_count > 0 && (
           <span className="text-[10px] text-slate-600 font-mono">{folder.source_count}</span>
         )}
 
-        {/* Context menu */}
-        <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+          <button
+            onClick={() => { setShowImportInput(!showImportInput); setShowMenu(false); }}
+            className="p-0.5 text-slate-500 hover:text-emerald-400"
+            title="Import YouTube"
+          >
+            <Plus size={10} />
+          </button>
           <button onClick={() => setShowMenu(!showMenu)} className="p-0.5 text-slate-500 hover:text-slate-300">
             <MoreHorizontal size={10} />
           </button>
@@ -239,21 +322,121 @@ function FolderTreeNode({
         </div>
       </div>
 
-      {/* Children */}
-      {expanded && hasChildren && (
-        <div>
-          {folder.children.map((child) => (
-            <FolderTreeNode
-              key={child.id}
-              folder={child}
-              workspaceId={workspaceId}
-              depth={depth + 1}
-              onRename={onRename}
-              onDelete={onDelete}
-            />
-          ))}
+      {/* Inline YouTube import input */}
+      {showImportInput && (
+        <div
+          className="flex items-center gap-1 py-1"
+          style={{ paddingLeft: `${28 + depth * 16}px` }}
+        >
+          <input
+            autoFocus
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleImport();
+              if (e.key === 'Escape') { setShowImportInput(false); setImportUrl(''); }
+            }}
+            placeholder="YouTube URL..."
+            className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-indigo-500"
+          />
+          <button
+            onClick={handleImport}
+            disabled={importing}
+            className="p-0.5 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+          >
+            {importing ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+          </button>
+          <button
+            onClick={() => { setShowImportInput(false); setImportUrl(''); }}
+            className="p-0.5 text-slate-500 hover:text-slate-300"
+          >
+            <X size={10} />
+          </button>
         </div>
       )}
+
+      {/* Sources list */}
+      {expanded && (
+        <div>
+          {loadingSources && (
+            <div className="flex items-center justify-center py-2" style={{ paddingLeft: `${28 + depth * 16}px` }}>
+              <Loader2 size={10} className="animate-spin text-slate-500" />
+            </div>
+          )}
+          {!loadingSources && sources.length > 0 && (
+            <div className="space-y-0.5 py-0.5">
+              {sources.map((source) => (
+                <SourceItemRow
+                  key={source.id}
+                  source={source}
+                  depth={depth + 1}
+                  onDelete={() => handleDeleteSource(source.id)}
+                />
+              ))}
+            </div>
+          )}
+          {!loadingSources && sources.length === 0 && folder.source_count > 0 && (
+            <div
+              className="text-[10px] text-slate-600 py-1"
+              style={{ paddingLeft: `${28 + depth * 16}px` }}
+            >
+              No sources loaded. Click + to add.
+            </div>
+          )}
+
+          {/* Child folders */}
+          {hasChildren && (
+            <div>
+              {folder.children.map((child) => (
+                <FolderTreeNode
+                  key={child.id}
+                  folder={child}
+                  workspaceId={workspaceId}
+                  depth={depth + 1}
+                  onRename={onRename}
+                  onDelete={onDelete}
+                  onImport={onImport}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SourceItemRow({
+  source,
+  depth,
+  onDelete,
+}: {
+  source: SourceItem;
+  depth: number;
+  onDelete: () => void;
+}) {
+  let meta: Record<string, any> = {};
+  try { meta = JSON.parse(source.metadata_json); } catch {}
+  const icon = source.source_type === 'youtube_video' ? (
+    <Youtube size={10} className="text-red-400 flex-shrink-0" />
+  ) : (
+    <ExternalLink size={10} className="text-slate-500 flex-shrink-0" />
+  );
+
+  return (
+    <div
+      className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs group hover:bg-slate-800/30 transition-all"
+      style={{ paddingLeft: `${28 + depth * 16}px` }}
+    >
+      {icon}
+      <span className="flex-1 truncate text-slate-400">{source.title}</span>
+      <button
+        onClick={onDelete}
+        className="p-0.5 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 transition-all"
+        title="Remove source"
+      >
+        <Trash2 size={9} />
+      </button>
     </div>
   );
 }

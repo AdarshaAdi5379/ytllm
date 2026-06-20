@@ -22,6 +22,7 @@ frontend/node_modules/.vite/
 
 # Chroma persistent vectors
 data/vectors/
+backend/data/
 
 # Python venv
 venv/

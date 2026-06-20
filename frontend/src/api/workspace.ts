@@ -95,3 +95,47 @@ export async function updateFolder(
 export async function deleteFolder(workspaceId: string, folderId: string): Promise<void> {
   await apiFetch(`/workspace/${workspaceId}/folders/${folderId}`, { method: 'DELETE' });
 }
+
+// --- Source API ---
+
+export interface SourceItem {
+  id: string;
+  workspace_id: string;
+  folder_id: string | null;
+  source_type: string;
+  title: string;
+  metadata_json: string;
+  raw_text: string;
+  status: string;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchSources(workspaceId: string, folderId?: string): Promise<SourceItem[]> {
+  const params = folderId ? `?folder_id=${folderId}` : '';
+  return apiFetch<SourceItem[]>(`/workspace/${workspaceId}/sources/${params}`);
+}
+
+export async function getSource(workspaceId: string, sourceId: string): Promise<SourceItem> {
+  return apiFetch<SourceItem>(`/workspace/${workspaceId}/sources/${sourceId}`);
+}
+
+export async function deleteSource(workspaceId: string, sourceId: string): Promise<void> {
+  await apiFetch(`/workspace/${workspaceId}/sources/${sourceId}`, { method: 'DELETE' });
+}
+
+export async function importYouTubeSource(
+  workspaceId: string,
+  url: string,
+  folderId?: string,
+): Promise<SourceItem> {
+  return apiFetch<SourceItem>('/sources/youtube/import', {
+    method: 'POST',
+    body: JSON.stringify({
+      url,
+      workspace_id: workspaceId,
+      folder_id: folderId ?? null,
+    }),
+  });
+}

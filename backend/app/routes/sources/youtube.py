@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.db_models import Video as VideoModel
-from app.services.auth_service import get_optional_user
+from app.db_models import Video as VideoModel, Source, Workspace
+from app.services.auth_service import get_optional_user, get_current_user
 from app.db_models import User
 from app.utils.youtube_parser import extract_video_id
 from app.services import transcript_service
@@ -16,13 +16,131 @@ from app.services import embedding_service
 from app.services import llm_service
 from app.utils import session_cache
 from app.config import config
+from app.models import YouTubeImportRequest, SourceResponse
 
 
 router = APIRouter()
 
 
+def _source_to_response(s: Source) -> SourceResponse:
+    return SourceResponse(
+        id=s.id,
+        workspace_id=s.workspace_id,
+        folder_id=s.folder_id,
+        source_type=s.source_type,
+        title=s.title,
+        metadata_json=s.metadata_json,
+        raw_text=s.raw_text,
+        status=s.status,
+        error_message=s.error_message,
+        created_at=s.created_at.isoformat() if s.created_at else "",
+        updated_at=s.updated_at.isoformat() if s.updated_at else "",
+    )
+
+
 class TranscriptRequest(BaseModel):
     url: str
+
+
+@router.post("/import", response_model=SourceResponse)
+async def import_youtube_source(
+    req: YouTubeImportRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch a YouTube video transcript and save as a Source in a workspace folder."""
+    video_id = extract_video_id(req.url)
+    if not video_id:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "INVALID_URL", "message": "Invalid YouTube URL."},
+        )
+
+    # Verify workspace ownership
+    ws_result = await db.execute(
+        select(Workspace).where(
+            Workspace.id == req.workspace_id, Workspace.owner_id == user.id
+        )
+    )
+    if not ws_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
+
+    # Verify folder ownership if specified
+    if req.folder_id:
+        folder_result = await db.execute(
+            select(Source).where(
+                Source.id == req.folder_id, Source.workspace_id == req.workspace_id
+            )
+        )
+        from app.db_models import Folder
+        folder_result = await db.execute(
+            select(Folder).where(
+                Folder.id == req.folder_id, Folder.workspace_id == req.workspace_id
+            )
+        )
+        if not folder_result.scalar_one_or_none():
+            raise HTTPException(status_code=422, detail={"error": "INVALID_FOLDER", "message": "Folder not found in workspace."})
+
+    try:
+        metadata, transcript_result = await asyncio.gather(
+            transcript_service.fetch_video_metadata(video_id),
+            transcript_service.fetch_transcript(video_id),
+        )
+        transcript = transcript_result.text
+
+        summary = ""
+        if config.get("enable_llm_enrichment"):
+            summary = await llm_service.generate_transcript_summary(transcript, metadata.title)
+
+        chunk_count = await embedding_service.index_transcript_segments(
+            video_id, transcript_result.segments, transcript
+        )
+
+        import json
+        metadata_json = json.dumps({
+            "video_id": video_id,
+            "channel_name": metadata.channel_name,
+            "duration": metadata.duration,
+            "thumbnail_url": metadata.thumbnail_url,
+            "summary": summary,
+            "chunk_count": chunk_count,
+        })
+
+        existing = await db.execute(
+            select(Source).where(
+                Source.workspace_id == req.workspace_id,
+                Source.source_type == "youtube_video",
+                Source.metadata_json.contains(video_id),
+            )
+        )
+        source = existing.scalar_one_or_none()
+        if source:
+            source.raw_text = transcript
+            source.metadata_json = metadata_json
+            source.status = "ready"
+        else:
+            source = Source(
+                workspace_id=req.workspace_id,
+                folder_id=req.folder_id,
+                user_id=user.id,
+                source_type="youtube_video",
+                title=metadata.title,
+                metadata_json=metadata_json,
+                raw_text=transcript,
+                status="ready",
+            )
+            db.add(source)
+
+        await db.commit()
+        await db.refresh(source)
+        return _source_to_response(source)
+
+    except Exception as e:
+        logger.exception("YouTube source import error: {}", str(e))
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "IMPORT_FAILED", "message": "Failed to import YouTube video."},
+        )
 
 
 @router.post("/transcript")
