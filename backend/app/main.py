@@ -14,6 +14,7 @@ from app.config import config
 from app.database import init_db
 from app.middleware.error_handler import register_error_handlers
 from app.routes import health, transcript, chat, export, auth, videos
+from app.routes import workspace_router, sources_router, ai_router
 from app.services import embedding_service
 from app.utils import session_cache
 from app.utils.logging import setup_logging
@@ -89,7 +90,13 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
-# Include routers
+# V1 domain routers
+app.include_router(workspace_router, prefix="/api/workspace", tags=["workspace"])
+app.include_router(sources_router, prefix="/api/sources", tags=["sources"])
+app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
+
+# Shared / standalone routers
+# Note: old routes/transcript.py and routes/chat.py still registered below for V0 backward compat
 app.include_router(health.router, prefix="/api/health", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(transcript.router, prefix="/api/transcript", tags=["transcript"])
