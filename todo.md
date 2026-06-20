@@ -124,10 +124,10 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ### AI Chat
 - [ ] **[REUSE]** Chat with single source (existing pattern adapted to new models)
 - [ ] **Chat with multiple sources** — retrieve chunks across N sources, assemble unified context
-- [ ] **Chat with entire workspace** — search all sources in the current workspace
+- [x] **Chat with entire workspace** — search all sources in the current workspace
 - [ ] **Chat with entire folder** — search all sources within a folder
-- [ ] **[REUSE]** SSE streaming for all chat modes
-- [ ] **Chat session management**:
+- [x] **[REUSE]** SSE streaming for all chat modes
+- [x] **Chat session management**:
   - Create new session (select which sources to include)
   - Rename session (auto-name from first question)
   - Delete session
