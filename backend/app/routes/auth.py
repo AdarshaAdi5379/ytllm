@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.db_models import User
+from app.db_models import User, Workspace
 from app.models import UserCreate, UserLogin, UserResponse, TokenResponse
 from app.services.auth_service import hash_password, verify_password, create_token, get_optional_user
 
@@ -34,6 +34,10 @@ async def register(req: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
+    ws = Workspace(name="My Workspace", owner_id=user.id)
+    db.add(ws)
+    await db.commit()
 
     token = create_token(user.id)
     return TokenResponse(access_token=token, user=UserResponse(id=user.id, email=user.email))

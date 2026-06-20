@@ -116,6 +116,51 @@ class SaveVideoRequest(BaseModel):
     is_pinned: bool = False
 
 
+class WorkspaceResponse(BaseModel):
+    id: str
+    name: str
+    created_at: str
+    updated_at: str
+
+
+class CreateWorkspaceRequest(BaseModel):
+    name: str = "My Workspace"
+
+
+class UpdateWorkspaceRequest(BaseModel):
+    name: str
+
+
+class FolderResponse(BaseModel):
+    id: str
+    workspace_id: str
+    name: str
+    parent_id: str | None = None
+    sort_order: int = 0
+    created_at: str
+    updated_at: str
+
+
+class CreateFolderRequest(BaseModel):
+    name: str
+    parent_id: str | None = None
+
+
+class UpdateFolderRequest(BaseModel):
+    name: str | None = None
+    sort_order: int | None = None
+    parent_id: str | None = None
+
+
+class FolderTreeItem(BaseModel):
+    id: str
+    name: str
+    parent_id: str | None = None
+    sort_order: int = 0
+    children: list["FolderTreeItem"] = []
+    source_count: int = 0
+
+
 class ApiError(BaseModel):
     error: str
     message: str

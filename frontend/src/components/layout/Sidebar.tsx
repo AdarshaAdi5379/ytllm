@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { checkHealth } from '../../api/client';
 import { SavedVideosList } from '../video/SavedVideosList';
 import { useRestoreVideo } from '../../hooks/useRestoreVideo';
+import { WorkspaceSidebarContent } from '../workspace/WorkspaceSidebar';
 
 export function Sidebar() {
   const { videos, openAddVideoModal, clearVideos } = useVideoStore();
@@ -62,28 +63,32 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Video list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
-        <div className="px-3 mb-2">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Your Videos</p>
-        </div>
-        {videoIds.length === 0 ? (
-          <div className="p-8 text-center bg-slate-800/20 rounded-2xl border border-dashed border-slate-700/50">
-            <p className="text-sm font-medium text-slate-400">No videos loaded</p>
-            <p className="text-xs text-slate-500 mt-2">Start by adding your first YouTube URL</p>
+      {/* Content area: workspace sidebar for authenticated users, video list for guests */}
+      {isAuthenticated ? (
+        <WorkspaceSidebarContent />
+      ) : (
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
+          <div className="px-3 mb-2">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Your Videos</p>
           </div>
-        ) : (
-          [...videoIds]
-            .sort((a, b) => {
-              const va = videos[a];
-              const vb = videos[b];
-              if (va?.isPinned && !vb?.isPinned) return -1;
-              if (!va?.isPinned && vb?.isPinned) return 1;
-              return 0;
-            })
-            .map((id) => <VideoCard key={id} videoId={id} />)
-        )}
-      </div>
+          {videoIds.length === 0 ? (
+            <div className="p-8 text-center bg-slate-800/20 rounded-2xl border border-dashed border-slate-700/50">
+              <p className="text-sm font-medium text-slate-400">No videos loaded</p>
+              <p className="text-xs text-slate-500 mt-2">Start by adding your first YouTube URL</p>
+            </div>
+          ) : (
+            [...videoIds]
+              .sort((a, b) => {
+                const va = videos[a];
+                const vb = videos[b];
+                if (va?.isPinned && !vb?.isPinned) return -1;
+                if (!va?.isPinned && vb?.isPinned) return 1;
+                return 0;
+              })
+              .map((id) => <VideoCard key={id} videoId={id} />)
+          )}
+        </div>
+      )}
 
       {/* Auth section (logged-in only — guest auth is in the main panel top bar) */}
       {isAuthenticated && user && (

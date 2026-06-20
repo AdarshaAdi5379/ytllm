@@ -101,7 +101,7 @@ class Folder(Base):
     updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
 
     workspace = relationship("Workspace", back_populates="folders")
-    children = relationship("Folder", backref="parent", remote_side="Folder.id", cascade="all, delete-orphan")
+    children = relationship("Folder", backref="parent", remote_side="Folder.id", cascade="all, delete")
     sources = relationship("Source", back_populates="folder", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates="folder", cascade="all, delete-orphan")
 

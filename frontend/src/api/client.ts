@@ -56,7 +56,7 @@ function buildHeaders(extra?: Record<string, string>): Record<string, string> {
   return { ...headers, ...extra };
 }
 
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
+export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
     headers: buildHeaders(),
     ...options,
