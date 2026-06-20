@@ -122,7 +122,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Source deletion (vector cleanup)** — removed from DB AND ChromaDB vectors cleaned up (commit 5f2ce8cd)
 
 ### AI Chat
-- [ ] **[REUSE]** Chat with single source (existing pattern adapted to new models)
+- [x] **[REUSE]** Chat with single source — clicking a source in sidebar scopes chat via `source_ids` filter (commit 638e5dce)
 - [ ] **Chat with multiple sources** — retrieve chunks across N sources, assemble unified context
 - [x] **Chat with entire workspace** — SSE endpoint retrieves chunks from all workspace sources (commit b0c202b6)
 - [ ] **Chat with entire folder** — search all sources within a folder
