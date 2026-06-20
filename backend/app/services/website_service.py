@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 import httpx
 from loguru import logger
 from readability import Document as ReadabilityDoc
+from app.utils.ssrf import validate_final_url
 
 
 class WebPageResult:
@@ -41,6 +42,7 @@ async def fetch_webpage(url: str) -> WebPageResult:
             },
         )
         resp.raise_for_status()
+        validate_final_url(str(resp.url))
 
     html = resp.text
     doc = ReadabilityDoc(html)

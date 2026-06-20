@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
+from app.utils.ssrf import validate_final_url
 
 
 PDF_MAX_SIZE = 50 * 1024 * 1024
@@ -36,6 +37,7 @@ async def fetch_pdf(url: str) -> PdfResult:
             },
         )
         resp.raise_for_status()
+        validate_final_url(str(resp.url))
 
     content = resp.content
     if len(content) > PDF_MAX_SIZE:
