@@ -181,6 +181,39 @@ class YouTubeImportRequest(BaseModel):
     folder_id: str | None = None
 
 
+class ChatSessionResponse(BaseModel):
+    id: str
+    workspace_id: str
+    folder_id: str | None = None
+    title: str
+    source_ids: str = "[]"
+    message_count: int = 0
+    created_at: str
+    updated_at: str
+
+
+class CreateChatSessionRequest(BaseModel):
+    title: str = "New Chat"
+    source_ids: list[str] = []
+
+
+class UpdateChatSessionRequest(BaseModel):
+    title: str | None = None
+
+
+class WorkspaceChatMessage(BaseModel):
+    role: str
+    content: str
+    timestamp: str = ""
+
+
+class WorkspaceChatRequest(BaseModel):
+    session_id: str | None = None
+    question: str
+    chat_history: list[WorkspaceChatMessage] = []
+    source_ids: list[str] | None = None
+
+
 class ApiError(BaseModel):
     error: str
     message: str

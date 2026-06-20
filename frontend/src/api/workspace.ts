@@ -139,3 +139,127 @@ export async function importYouTubeSource(
     }),
   });
 }
+
+// --- Chat Session API ---
+
+export interface ChatSessionItem {
+  id: string;
+  workspace_id: string;
+  folder_id: string | null;
+  title: string;
+  source_ids: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionDetail {
+  session: ChatSessionItem;
+  messages: { role: string; content: string; timestamp: string }[];
+}
+
+export async function fetchSessions(workspaceId: string): Promise<ChatSessionItem[]> {
+  return apiFetch<ChatSessionItem[]>(`/workspace/${workspaceId}/sessions/`);
+}
+
+export async function createSession(
+  workspaceId: string,
+  title?: string,
+  sourceIds?: string[],
+): Promise<ChatSessionItem> {
+  return apiFetch<ChatSessionItem>(`/workspace/${workspaceId}/sessions/`, {
+    method: 'POST',
+    body: JSON.stringify({ title: title ?? 'New Chat', source_ids: sourceIds ?? [] }),
+  });
+}
+
+export async function getSession(workspaceId: string, sessionId: string): Promise<SessionDetail> {
+  return apiFetch<SessionDetail>(`/workspace/${workspaceId}/sessions/${sessionId}`);
+}
+
+export async function updateSession(
+  workspaceId: string,
+  sessionId: string,
+  data: { title?: string },
+): Promise<ChatSessionItem> {
+  return apiFetch<ChatSessionItem>(`/workspace/${workspaceId}/sessions/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSession(workspaceId: string, sessionId: string): Promise<void> {
+  await apiFetch(`/workspace/${workspaceId}/sessions/${sessionId}`, { method: 'DELETE' });
+}
+
+// --- Workspace Chat (SSE) ---
+
+export interface WorkspaceChatRequest {
+  session_id?: string;
+  question: string;
+  chat_history: { role: string; content: string; timestamp: string }[];
+  source_ids?: string[];
+}
+
+export function streamWorkspaceChat(
+  workspaceId: string,
+  req: WorkspaceChatRequest,
+  onToken: (token: string) => void,
+  onMeta: (meta: any) => void,
+  onError: (error: string) => void,
+  onDone: () => void,
+): AbortController {
+  const controller = new AbortController();
+
+  fetch(`/api/ai/chat/workspace/${workspaceId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
+        onError(err.message || 'Chat failed');
+        return;
+      }
+      const reader = response.body?.getReader();
+      if (!reader) return;
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            switch (event.type) {
+              case 'meta':
+                onMeta(event);
+                break;
+              case 'token':
+                onToken(event.content || '');
+                break;
+              case 'error':
+                onError(event.message || 'Unknown error');
+                break;
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+      onDone();
+    })
+    .catch((err) => {
+      if (err.name !== 'AbortError') {
+        onError(err.message || 'Connection failed');
+      }
+    });
+
+  return controller;
+}

@@ -10,6 +10,7 @@ import { ChatWindow } from '../chat/ChatWindow';
 import { ChatInput } from '../chat/ChatInput';
 import { LoadingSkeleton } from '../shared/LoadingSkeleton';
 import { AuthModal } from '../auth/AuthModal';
+import { WorkspaceChatPanel } from '../workspace/WorkspaceChatPanel';
 import { useChat } from '../../hooks/useChat';
 
 export function MainPanel() {
@@ -20,6 +21,11 @@ export function MainPanel() {
   const [showAuth, setShowAuth] = useState<'login' | 'register' | null>(null);
 
   if (!video) {
+    // Show workspace chat for authenticated users, welcome screen for guests
+    if (isAuthenticated) {
+      return <WorkspaceChatPanel />;
+    }
+
     return (
       <main className="flex-1 flex flex-col bg-white">
         {/* Top bar with auth buttons */}

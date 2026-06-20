@@ -9,13 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from app.database import async_session as db_async_session
-from app.db_models import Video as VideoModel, ChatMessage
-from app.services.auth_service import get_optional_user
+from app.database import get_db
+from app.db_models import Video as VideoModel, ChatMessage, Source, ChatSession, ChatMessageNew, Workspace
+from app.services.auth_service import get_optional_user, get_current_user
 from app.db_models import User
 from app.services import embedding_service
 from app.services import memory_service
 from app.services import llm_service
-from app.models import Message
+from app.models import Message, WorkspaceChatRequest, WorkspaceChatMessage
 from app.utils import session_cache
 from app.config import config
 
@@ -322,3 +323,206 @@ def _parse_duration_to_seconds(duration: str) -> int:
     except Exception:
         return 0
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Workspace chat — chat with sources in a workspace
+# ---------------------------------------------------------------------------
+
+@router.post("/workspace/{workspace_id}")
+async def chat_workspace(
+    workspace_id: str,
+    req: WorkspaceChatRequest,
+    response: Response,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stream a chat response using sources in a workspace (SSE)."""
+
+    async def generate():
+        nonlocal db
+        user_question = req.question
+        full_response = ""
+
+        try:
+            # Verify workspace ownership
+            ws_result = await db.execute(
+                select(Workspace).where(Workspace.id == workspace_id, Workspace.owner_id == user.id)
+            )
+            if not ws_result.scalar_one_or_none():
+                error_json = json.dumps({"type": "error", "message": "Workspace not found."})
+                yield f"data: {error_json}\n\n"
+                return
+
+            # Determine source IDs
+            if req.source_ids:
+                source_id_list = req.source_ids
+            elif req.session_id:
+                sess_result = await db.execute(
+                    select(ChatSession).where(
+                        ChatSession.id == req.session_id,
+                        ChatSession.workspace_id == workspace_id,
+                    )
+                )
+                sess = sess_result.scalar_one_or_none()
+                if not sess:
+                    error_json = json.dumps({"type": "error", "message": "Session not found."})
+                    yield f"data: {error_json}\n\n"
+                    return
+                source_id_list = json.loads(sess.source_ids or "[]")
+            else:
+                source_id_list = []
+
+            # Fetch sources
+            if source_id_list:
+                src_result = await db.execute(
+                    select(Source).where(
+                        Source.id.in_(source_id_list),
+                        Source.workspace_id == workspace_id,
+                        Source.status == "ready",
+                    )
+                )
+            else:
+                src_result = await db.execute(
+                    select(Source).where(
+                        Source.workspace_id == workspace_id,
+                        Source.status == "ready",
+                    )
+                )
+            sources = src_result.scalars().all()
+
+            if not sources:
+                error_json = json.dumps({"type": "error", "message": "No ready sources found in workspace."})
+                yield f"data: {error_json}\n\n"
+                return
+
+            # Retrieve chunks from each source
+            retrieval_started = time.perf_counter()
+            all_chunks: list[str] = []
+            source_infos: list[dict] = []
+
+            for src in sources:
+                meta = {}
+                try:
+                    meta = json.loads(src.metadata_json)
+                except Exception:
+                    pass
+
+                video_id = meta.get("video_id", "")
+                if not video_id:
+                    continue
+
+                source_infos.append({
+                    "source_id": src.id,
+                    "title": src.title,
+                    "source_type": src.source_type,
+                })
+
+                retrieved = await embedding_service.retrieve_relevant_chunks(
+                    video_id, req.question,
+                )
+                for idx, c in enumerate(retrieved):
+                    prefix = f"[{src.title} | Section {idx + 1}] "
+                    all_chunks.append(prefix + _format_retrieved_chunk(c))
+
+            retrieval_ms = int((time.perf_counter() - retrieval_started) * 1000)
+
+            # Process chat history
+            chat_history_dicts = [
+                {"role": msg.role, "content": msg.content, "timestamp": msg.timestamp}
+                for msg in req.chat_history
+            ]
+
+            memory_started = time.perf_counter()
+            recent_messages, chat_summary = await memory_service.process_history(chat_history_dicts, None)
+            memory_ms = int((time.perf_counter() - memory_started) * 1000)
+
+            # Build system prompt
+            system_prompt = llm_service.build_multi_system_prompt(source_infos)
+
+            context = llm_service.LLMContext(
+                system_prompt=system_prompt,
+                retrieved_chunks=all_chunks,
+                chat_summary=chat_summary,
+                recent_messages=recent_messages,
+                question=req.question,
+            )
+
+            # Stream
+            llm_started = time.perf_counter()
+            first = True
+            async for chunk in llm_service.stream_chat_response(context):
+                if first:
+                    first = False
+                    ttfb_ms = int((time.perf_counter() - llm_started) * 1000)
+                    meta_event = json.dumps({
+                        "type": "meta",
+                        "retrieval_ms": retrieval_ms,
+                        "memory_ms": memory_ms,
+                        "ttfb_ms": ttfb_ms,
+                        "sources_count": len(source_infos),
+                        "retrieved_chunks_count": len(all_chunks),
+                    })
+                    yield f"data: {meta_event}\n\n"
+                yield chunk
+                if chunk.startswith("data: "):
+                    try:
+                        event = json.loads(chunk[6:])
+                        if event.get("type") == "token":
+                            full_response += event.get("content", "")
+                    except Exception:
+                        pass
+
+            # Persist session + messages
+            try:
+                # Get or create session
+                session_id = req.session_id
+                if not session_id:
+                    new_session = ChatSession(
+                        workspace_id=workspace_id,
+                        title=req.question[:80],
+                        source_ids=json.dumps([s.id for s in sources]),
+                        user_id=user.id,
+                    )
+                    db.add(new_session)
+                    await db.commit()
+                    await db.refresh(new_session)
+                    session_id = new_session.id
+                else:
+                    sess_result = await db.execute(
+                        select(ChatSession).where(
+                            ChatSession.id == session_id,
+                            ChatSession.workspace_id == workspace_id,
+                        )
+                    )
+                    sess = sess_result.scalar_one_or_none()
+                    if sess and sess.title == "New Chat":
+                        sess.title = req.question[:80]
+                        await db.commit()
+
+                if session_id:
+                    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                    db.add(ChatMessageNew(session_id=session_id, role="user", content=user_question, timestamp=now))
+                    db.add(ChatMessageNew(session_id=session_id, role="assistant", content=full_response, timestamp=now))
+                    await db.commit()
+            except Exception as save_err:
+                logger.warning("Failed to save workspace chat: {}", save_err)
+
+        except Exception as e:
+            logger.exception("Workspace chat error: {}", str(e))
+            detail = (
+                f"{type(e).__name__}: {str(e)}"
+                if config.get("node_env") == "development"
+                else "Failed to generate response."
+            )
+            yield f"data: {json.dumps({'type': 'error', 'message': detail})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
