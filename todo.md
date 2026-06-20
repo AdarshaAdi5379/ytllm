@@ -37,10 +37,10 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] Create new `docs/` structure with roadmap files
 
 ### Backend Architecture
-- [ ] **[REFACTOR]** Replace flat route structure with multi-source architecture:
-  - `backend/app/routes/sources/` — youtube, pdf, website, github, markdown, text, docx, pptx
-  - `backend/app/routes/workspace/` — folders, sources, search
-  - `backend/app/routes/ai/` — chat, summary, actions, notes
+- [x] **[REFACTOR]** Replace flat route structure with multi-source architecture:
+  - `backend/app/routes/sources/` — youtube (real), pdf/website/github etc (stubs)
+  - `backend/app/routes/workspace/` — workspaces, folders, sources, sessions (all real), search (stub)
+  - `backend/app/routes/ai/` — chat single/multi/workspace (all real), summary/actions/notes (stubs)
 - [ ] **[REFACTOR]** Replace `config` dict with proper dependency injection container
 - [x] **[REFACTOR]** Replace `print()` with structured logging (loguru)
 - [ ] **Replace SQLite with PostgreSQL** via SQLAlchemy async + asyncpg
@@ -54,16 +54,14 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Move global exception handler** to dedicated middleware with structured error IDs
 
 ### Frontend Architecture
-- [ ] **[REFACTOR]** Restructure `frontend/src/`:
-  - `components/workspace/` — folders, source list
-  - `components/sources/` — youtube, pdf, website, github import UIs
-  - `components/ai/` — chat, summary, notes, actions
-  - `store/` — workspace store, auth store (Google/GitHub/Email)
-  - `api/` — multi-source API client modules
+- [x] **[REFACTOR]** Restructure `frontend/src/`:
+  - `components/workspace/` — WorkspaceSidebar, WorkspaceChatPanel (done)
+  - `store/` — useWorkspaceStore, useChatSessionStore (done)
+  - `api/` — workspace.ts (done)
 - [ ] **Replace Vite proxy** with explicit backend URL configuration
 - [ ] **Add React Router** for workspace views (dashboard, workspace, settings)
-- [ ] **[REUSE]** Keep Zustand persist middleware pattern
-- [ ] **[REUSE]** Keep TailwindCSS configuration and design tokens
+- [x] **[REUSE]** Keep Zustand persist middleware pattern
+- [x] **[REUSE]** Keep TailwindCSS configuration and design tokens
 - [ ] **Add error boundaries** to all major sections
 - [ ] **Add PWA support** (manifest, service worker, offline fallback)
 
@@ -93,23 +91,25 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
+**Status: ACTIVE 🚧** — 4 features completed out of ~25.
+
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
 - [ ] **GitHub OAuth login** — FastAPI + httpx OAuth flow with GitHub API
-- [ ] **[REUSE]** Email/password login with bcrypt
+- [x] **[REUSE]** Email/password login with bcrypt
 - [ ] **Profile page**: avatar, display name, email, auth provider badge
 - [ ] **Session management**: refresh tokens, token rotation, expiry handling
 - [ ] **Password reset flow** (for email auth users)
 
 ### Workspace & Folders
-- [ ] **Workspace CRUD** — create, rename, delete workspaces
-- [ ] **Folder CRUD** — create, rename, delete, reorder folders
+- [x] **Workspace CRUD** — create, rename, delete workspaces (commit ea10ec72)
+- [x] **Folder CRUD** — create, rename, delete, reorder folders (commit ea10ec72)
 - [ ] **Drag-and-drop folder reordering** in sidebar
 - [ ] **Breadcrumb navigation** for deep folder paths
 - [ ] **Workspace switcher** — dropdown in sidebar header
 
 ### Multi-Source Import
-- [x] **[REUSE]** YouTube: existing transcript pipeline adapted to new Source model
+- [x] **[REUSE]** YouTube: existing transcript pipeline adapted to new Source model (commit 1ed431e4)
 - [ ] **PDF import**: PyMuPDF (fitz) for text extraction, OCR fallback via Tesseract
 - [ ] **Website import**: httpx + beautifulsoup4 + readability-lxml for main content extraction
 - [ ] **Markdown import**: file upload or direct paste into editor
@@ -119,15 +119,15 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **PowerPoint import**: python-pptx for text extraction
 - [ ] **Import progress UI**: progress bar per source, status indicators (queued/processing/ready/error)
 - [ ] **Background ingestion** with async task queue (Celery or simple asyncio background tasks)
-- [ ] **Source deletion** — remove source and all its chunks, embeddings, and associated notes
+- [x] **Source deletion (vector cleanup)** — removed from DB AND ChromaDB vectors cleaned up (commit 5f2ce8cd)
 
 ### AI Chat
 - [ ] **[REUSE]** Chat with single source (existing pattern adapted to new models)
 - [ ] **Chat with multiple sources** — retrieve chunks across N sources, assemble unified context
-- [x] **Chat with entire workspace** — search all sources in the current workspace
+- [x] **Chat with entire workspace** — SSE endpoint retrieves chunks from all workspace sources (commit b0c202b6)
 - [ ] **Chat with entire folder** — search all sources within a folder
 - [x] **[REUSE]** SSE streaming for all chat modes
-- [x] **Chat session management**:
+- [x] **Chat session management** (commit b0c202b6):
   - Create new session (select which sources to include)
   - Rename session (auto-name from first question)
   - Delete session
@@ -448,4 +448,4 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - **[REFACTOR]** = Significantly rework existing code
 - _(no tag)_ = **[NEW]** — build from scratch
 - **Status: COMPLETE ✅** = Done
-- **Status: IN PROGRESS 🚧** = Actively building
+- **Status: ACTIVE 🚧** = Currently being built
