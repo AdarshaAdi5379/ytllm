@@ -593,15 +593,20 @@ export interface SearchResultItem {
   source_id: string;
   source_title: string;
   source_type: string;
+  folder_id: string | null;
+  folder_name: string | null;
+  created_at: string;
   chunk_index: number | null;
   start_s: number | null;
   end_s: number | null;
   distance: number;
+  match_type: string;
 }
 
 export interface SearchResponse {
   results: SearchResultItem[];
   total: number;
+  method: string;
 }
 
 // --- Members API ---
@@ -689,16 +694,24 @@ export async function deleteSummary(sourceId: string, summaryType: string): Prom
 export async function searchWorkspace(
   workspaceId: string,
   query: string,
-  folderId?: string,
-  sourceType?: string,
+  filters?: {
+    folderId?: string;
+    folderIds?: string[];
+    sourceType?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  },
 ): Promise<SearchResponse> {
   return apiFetch<SearchResponse>(`/ai/search/`, {
     method: 'POST',
     body: JSON.stringify({
       workspace_id: workspaceId,
       query,
-      folder_id: folderId || null,
-      source_type: sourceType || null,
+      folder_id: filters?.folderId || null,
+      folder_ids: filters?.folderIds || null,
+      source_type: filters?.sourceType || null,
+      date_from: filters?.dateFrom || null,
+      date_to: filters?.dateTo || null,
     }),
   });
 }

@@ -274,19 +274,27 @@ class SearchResult(BaseModel):
     source_id: str
     source_title: str
     source_type: str
+    folder_id: str | None = None
+    folder_name: str | None = None
+    created_at: str = ""
     chunk_index: float | None = None
     start_s: float | None = None
     end_s: float | None = None
     distance: float = 1.0
+    match_type: str = "vector"
 
 
 class SearchResponse(BaseModel):
     results: list[SearchResult]
     total: int
+    method: str = "vector"
 
 
 class SearchRequest(BaseModel):
     workspace_id: str
     query: str
     folder_id: str | None = None
+    folder_ids: list[str] | None = None
     source_type: str | None = None
+    date_from: str | None = None
+    date_to: str | None = None
