@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Download, Youtube, Monitor, MonitorOff } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Download, Youtube, Monitor, MonitorOff } from 'lucide-react';
 import { useVideoStore } from '../../store/useVideoStore';
 import { getYouTubeUrl } from '../../utils/youtubeParser';
 import { ExportModal } from '../modals/ExportModal';
@@ -11,6 +11,7 @@ interface Props {
 export function VideoHeader({ videoId }: Props) {
   const video = useVideoStore((s) => s.videos[videoId]);
   const setPlayerOpen = useVideoStore((s) => s.setPlayerOpen);
+  const setActiveVideo = useVideoStore((s) => s.setActiveVideo);
   const isPlayerOpen = useVideoStore((s) => s.videos[videoId]?.isPlayerOpen ?? false);
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -20,6 +21,14 @@ export function VideoHeader({ videoId }: Props) {
     <>
       <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between gap-6">
         <div className="flex-1 min-w-0 flex items-center gap-4">
+          <button
+            onClick={() => setActiveVideo(null)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all flex-shrink-0"
+            title="Back to home"
+          >
+            <ArrowLeft size={14} />
+            Home
+          </button>
           <div className="flex-shrink-0 flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"></div>
             Live Chatting

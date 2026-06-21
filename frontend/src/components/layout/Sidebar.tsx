@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2 } from 'lucide-react';
+import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2, UserPlus } from 'lucide-react';
 import { VideoCard } from '../video/VideoCard';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -10,24 +10,30 @@ import { WorkspaceSidebarContent } from '../workspace/WorkspaceSidebar';
 
 export function Sidebar() {
   const { videos, openAddVideoModal, clearVideos } = useVideoStore();
-  const { user, isAuthenticated, clearAuth } = useAuthStore();
+  const { user, isAuthenticated, clearAuth, setAuthModalMode } = useAuthStore();
   const videoIds = Object.keys(videos);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [showSavedVideos, setShowSavedVideos] = useState(false);
   const { restore, restoring } = useRestoreVideo();
 
   useEffect(() => {
-    const check = async () => {
-      try {
-        await checkHealth();
-        setConnected(true);
-      } catch {
-        setConnected(false);
+    let cancelled = false;
+    const check = async (retries = 3, delay = 2000) => {
+      for (let i = 0; i < retries; i++) {
+        if (cancelled) return;
+        try {
+          await checkHealth();
+          if (!cancelled) setConnected(true);
+          return;
+        } catch {
+          if (i < retries - 1) await new Promise(r => setTimeout(r, delay));
+        }
       }
+      if (!cancelled) setConnected(false);
     };
     check();
-    const interval = setInterval(check, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => check(1), 30000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   return (
@@ -90,7 +96,29 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Auth section (logged-in only — guest auth is in the main panel top bar) */}
+      {/* Guest auth section */}
+      {!isAuthenticated && (
+        <div className="px-3 py-2 border-t border-slate-800/50">
+          <div className="space-y-1">
+            <button
+              onClick={() => setAuthModalMode('login')}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all uppercase tracking-widest"
+            >
+              <LogIn size={14} />
+              Sign In
+            </button>
+            <button
+              onClick={() => setAuthModalMode('register')}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600/80 hover:bg-indigo-600 transition-all uppercase tracking-widest"
+            >
+              <UserPlus size={14} />
+              Sign Up
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Auth section (logged-in only) */}
       {isAuthenticated && user && (
         <div className="px-3 py-2 border-t border-slate-800/50">
           <div className="space-y-2">

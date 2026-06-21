@@ -11,9 +11,11 @@ interface AuthStore {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  authModalMode: 'login' | 'register' | null;
 
   setAuth: (user: AuthUser, token: string) => void;
   clearAuth: () => void;
+  setAuthModalMode: (mode: 'login' | 'register' | null) => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -23,6 +25,8 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       isAuthenticated: false,
 
+      authModalMode: null,
+
       setAuth: (user, token) => {
         setAuthToken(token);
         set({ user, token, isAuthenticated: true });
@@ -31,6 +35,7 @@ export const useAuthStore = create<AuthStore>()(
         setAuthToken(null);
         set({ user: null, token: null, isAuthenticated: false });
       },
+      setAuthModalMode: (mode) => set({ authModalMode: mode }),
     }),
     {
       name: 'knowledgeos-auth',

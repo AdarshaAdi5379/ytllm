@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { LogIn, UserPlus, MessageSquare, Youtube } from 'lucide-react';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -9,7 +8,6 @@ import { TranscriptPanel } from '../video/TranscriptPanel';
 import { ChatWindow } from '../chat/ChatWindow';
 import { ChatInput } from '../chat/ChatInput';
 import { LoadingSkeleton } from '../shared/LoadingSkeleton';
-import { AuthModal } from '../auth/AuthModal';
 import { WorkspaceChatPanel } from '../workspace/WorkspaceChatPanel';
 import { useChat } from '../../hooks/useChat';
 
@@ -17,8 +15,7 @@ export function MainPanel() {
   const { videos, activeVideoId } = useVideoStore();
   const video = activeVideoId ? videos[activeVideoId] : null;
   const { sendMessage } = useChat(activeVideoId);
-  const { isAuthenticated } = useAuthStore();
-  const [showAuth, setShowAuth] = useState<'login' | 'register' | null>(null);
+  const { isAuthenticated, setAuthModalMode } = useAuthStore();
 
   if (!video) {
     // Show workspace chat for authenticated users, welcome screen for guests
@@ -32,20 +29,20 @@ export function MainPanel() {
         <header className="flex items-center justify-end px-6 py-4 border-b border-gray-100">
           {!isAuthenticated ? (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowAuth('login')}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
-              >
-                <LogIn size={16} />
-                Sign In
-              </button>
-              <button
-                onClick={() => setShowAuth('register')}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all"
-              >
-                <UserPlus size={16} />
-                Sign Up
-              </button>
+                <button
+                  onClick={() => setAuthModalMode('login')}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                >
+                  <LogIn size={16} />
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setAuthModalMode('register')}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all"
+                >
+                  <UserPlus size={16} />
+                  Sign Up
+                </button>
             </div>
           ) : (
             <span className="text-sm text-gray-400">Signed in</span>
@@ -78,8 +75,6 @@ export function MainPanel() {
           </div>
         </div>
 
-        {/* Auth Modal */}
-        {showAuth && <AuthModal onClose={() => setShowAuth(null)} initialTab={showAuth} />}
       </main>
     );
   }

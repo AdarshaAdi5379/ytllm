@@ -31,7 +31,7 @@ interface VideoStore {
   // Actions
   addVideo: (slice: Omit<VideoSlice, 'chatHistory' | 'rollingChatSummary' | 'isStreaming' | 'isPlayerOpen' | 'isPinned'>) => void;
   removeVideo: (videoId: string) => void;
-  setActiveVideo: (videoId: string) => void;
+  setActiveVideo: (videoId: string | null) => void;
   setVideoStatus: (videoId: string, status: VideoSlice['status'], errorMessage?: string) => void;
 
   addMessage: (videoId: string, message: Message) => void;

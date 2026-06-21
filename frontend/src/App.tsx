@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { MainPanel } from './components/layout/MainPanel';
 import { URLInputModal } from './components/modals/URLInputModal';
+import { AuthModal } from './components/auth/AuthModal';
 import { useVideoStore } from './store/useVideoStore';
 import { useAuthStore } from './store/useAuthStore';
 import { fetchSavedVideos, fetchSavedVideoDetail, setAuthToken } from './api/client';
@@ -10,6 +11,8 @@ export default function App() {
   const isAddVideoModalOpen = useVideoStore((s) => s.isAddVideoModalOpen);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const token = useAuthStore((s) => s.token);
+  const authModalMode = useAuthStore((s) => s.authModalMode);
+  const setAuthModalMode = useAuthStore((s) => s.setAuthModalMode);
   const addVideo = useVideoStore((s) => s.addVideo);
   const addMessage = useVideoStore((s) => s.addMessage);
   const clearVideos = useVideoStore((s) => s.clearVideos);
@@ -110,6 +113,7 @@ export default function App() {
       <Sidebar />
       <MainPanel />
       {isAddVideoModalOpen && <URLInputModal />}
+      {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
     </div>
   );
 }
