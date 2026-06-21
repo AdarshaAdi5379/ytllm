@@ -236,3 +236,34 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     timestamp: str
+
+
+class CreateNoteRequest(BaseModel):
+    workspace_id: str
+    source_id: str | None = None
+    content: str = ""
+    tags: list[str] = []
+    topic: str = ""
+    difficulty: str = "intermediate"
+    importance: int = 3
+
+
+class UpdateNoteRequest(BaseModel):
+    content: str | None = None
+    tags: list[str] | None = None
+    topic: str | None = None
+    difficulty: str | None = None
+    importance: int | None = None
+
+
+class NoteResponse(BaseModel):
+    id: str
+    workspace_id: str
+    source_id: str | None = None
+    content: str
+    tags: str = "[]"
+    topic: str = ""
+    difficulty: str = "intermediate"
+    importance: int = 3
+    created_at: str
+    updated_at: str

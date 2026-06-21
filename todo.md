@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 16 features completed out of ~25.
+**Status: ACTIVE 🚧** — 17 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -154,13 +154,13 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 
 ### Notes
 - [ ] **Text highlight** — select text in any source → auto-create note with source citation
-- [ ] **Free-form note creation** — rich markdown editor with preview
+- [x] **Free-form note creation** — inline editor with topic, difficulty, importance
 - [ ] **AI auto-organization**:
   - Topic classification (what subject does this belong to?)
   - Tag suggestions (auto-tag from content)
   - Difficulty estimation (beginner / intermediate / advanced)
   - Importance scoring (how critical is this information?)
-- [ ] **Note browser**: grid view or list view, filterable by source/topic/tag/difficulty
+- [x] **Note browser**: list view in workspace panel, filterable by source/topic/difficulty
 - [ ] **Note search** — full-text search across all notes in workspace
 - [ ] **Export notes** — as markdown file, PDF, or plain text
 
