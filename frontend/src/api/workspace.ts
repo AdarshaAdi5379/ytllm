@@ -647,6 +647,45 @@ export async function removeMember(
   await apiFetch(`/workspace/${workspaceId}/members/${memberId}`, { method: 'DELETE' });
 }
 
+// --- Summary API ---
+
+export interface SummaryItem {
+  id: string;
+  source_id: string;
+  type: string;
+  content: string;
+  created_at: string;
+}
+
+export const SUMMARY_TYPES = ['short', 'detailed', 'executive', 'eli5', 'interview', 'revision'] as const;
+export type SummaryType = typeof SUMMARY_TYPES[number];
+
+export const SUMMARY_TYPE_LABELS: Record<SummaryType, string> = {
+  short: 'Short (TL;DR)',
+  detailed: 'Detailed',
+  executive: 'Executive',
+  eli5: 'ELI5',
+  interview: 'Interview Q&A',
+  revision: 'Revision',
+};
+
+export async function listSummaries(sourceId: string): Promise<SummaryItem[]> {
+  return apiFetch<SummaryItem[]>(`/ai/summary/${sourceId}`);
+}
+
+export async function generateSummary(
+  sourceId: string,
+  summaryType: SummaryType,
+): Promise<SummaryItem> {
+  return apiFetch<SummaryItem>(`/ai/summary/generate/${sourceId}?summary_type=${summaryType}`, {
+    method: 'POST',
+  });
+}
+
+export async function deleteSummary(sourceId: string, summaryType: string): Promise<void> {
+  await apiFetch(`/ai/summary/${sourceId}/${summaryType}`, { method: 'DELETE' });
+}
+
 export async function searchWorkspace(
   workspaceId: string,
   query: string,

@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 25 features completed out of ~25.
+**Status: ACTIVE 🚧** — 26 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -120,8 +120,8 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Chat settings**: model selector, temperature slider
 - [x] **Import progress UI**: status indicators (processing/done/failed) with auto-dismiss
 - [x] **Background ingestion** — asyncio background tasks with status polling
-- [x] **Source deletion (vector cleanup)** — removed from DB AND ChromaDB vectors cleaned up (commit 5f2ce8cd)
 - [x] **Shared workspaces** — invite members by email, role-based access (owner/admin/editor/viewer), members management panel
+- [x] **AI Summaries** — 6 summary types (short, detailed, executive, eli5, interview, revision) with tab selector, generate + cache, copy/download
 
 ### AI Chat
 - [x] **[REUSE]** Chat with single source — clicking a source in sidebar scopes chat via `source_ids` filter (commit 638e5dce)
@@ -144,14 +144,14 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **Source type icon** next to each citation (YouTube, PDF, Web, GitHub, etc.)
 
 ### AI Summary
-- [ ] **Short summary** — 2-3 sentence TL;DR
-- [ ] **Detailed summary** — comprehensive multi-paragraph (~500 words)
-- [ ] **Executive summary** — bullet-point format for quick scanning
-- [ ] **ELI5 summary** — "Explain Like I'm 5" — extreme simplification
-- [ ] **Interview summary** — Q&A format extracted from source content
-- [ ] **Revision summary** — key facts, dates, formulas, concepts, terminology
-- [ ] **Summary type selector** — dropdown/tab UI per source
-- [ ] **Copy or download summary** as text, markdown, or PDF
+- [x] **Short summary** — 2-3 sentence TL;DR
+- [x] **Detailed summary** — comprehensive multi-paragraph (~500 words)
+- [x] **Executive summary** — bullet-point format for quick scanning
+- [x] **ELI5 summary** — "Explain Like I'm 5" — extreme simplification
+- [x] **Interview summary** — Q&A format extracted from source content
+- [x] **Revision summary** — key facts, dates, formulas, concepts, terminology
+- [x] **Summary type selector** — tab UI per source in Summaries panel
+- [x] **Copy or download summary** as text or markdown
 
 ### Notes
 - [ ] **Text highlight** — select text in any source → auto-create note with source citation
