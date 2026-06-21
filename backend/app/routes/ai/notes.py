@@ -1,19 +1,32 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
-from sqlalchemy import select, func
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, verify_workspace_access
 from app.db_models import User, Note, Workspace
 from app.models import NoteResponse, CreateNoteRequest, UpdateNoteRequest
+from app.services.notes_ai_service import analyze_note
 
 
 router = APIRouter()
 
 
 DIFFICULTIES = {"beginner", "intermediate", "advanced"}
+
+
+class AnalyzeRequest(BaseModel):
+    content: str
+
+
+class AnalyzeResponse(BaseModel):
+    topic: str
+    tags: list[str]
+    difficulty: str
+    importance: int
 
 
 def _note_to_response(n: Note) -> NoteResponse:
@@ -31,19 +44,26 @@ def _note_to_response(n: Note) -> NoteResponse:
     )
 
 
-async def _verify_ws(db: AsyncSession, workspace_id: str, user_id: str) -> Workspace:
-    result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == workspace_id, Workspace.owner_id == user_id
+@router.post("/analyze", response_model=AnalyzeResponse)
+async def analyze_note_endpoint(
+    req: AnalyzeRequest,
+    user: User = Depends(get_current_user),
+):
+    """Analyze note content and suggest topic, tags, difficulty, importance."""
+    if not req.content.strip():
+        return AnalyzeResponse(topic="", tags=[], difficulty="intermediate", importance=3)
+
+    try:
+        result = await analyze_note(req.content)
+        return AnalyzeResponse(
+            topic=result.topic,
+            tags=result.tags,
+            difficulty=result.difficulty,
+            importance=result.importance,
         )
-    )
-    ws = result.scalar_one_or_none()
-    if not ws:
-        raise HTTPException(
-            status_code=404,
-            detail={"error": "NOT_FOUND", "message": "Workspace not found."},
-        )
-    return ws
+    except Exception as e:
+        logger.exception("Note analysis failed: {}", str(e))
+        raise HTTPException(status_code=503, detail={"error": "ANALYSIS_FAILED", "message": "Failed to analyze note."})
 
 
 @router.get("/", response_model=list[NoteResponse])
@@ -55,7 +75,7 @@ async def list_notes(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_ws(db, workspace_id, user.id)
+    await verify_workspace_access(db, workspace_id, user.id)
 
     query = select(Note).where(
         Note.workspace_id == workspace_id, Note.user_id == user.id
@@ -79,7 +99,7 @@ async def create_note(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_ws(db, req.workspace_id, user.id)
+    await verify_workspace_access(db, req.workspace_id, user.id)
 
     if req.difficulty not in DIFFICULTIES:
         raise HTTPException(
@@ -98,15 +118,34 @@ async def create_note(
             },
         )
 
+    # Auto-analyze if topic is empty
+    topic = req.topic
+    tags = req.tags
+    difficulty = req.difficulty
+    importance = req.importance
+    if not topic and req.content.strip():
+        try:
+            analysis = await analyze_note(req.content)
+            if not topic:
+                topic = analysis.topic
+            if not tags:
+                tags = analysis.tags
+            if difficulty == "intermediate":
+                difficulty = analysis.difficulty
+            if importance == 3:
+                importance = analysis.importance
+        except Exception:
+            pass
+
     note = Note(
         workspace_id=req.workspace_id,
         source_id=req.source_id,
         user_id=user.id,
         content=req.content,
-        tags=json.dumps(req.tags),
-        topic=req.topic,
-        difficulty=req.difficulty,
-        importance=req.importance,
+        tags=json.dumps(tags),
+        topic=topic,
+        difficulty=difficulty,
+        importance=importance,
     )
     db.add(note)
     await db.commit()

@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 27 features completed out of ~25.
+**Status: ACTIVE 🚧** — 28 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -123,6 +123,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Shared workspaces** — invite members by email, role-based access (owner/admin/editor/viewer), members management panel
 - [x] **AI Summaries** — 6 summary types (short, detailed, executive, eli5, interview, revision) with tab selector, generate + cache, copy/download
 - [x] **Smart Search** — semantic vector search + keyword SQL LIKE fallback, grouped by source with color-coded relevance badges, folder/source-type/date filters
+- [x] **Notes auto-organization** — AI classifies topic, suggests tags, estimates difficulty, scores importance; debounced auto-analysis on create + manual "Apply" in editor; backend auto-analyzes when topic is empty
 
 ### AI Chat
 - [x] **[REUSE]** Chat with single source — clicking a source in sidebar scopes chat via `source_ids` filter (commit 638e5dce)
@@ -157,7 +158,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ### Notes
 - [ ] **Text highlight** — select text in any source → auto-create note with source citation
 - [x] **Free-form note creation** — inline editor with topic, difficulty, importance
-- [ ] **AI auto-organization**:
+- [x] **AI auto-organization**:
   - Topic classification (what subject does this belong to?)
   - Tag suggestions (auto-tag from content)
   - Difficulty estimation (beginner / intermediate / advanced)

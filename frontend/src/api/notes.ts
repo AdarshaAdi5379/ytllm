@@ -69,6 +69,20 @@ export async function updateNote(
   });
 }
 
+export interface NoteAnalysis {
+  topic: string;
+  tags: string[];
+  difficulty: string;
+  importance: number;
+}
+
+export async function analyzeNote(content: string): Promise<NoteAnalysis> {
+  return apiFetch<NoteAnalysis>('/ai/notes/analyze', {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+}
+
 export async function deleteNote(noteId: string): Promise<void> {
   await apiFetch(`/ai/notes/${noteId}`, { method: 'DELETE' });
 }

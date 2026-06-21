@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Plus, Trash2, Loader2, Check, X, Book, Tag, Star } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Plus, Trash2, Loader2, Check, X, Book, Tag, Star, Sparkles } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useNoteStore } from '../../store/useNoteStore';
+import { analyzeNote, type NoteAnalysis } from '../../api/notes';
 
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'] as const;
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -19,6 +20,11 @@ export function NotesPanel() {
   const [editTopic, setEditTopic] = useState('');
   const [editDifficulty, setEditDifficulty] = useState('intermediate');
   const [editImportance, setEditImportance] = useState(3);
+
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<NoteAnalysis | null>(null);
+  const [analysisApplied, setAnalysisApplied] = useState(false);
+  const analysisTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (activeWorkspaceId) {
@@ -38,10 +44,42 @@ export function NotesPanel() {
     }
   }, [editingNoteId, notes]);
 
+  // Auto-analyze as user types (debounced)
+  const handleContentChange = useCallback((content: string) => {
+    setNewContent(content);
+    if (analysisTimer.current) clearTimeout(analysisTimer.current);
+    setAnalysis(null);
+    setAnalysisApplied(false);
+
+    if (content.trim().length < 20) return;
+    analysisTimer.current = setTimeout(async () => {
+      setAnalyzing(true);
+      try {
+        const result = await analyzeNote(content);
+        setAnalysis(result);
+      } catch {
+        // silent
+      } finally {
+        setAnalyzing(false);
+      }
+    }, 800);
+  }, []);
+
+  const applyAnalysis = () => {
+    if (!analysis) return;
+    setEditTopic(analysis.topic);
+    setEditDifficulty(analysis.difficulty);
+    setEditImportance(analysis.importance);
+    setAnalysisApplied(true);
+    setAnalysis(null);
+  };
+
   const handleCreate = async () => {
     if (!activeWorkspaceId || !newContent.trim()) return;
     await createNote(activeWorkspaceId, newContent.trim());
     setNewContent('');
+    setAnalysis(null);
+    setAnalysisApplied(false);
   };
 
   const handleUpdate = async (noteId: string) => {
@@ -68,14 +106,60 @@ export function NotesPanel() {
           <textarea
             autoFocus
             value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
+            onChange={(e) => handleContentChange(e.target.value)}
             placeholder="Write a new note..."
             rows={3}
             className="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 resize-none"
           />
+
+          {/* AI Analysis suggestion */}
+          {analyzing && (
+            <div className="flex items-center gap-1.5 text-xs text-indigo-500">
+              <Loader2 size={10} className="animate-spin" />
+              Analyzing...
+            </div>
+          )}
+          {analysis && !analysisApplied && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-[10px] font-semibold text-indigo-600">
+                  <Sparkles size={10} />
+                  AI Suggestions
+                </div>
+                <button
+                  onClick={applyAnalysis}
+                  className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 px-1.5 py-0.5 rounded hover:bg-indigo-100 transition-all"
+                >
+                  Apply
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full font-medium">
+                  {analysis.topic}
+                </span>
+                {analysis.tags.map((tag, i) => (
+                  <span key={i} className="text-[10px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-full">
+                    #{tag}
+                  </span>
+                ))}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${
+                  analysis.difficulty === 'beginner' ? 'text-green-600 bg-green-50 border-green-200' :
+                  analysis.difficulty === 'advanced' ? 'text-rose-600 bg-rose-50 border-rose-200' :
+                  'text-amber-600 bg-amber-50 border-amber-200'
+                }`}>
+                  {analysis.difficulty}
+                </span>
+                <span className="text-[10px] text-amber-500 flex items-center gap-0.5">
+                  <Star size={8} fill="currentColor" />
+                  {analysis.importance}/5
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-end gap-1.5">
             <button
-              onClick={() => setNewContent('')}
+              onClick={() => { setNewContent(''); setAnalysis(null); setAnalysisApplied(false); }}
               className="px-2.5 py-1 text-xs text-gray-500 hover:text-gray-700"
             >
               <X size={12} className="inline mr-1" />Clear
@@ -168,7 +252,7 @@ export function NotesPanel() {
                         e.stopPropagation();
                         deleteNote(note.id);
                       }}
-                      className="p-0.5 flex-shrink-0 text-gray-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                      className="p-0.5 flex-shrink-0 text-gray-400 hover:text-rose-500 transition-all"
                     >
                       <Trash2 size={10} />
                     </button>
@@ -179,6 +263,16 @@ export function NotesPanel() {
                         <Tag size={8} />{note.topic}
                       </span>
                     )}
+                    {/* Tags */}
+                    {(() => {
+                      let tags: string[] = [];
+                      try { tags = JSON.parse(note.tags); } catch { tags = []; }
+                      return tags.map((tag, i) => (
+                        <span key={i} className="text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded-full">
+                          #{tag}
+                        </span>
+                      ));
+                    })()}
                     <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full border ${DIFFICULTY_COLORS[note.difficulty] || DIFFICULTY_COLORS.intermediate}`}>
                       {note.difficulty}
                     </span>
