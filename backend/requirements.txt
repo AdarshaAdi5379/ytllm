@@ -50,6 +50,9 @@ aiosqlite>=0.20.0
 # PDF extraction
 PyMuPDF>=1.27.0
 
+# PPTX extraction
+python-pptx>=1.0.0
+
 # Logging
 loguru>=0.7.0
 

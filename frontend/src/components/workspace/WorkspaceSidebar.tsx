@@ -7,7 +7,7 @@ import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
 import {
-  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource, uploadDocxSource,
+  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource, uploadDocxSource, uploadPptxSource,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
 
@@ -37,6 +37,7 @@ export function WorkspaceSidebarContent() {
   const [textTitle, setTextTitle] = useState('');
   const [importingText, setImportingText] = useState(false);
   const [importingDocx, setImportingDocx] = useState(false);
+  const [importingPptx, setImportingPptx] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -126,6 +127,19 @@ export function WorkspaceSidebarContent() {
       console.error('DOCX import failed:', err);
     } finally {
       setImportingDocx(false);
+    }
+  };
+
+  const handleImportPptx = async (file: File) => {
+    if (!activeWorkspaceId) return;
+    setImportingPptx(true);
+    try {
+      await uploadPptxSource(activeWorkspaceId, file);
+      await loadFolderTree(activeWorkspaceId);
+    } catch (err: any) {
+      console.error('PPTX import failed:', err);
+    } finally {
+      setImportingPptx(false);
     }
   };
 
@@ -373,6 +387,25 @@ export function WorkspaceSidebarContent() {
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleImportDocx(file);
+            e.target.value = '';
+          }}
+        />
+        <button
+          onClick={() => document.getElementById('pptx-file-input')?.click()}
+          disabled={importingPptx}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-orange-600/20 text-orange-300 hover:bg-orange-600/30 transition-all disabled:opacity-50"
+        >
+          <FileText size={12} />
+          <span>{importingPptx ? 'Importing...' : 'Import PPTX'}</span>
+        </button>
+        <input
+          id="pptx-file-input"
+          type="file"
+          accept=".pptx,.ppt"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImportPptx(file);
             e.target.value = '';
           }}
         />
@@ -710,6 +743,8 @@ function SourceItemRow({
     icon = <FileText size={10} className="text-slate-400 flex-shrink-0" />;
   } else if (source.source_type === 'docx_document') {
     icon = <FileText size={10} className="text-blue-400 flex-shrink-0" />;
+  } else if (source.source_type === 'pptx_document') {
+    icon = <FileText size={10} className="text-orange-400 flex-shrink-0" />;
   }
   const { activeSourceId, setActiveSource } = useWorkspaceStore();
 
