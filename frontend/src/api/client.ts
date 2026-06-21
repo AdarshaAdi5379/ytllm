@@ -48,6 +48,10 @@ export function setAuthToken(token: string | null) {
   _authToken = token;
 }
 
+export function getAuthToken(): string | null {
+  return _authToken;
+}
+
 function buildHeaders(extra?: Record<string, string>): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (_authToken) {

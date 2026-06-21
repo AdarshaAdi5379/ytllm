@@ -7,7 +7,7 @@ import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
 import {
-  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource,
+  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource, uploadDocxSource,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
 
@@ -36,6 +36,7 @@ export function WorkspaceSidebarContent() {
   const [textContent, setTextContent] = useState('');
   const [textTitle, setTextTitle] = useState('');
   const [importingText, setImportingText] = useState(false);
+  const [importingDocx, setImportingDocx] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -112,6 +113,19 @@ export function WorkspaceSidebarContent() {
       console.error('Text import failed:', err);
     } finally {
       setImportingText(false);
+    }
+  };
+
+  const handleImportDocx = async (file: File) => {
+    if (!activeWorkspaceId) return;
+    setImportingDocx(true);
+    try {
+      await uploadDocxSource(activeWorkspaceId, file);
+      await loadFolderTree(activeWorkspaceId);
+    } catch (err: any) {
+      console.error('DOCX import failed:', err);
+    } finally {
+      setImportingDocx(false);
     }
   };
 
@@ -343,6 +357,25 @@ export function WorkspaceSidebarContent() {
             </div>
           </div>
         )}
+        <button
+          onClick={() => document.getElementById('docx-file-input')?.click()}
+          disabled={importingDocx}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 transition-all disabled:opacity-50"
+        >
+          <FileText size={12} />
+          <span>{importingDocx ? 'Importing...' : 'Import DOCX'}</span>
+        </button>
+        <input
+          id="docx-file-input"
+          type="file"
+          accept=".docx"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImportDocx(file);
+            e.target.value = '';
+          }}
+        />
       </div>
 
       {/* Folders */}
@@ -675,6 +708,8 @@ function SourceItemRow({
     icon = <Code size={10} className="text-amber-400 flex-shrink-0" />;
   } else if (source.source_type === 'text_note') {
     icon = <FileText size={10} className="text-slate-400 flex-shrink-0" />;
+  } else if (source.source_type === 'docx_document') {
+    icon = <FileText size={10} className="text-blue-400 flex-shrink-0" />;
   }
   const { activeSourceId, setActiveSource } = useWorkspaceStore();
 

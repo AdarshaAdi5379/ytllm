@@ -5,6 +5,7 @@ from app.routes.sources.website import router as website_router
 from app.routes.sources.pdf import router as pdf_router
 from app.routes.sources.markdown import router as markdown_router
 from app.routes.sources.text import router as text_router
+from app.routes.sources.docx import router as docx_router
 
 sources_router = APIRouter()
 
@@ -13,3 +14,4 @@ sources_router.include_router(website_router, prefix="/website", tags=["sources/
 sources_router.include_router(pdf_router, prefix="/pdf", tags=["sources/pdf"])
 sources_router.include_router(markdown_router, prefix="/markdown", tags=["sources/markdown"])
 sources_router.include_router(text_router, prefix="/text", tags=["sources/text"])
+sources_router.include_router(docx_router, prefix="/docx", tags=["sources/docx"])
