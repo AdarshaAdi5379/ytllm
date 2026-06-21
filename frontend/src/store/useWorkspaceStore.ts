@@ -7,6 +7,7 @@ interface WorkspaceStore {
   activeWorkspaceId: string | null;
   activeSourceId: string | null;
   activeSourceTitle: string;
+  selectedSourceIds: string[];
   activeFolderId: string | null;
   activeFolderTitle: string;
   folderTree: FolderTreeItem[];
@@ -26,6 +27,8 @@ interface WorkspaceStore {
 
   setActiveSource: (sourceId: string | null, sourceTitle?: string) => void;
   clearActiveSource: () => void;
+  toggleSourceSelection: (sourceId: string) => void;
+  clearSourceSelection: () => void;
   setActiveFolder: (folderId: string | null, folderTitle?: string) => void;
   clearActiveFolder: () => void;
 }
@@ -35,6 +38,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   activeWorkspaceId: null,
   activeSourceId: null,
   activeSourceTitle: "",
+  selectedSourceIds: [],
   activeFolderId: null,
   activeFolderTitle: "",
   folderTree: [],
@@ -60,7 +64,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   setActiveWorkspace: async (id: string) => {
-    set({ activeWorkspaceId: id, folderTree: [], activeSourceId: null, activeSourceTitle: "", activeFolderId: null, activeFolderTitle: "" });
+    set({ activeWorkspaceId: id, folderTree: [], activeSourceId: null, activeSourceTitle: "", selectedSourceIds: [], activeFolderId: null, activeFolderTitle: "" });
     await get().loadFolderTree(id);
   },
 
@@ -116,6 +120,19 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   clearActiveSource: () => {
     set({ activeSourceId: null, activeSourceTitle: "" });
+  },
+
+  toggleSourceSelection: (sourceId: string) => {
+    const { selectedSourceIds } = get();
+    if (selectedSourceIds.includes(sourceId)) {
+      set({ selectedSourceIds: selectedSourceIds.filter((id) => id !== sourceId) });
+    } else {
+      set({ selectedSourceIds: [...selectedSourceIds, sourceId] });
+    }
+  },
+
+  clearSourceSelection: () => {
+    set({ selectedSourceIds: [] });
   },
 
   setActiveFolder: (folderId: string | null, folderTitle: string = "") => {

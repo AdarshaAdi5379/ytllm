@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 21 features completed out of ~25.
+**Status: ACTIVE 🚧** — 22 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -124,7 +124,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 
 ### AI Chat
 - [x] **[REUSE]** Chat with single source — clicking a source in sidebar scopes chat via `source_ids` filter (commit 638e5dce)
-- [ ] **Chat with multiple sources** — retrieve chunks across N sources, assemble unified context
+- [x] **Chat with multiple sources** — checkbox multi-select in sidebar, scoped context assembly
 - [x] **Chat with entire workspace** — SSE endpoint retrieves chunks from all workspace sources (commit b0c202b6)
 - [x] **Chat with entire folder** — recursively resolves folder + descendant sources (commit fd0e23a0)
 - [x] **[REUSE]** SSE streaming for all chat modes

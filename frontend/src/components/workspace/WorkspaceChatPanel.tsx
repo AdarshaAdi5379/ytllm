@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, Youtube, FolderOpen, SlidersHorizontal, Book, Search } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
@@ -8,7 +8,7 @@ import { NotesPanel } from './NotesPanel';
 import { SearchPanel } from './SearchPanel';
 
 export function WorkspaceChatPanel() {
-  const { activeWorkspaceId, activeSourceId, activeSourceTitle, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder } = useWorkspaceStore();
+  const { activeWorkspaceId, activeSourceId, activeSourceTitle, selectedSourceIds, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder, clearSourceSelection } = useWorkspaceStore();
   const {
     sessions, activeSessionId, messages, streaming,
     loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming,
@@ -58,13 +58,17 @@ export function WorkspaceChatPanel() {
       timestamp: m.timestamp,
     }));
 
+    const sourceIds = selectedSourceIds.length > 0
+      ? selectedSourceIds
+      : activeSourceId ? [activeSourceId] : undefined;
+
     streamWorkspaceChat(
       activeWorkspaceId,
       {
         session_id: activeSessionId || undefined,
         question,
         chat_history: history,
-        source_ids: activeSourceId ? [activeSourceId] : undefined,
+        source_ids: sourceIds,
         folder_id: activeFolderId || undefined,
         model: selectedModel || undefined,
         temperature: selectedTemperature,
@@ -175,14 +179,39 @@ export function WorkspaceChatPanel() {
             Search
           </button>
         </div>
-        <div className="relative">
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-            title="Chat settings"
-          >
-            <SlidersHorizontal size={13} />
-          </button>
+        <div className="flex items-center gap-2">
+          {/* Source scope indicator */}
+          {selectedSourceIds.length > 0 ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+              <span className="text-xs font-semibold">
+                {selectedSourceIds.length} source{selectedSourceIds.length > 1 ? 's' : ''} selected
+              </span>
+              <button
+                onClick={clearSourceSelection}
+                className="p-0.5 text-indigo-400 hover:text-indigo-600"
+                title="Clear selection"
+              >
+                <X size={10} />
+              </button>
+            </div>
+          ) : activeSourceId ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+              <span className="text-xs font-semibold truncate max-w-[120px]">{activeSourceTitle}</span>
+            </div>
+          ) : activeFolderId ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700">
+              <FolderOpen size={10} />
+              <span className="text-xs font-semibold truncate max-w-[120px]">{activeFolderTitle}</span>
+            </div>
+          ) : null}
+          <div className="relative">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+              title="Chat settings"
+            >
+              <SlidersHorizontal size={13} />
+            </button>
           {showSettings && (
             <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-50 space-y-3">
               <div>
@@ -218,6 +247,7 @@ export function WorkspaceChatPanel() {
               </div>
             </div>
           )}
+        </div>
         </div>
       </header>
 
@@ -268,7 +298,15 @@ export function WorkspaceChatPanel() {
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
-                  {activeSourceId ? (
+                  {selectedSourceIds.length > 0 ? (
+                    <>
+                      <MessageSquare size={28} className="mx-auto text-indigo-400 mb-3" />
+                      <h2 className="text-lg font-semibold text-gray-700 mb-1">Multi-Source Chat</h2>
+                      <p className="text-sm text-gray-400">
+                        Asking across {selectedSourceIds.length} selected source{selectedSourceIds.length > 1 ? 's' : ''}.
+                      </p>
+                    </>
+                  ) : activeSourceId ? (
                     <>
                       <Youtube size={28} className="mx-auto text-red-400 mb-3" />
                       <h2 className="text-lg font-semibold text-gray-700 mb-1 truncate max-w-xs mx-auto">{activeSourceTitle}</h2>
@@ -285,7 +323,7 @@ export function WorkspaceChatPanel() {
                       <MessageSquare size={32} className="mx-auto text-gray-300 mb-3" />
                       <h2 className="text-lg font-semibold text-gray-700 mb-1">Workspace Chat</h2>
                       <p className="text-sm text-gray-400">
-                        Ask questions about all YouTube sources in this workspace.
+                        Ask questions about all sources in this workspace.
                       </p>
                     </>
                   )}

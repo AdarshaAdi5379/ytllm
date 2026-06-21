@@ -788,30 +788,42 @@ function SourceItemRow({
   } else if (source.source_type === 'pptx_document') {
     icon = <FileText size={10} className="text-orange-400 flex-shrink-0" />;
   }
-  const { activeSourceId, setActiveSource } = useWorkspaceStore();
+  const { activeSourceId, selectedSourceIds, setActiveSource, toggleSourceSelection } = useWorkspaceStore();
+  const isChecked = selectedSourceIds.includes(source.id);
+  const isFocused = activeSourceId === source.id;
 
   return (
-    <div
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs group transition-all cursor-pointer ${
-        activeSourceId === source.id
-          ? 'bg-indigo-500/20 text-indigo-300'
-          : 'hover:bg-slate-800/30 text-slate-400'
-      }`}
-      style={{ paddingLeft: `${28 + depth * 16}px` }}
-      onClick={() => setActiveSource(
-        activeSourceId === source.id ? null : source.id,
-        activeSourceId === source.id ? "" : source.title
-      )}
-    >
-      {icon}
-      <span className="flex-1 truncate">{source.title}</span>
+    <div className="flex items-center gap-0.5 group" style={{ paddingLeft: `${28 + depth * 16}px` }}>
       <button
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="p-0.5 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 transition-all"
-        title="Remove source"
+        onClick={(e) => { e.stopPropagation(); toggleSourceSelection(source.id); }}
+        className={`p-0.5 flex-shrink-0 rounded transition-all ${
+          isChecked ? 'text-indigo-400' : 'text-slate-600 hover:text-slate-400'
+        }`}
+        title={isChecked ? 'Remove from selection' : 'Add to selection'}
       >
-        <Trash2 size={9} />
+        <Check size={8} className={isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'} />
       </button>
+      <div
+        className={`flex items-center gap-1.5 flex-1 px-1.5 py-1 rounded-lg text-xs cursor-pointer transition-all ${
+          isFocused
+            ? 'bg-indigo-500/20 text-indigo-300'
+            : 'hover:bg-slate-800/30 text-slate-400'
+        }`}
+        onClick={() => setActiveSource(
+          isFocused ? null : source.id,
+          isFocused ? "" : source.title
+        )}
+      >
+        {icon}
+        <span className="flex-1 truncate">{source.title}</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-0.5 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 transition-all flex-shrink-0"
+          title="Remove source"
+        >
+          <Trash2 size={9} />
+        </button>
+      </div>
     </div>
   );
 }
