@@ -155,6 +155,23 @@ export async function importWebsiteSource(
   });
 }
 
+export async function importTextSource(
+  workspaceId: string,
+  content: string,
+  title?: string,
+  folderId?: string,
+): Promise<SourceItem> {
+  return apiFetch<SourceItem>('/sources/text/import', {
+    method: 'POST',
+    body: JSON.stringify({
+      content,
+      title: title ?? '',
+      workspace_id: workspaceId,
+      folder_id: folderId ?? null,
+    }),
+  });
+}
+
 export async function importMarkdownSource(
   workspaceId: string,
   content: string,

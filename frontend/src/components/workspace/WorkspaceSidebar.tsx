@@ -7,7 +7,7 @@ import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
 import {
-  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource,
+  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
 
@@ -32,6 +32,10 @@ export function WorkspaceSidebarContent() {
   const [markdownContent, setMarkdownContent] = useState('');
   const [markdownTitle, setMarkdownTitle] = useState('');
   const [importingMarkdown, setImportingMarkdown] = useState(false);
+  const [showTextImport, setShowTextImport] = useState(false);
+  const [textContent, setTextContent] = useState('');
+  const [textTitle, setTextTitle] = useState('');
+  const [importingText, setImportingText] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -92,6 +96,22 @@ export function WorkspaceSidebarContent() {
       console.error('Markdown import failed:', err);
     } finally {
       setImportingMarkdown(false);
+    }
+  };
+
+  const handleImportText = async () => {
+    if (!activeWorkspaceId || !textContent.trim()) return;
+    setImportingText(true);
+    try {
+      await importTextSource(activeWorkspaceId, textContent.trim(), textTitle.trim());
+      setTextContent('');
+      setTextTitle('');
+      setShowTextImport(false);
+      await loadFolderTree(activeWorkspaceId);
+    } catch (err: any) {
+      console.error('Text import failed:', err);
+    } finally {
+      setImportingText(false);
     }
   };
 
@@ -272,6 +292,53 @@ export function WorkspaceSidebarContent() {
               >
                 {importingMarkdown ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
                 {importingMarkdown ? 'Importing...' : 'Import'}
+              </button>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => setShowTextImport(!showTextImport)}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-600/20 text-slate-300 hover:bg-slate-600/30 transition-all"
+        >
+          <FileText size={12} />
+          <span>Add Text</span>
+        </button>
+        {showTextImport && (
+          <div className="pt-1 space-y-1">
+            <input
+              value={textTitle}
+              onChange={(e) => setTextTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setShowTextImport(false); setTextContent(''); setTextTitle(''); }
+              }}
+              placeholder="Title (optional)"
+              className="w-full bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-slate-400"
+            />
+            <textarea
+              autoFocus
+              value={textContent}
+              onChange={(e) => setTextContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setShowTextImport(false); setTextContent(''); setTextTitle(''); }
+              }}
+              placeholder="Paste your text content here..."
+              rows={4}
+              className="w-full bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-slate-400 resize-none"
+            />
+            <div className="flex items-center justify-end gap-1">
+              <button
+                onClick={() => { setShowTextImport(false); setTextContent(''); setTextTitle(''); }}
+                className="px-2 py-0.5 text-xs text-slate-500 hover:text-slate-300"
+              >
+                <X size={10} className="inline mr-0.5" /> Cancel
+              </button>
+              <button
+                onClick={handleImportText}
+                disabled={importingText || !textContent.trim()}
+                className="px-2 py-0.5 text-xs text-slate-300 hover:text-white disabled:opacity-50 flex items-center gap-1"
+              >
+                {importingText ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                {importingText ? 'Importing...' : 'Import'}
               </button>
             </div>
           </div>
@@ -597,11 +664,18 @@ function SourceItemRow({
 }) {
   let meta: Record<string, any> = {};
   try { meta = JSON.parse(source.metadata_json); } catch {}
-  const icon = source.source_type === 'youtube_video' ? (
-    <Youtube size={10} className="text-red-400 flex-shrink-0" />
-  ) : (
-    <ExternalLink size={10} className="text-slate-500 flex-shrink-0" />
-  );
+  let icon = <ExternalLink size={10} className="text-slate-500 flex-shrink-0" />;
+  if (source.source_type === 'youtube_video') {
+    icon = <Youtube size={10} className="text-red-400 flex-shrink-0" />;
+  } else if (source.source_type === 'pdf_document') {
+    icon = <FileText size={10} className="text-rose-400 flex-shrink-0" />;
+  } else if (source.source_type === 'website_page') {
+    icon = <Globe size={10} className="text-emerald-400 flex-shrink-0" />;
+  } else if (source.source_type === 'markdown_note') {
+    icon = <Code size={10} className="text-amber-400 flex-shrink-0" />;
+  } else if (source.source_type === 'text_note') {
+    icon = <FileText size={10} className="text-slate-400 flex-shrink-0" />;
+  }
   const { activeSourceId, setActiveSource } = useWorkspaceStore();
 
   return (
