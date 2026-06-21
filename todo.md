@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 23 features completed out of ~25.
+**Status: ACTIVE 🚧** — 24 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -137,7 +137,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 
 ### Citation System
 - [x] **Every answer shows citations**: source name, video timestamp, PDF page number, website section heading, GitHub file path with line numbers
-- [ ] **Clickable citations** — open source at exact location (seek YouTube video, scroll PDF to page, open GitHub file at line)
+- [x] **Clickable citations** — click to focus source in sidebar; external link for YouTube/website/PDF/GitHub
 - [ ] **"Open Source" button** on each citation — one click opens the source material
 - [ ] **Citation confidence indicator** — subtle relevance or similarity score
 - [ ] **Source type icon** next to each citation (YouTube, PDF, Web, GitHub, etc.)

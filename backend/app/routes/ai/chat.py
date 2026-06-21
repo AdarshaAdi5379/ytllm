@@ -455,6 +455,7 @@ async def chat_workspace(
                     "source_id": src.id,
                     "title": src.title,
                     "source_type": src.source_type,
+                    "metadata": meta,
                 }
                 source_infos.append({
                     "source_id": src.id,
@@ -533,10 +534,22 @@ async def chat_workspace(
                 info = source_index.get(num)
                 if info and info["source_id"] not in seen_source_ids:
                     seen_source_ids.add(info["source_id"])
+                    meta = info.get("metadata", {})
+                    url = ""
+                    if info["source_type"] == "youtube_video":
+                        vid = meta.get("video_id", "")
+                        url = f"https://youtube.com/watch?v={vid}" if vid else ""
+                    elif info["source_type"] in ("website_page", "pdf_document"):
+                        url = meta.get("url", "")
+                    elif info["source_type"] == "github_repo":
+                        owner = meta.get("owner", "")
+                        repo = meta.get("repo", "")
+                        url = f"https://github.com/{owner}/{repo}" if owner and repo else ""
                     citations.append({
                         "source_id": info["source_id"],
                         "title": info["title"],
                         "source_type": info["source_type"],
+                        "url": url,
                     })
 
             citations_json = json.dumps(citations)

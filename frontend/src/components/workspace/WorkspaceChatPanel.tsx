@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
@@ -8,7 +8,7 @@ import { NotesPanel } from './NotesPanel';
 import { SearchPanel } from './SearchPanel';
 
 export function WorkspaceChatPanel() {
-  const { activeWorkspaceId, activeSourceId, activeSourceTitle, selectedSourceIds, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder, clearSourceSelection } = useWorkspaceStore();
+  const { activeWorkspaceId, activeSourceId, activeSourceTitle, selectedSourceIds, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder, clearSourceSelection, setActiveSource } = useWorkspaceStore();
   const {
     sessions, activeSessionId, messages, streaming,
     loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming,
@@ -348,10 +348,23 @@ export function WorkspaceChatPanel() {
                       {citationsMap[i].map((c: any, ci: number) => (
                         <span
                           key={ci}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-all"
                           title={`Source: ${c.title} (${c.source_type})`}
+                          onClick={() => setActiveSource(c.source_id, c.title)}
                         >
                           {c.title}
+                          {c.url && (
+                            <a
+                              href={c.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-0.5 text-indigo-400 hover:text-indigo-700"
+                              title="Open source"
+                            >
+                              <ExternalLink size={8} />
+                            </a>
+                          )}
                         </span>
                       ))}
                     </div>
