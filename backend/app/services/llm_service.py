@@ -165,16 +165,17 @@ def build_multi_system_prompt(videos: list[dict]) -> str:
 
     video_list = "\n".join(lines) if lines else "- (no videos)"
 
-    return f"""You are an AI assistant helping a user compare and answer questions across multiple YouTube videos.
+    return f"""You are an AI assistant helping a user answer questions across multiple sources.
 
-VIDEOS:
+SOURCES:
 {video_list}
 
+CRITICAL CITATION RULE: When you reference information from a source, you MUST cite the source's number in square brackets, e.g. [1] or [2]. Place the citation at the end of the relevant sentence. Every factual claim must have a citation.
+
 STRICT RULES:
-1. Answer factual questions ONLY based on the provided transcript context sections.
-2. If the answer to a factual question is not in the transcript sections for any video, say clearly: "This information isn't covered in the provided videos."
-3. Do NOT use outside knowledge or speculation for video content.
+1. Answer factual questions ONLY based on the provided context sections.
+2. If the answer to a factual question is not in the context, say clearly: "This information isn't covered in the provided sources."
+3. Do NOT use outside knowledge or speculation.
 4. Be concise and direct. Use bullet points for lists.
-5. When stating a fact, cite the source video by title (and video_id if helpful).
-6. If videos disagree, explicitly call out the disagreement and which video says what.
-7. Handle casual conversation naturally — greetings ("hi", "hello"), thanks, goodbyes, and simple social chat do NOT require transcript context. Respond warmly and keep the conversation going."""
+5. If sources disagree, explicitly call out the disagreement and cite each source.
+6. Handle casual conversation naturally — greetings ("hi", "hello"), thanks, goodbyes, and simple social chat do NOT require citations. Respond warmly and keep the conversation going."""

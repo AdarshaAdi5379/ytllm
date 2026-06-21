@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import StreamingResponse
@@ -431,10 +432,12 @@ async def chat_workspace(
                 yield f"data: {error_json}\n\n"
                 return
 
-            # Retrieve chunks from each source
+            # Retrieve chunks from each source with numbered source index
             retrieval_started = time.perf_counter()
             all_chunks: list[str] = []
             source_infos: list[dict] = []
+            source_index: dict[int, dict] = {}
+            source_num = 0
 
             for src in sources:
                 meta = {}
@@ -447,6 +450,12 @@ async def chat_workspace(
                 if not collection_key:
                     continue
 
+                source_num += 1
+                source_index[source_num] = {
+                    "source_id": src.id,
+                    "title": src.title,
+                    "source_type": src.source_type,
+                }
                 source_infos.append({
                     "source_id": src.id,
                     "title": src.title,
@@ -457,7 +466,7 @@ async def chat_workspace(
                     collection_key, req.question,
                 )
                 for idx, c in enumerate(retrieved):
-                    prefix = f"[{src.title} | Section {idx + 1}] "
+                    prefix = f"[{source_num} | {src.title} | Section {idx + 1}] "
                     all_chunks.append(prefix + _format_retrieved_chunk(c))
 
             retrieval_ms = int((time.perf_counter() - retrieval_started) * 1000)
@@ -473,11 +482,17 @@ async def chat_workspace(
             memory_ms = int((time.perf_counter() - memory_started) * 1000)
 
             # Build system prompt
+            # Build source index header
+            source_index_lines = ["Available sources:"]
+            for num, info in source_index.items():
+                source_index_lines.append(f"[{num}] \"{info['title']}\" ({info['source_type']})")
+            source_index_ctx = "\n".join(source_index_lines)
+
             system_prompt = llm_service.build_multi_system_prompt(source_infos)
 
             context = llm_service.LLMContext(
                 system_prompt=system_prompt,
-                retrieved_chunks=all_chunks,
+                retrieved_chunks=[source_index_ctx] + all_chunks,
                 chat_summary=chat_summary,
                 recent_messages=recent_messages,
                 question=req.question,
@@ -509,6 +524,25 @@ async def chat_workspace(
                             full_response += event.get("content", "")
                     except Exception:
                         pass
+
+            # Parse citations from response
+            citations: list[dict] = []
+            seen_source_ids: set[str] = set()
+            for match in re.finditer(r'\[(\d+)\]', full_response):
+                num = int(match.group(1))
+                info = source_index.get(num)
+                if info and info["source_id"] not in seen_source_ids:
+                    seen_source_ids.add(info["source_id"])
+                    citations.append({
+                        "source_id": info["source_id"],
+                        "title": info["title"],
+                        "source_type": info["source_type"],
+                    })
+
+            citations_json = json.dumps(citations)
+
+            # Emit citations event
+            yield f"data: {json.dumps({'type': 'citations', 'citations': citations})}\n\n"
 
             # Persist session + messages
             try:
@@ -542,7 +576,7 @@ async def chat_workspace(
                 if session_id:
                     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                     db.add(ChatMessageNew(session_id=session_id, role="user", content=user_question, timestamp=now))
-                    db.add(ChatMessageNew(session_id=session_id, role="assistant", content=full_response, timestamp=now))
+                    db.add(ChatMessageNew(session_id=session_id, role="assistant", content=full_response, citations=citations_json, timestamp=now))
                     await db.commit()
             except Exception as save_err:
                 logger.warning("Failed to save workspace chat: {}", save_err)

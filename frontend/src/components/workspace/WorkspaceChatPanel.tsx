@@ -16,6 +16,7 @@ export function WorkspaceChatPanel() {
   const [input, setInput] = useState('');
   const [showSessions, setShowSessions] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [citationsMap, setCitationsMap] = useState<Record<number, any[]>>({});
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedTemperature, setSelectedTemperature] = useState(0.2);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -92,6 +93,11 @@ export function WorkspaceChatPanel() {
         if (activeWorkspaceId) {
           loadSessions(activeWorkspaceId);
         }
+      },
+      (citations) => {
+        const { messages: msgs } = useChatSessionStore.getState();
+        const assistantIdx = msgs.length - 1;
+        setCitationsMap((prev) => ({ ...prev, [assistantIdx]: citations }));
       },
     );
   };
@@ -252,19 +258,31 @@ export function WorkspaceChatPanel() {
               </div>
             ) : (
               messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'bg-indigo-600 text-white rounded-br-md'
-                        : 'bg-gray-100 text-gray-800 rounded-bl-md'
-                    }`}
-                  >
-                    {msg.content}
+                <div key={i}>
+                  <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                        msg.role === 'user'
+                          ? 'bg-indigo-600 text-white rounded-br-md'
+                          : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
                   </div>
+                  {msg.role === 'assistant' && citationsMap[i] && citationsMap[i].length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap mt-1.5 ml-2">
+                      {citationsMap[i].map((c: any, ci: number) => (
+                        <span
+                          key={ci}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100"
+                          title={`Source: ${c.title} (${c.source_type})`}
+                        >
+                          {c.title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))
             )}

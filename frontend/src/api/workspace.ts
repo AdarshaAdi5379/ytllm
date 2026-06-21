@@ -347,6 +347,7 @@ export function streamWorkspaceChat(
   onMeta: (meta: any) => void,
   onError: (error: string) => void,
   onDone: () => void,
+  onCitations?: (citations: any[]) => void,
 ): AbortController {
   const controller = new AbortController();
 
@@ -384,6 +385,9 @@ export function streamWorkspaceChat(
                 break;
               case 'token':
                 onToken(event.content || '');
+                break;
+              case 'citations':
+                onCitations?.(event.citations || []);
                 break;
               case 'error':
                 onError(event.message || 'Unknown error');
