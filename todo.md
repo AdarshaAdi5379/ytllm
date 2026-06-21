@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 19 features completed out of ~25.
+**Status: ACTIVE 🚧** — 20 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -118,7 +118,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **DOCX import**: python-docx for text extraction
 - [x] **PowerPoint import**: python-pptx for text extraction
 - [x] **Chat settings**: model selector, temperature slider
-- [ ] **Import progress UI**: progress bar per source, status indicators (queued/processing/ready/error)
+- [x] **Import progress UI**: status indicators (processing/done/failed) with auto-dismiss
 - [ ] **Background ingestion** with async task queue (Celery or simple asyncio background tasks)
 - [x] **Source deletion (vector cleanup)** — removed from DB AND ChromaDB vectors cleaned up (commit 5f2ce8cd)
 

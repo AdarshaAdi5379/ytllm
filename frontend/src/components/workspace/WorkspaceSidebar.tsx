@@ -6,6 +6,8 @@ import {
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
+import { useImportStore } from '../../store/useImportStore';
+import { ImportNotifications } from './ImportNotifications';
 import {
   fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource, uploadDocxSource, uploadPptxSource,
   type FolderTreeItem, type SourceItem,
@@ -46,26 +48,32 @@ export function WorkspaceSidebarContent() {
     }
   }, [isAuthenticated]);
 
+  const { addJob, setJobDone, setJobFailed } = useImportStore();
+
   const handleImportYoutube = useCallback(async (url: string, folderId?: string) => {
     if (!activeWorkspaceId || !url.trim()) return;
+    const jobId = addJob('youtube_video', url.trim());
     try {
       await importYouTubeSource(activeWorkspaceId, url.trim(), folderId);
+      setJobDone(jobId);
       await loadFolderTree(activeWorkspaceId);
     } catch (err: any) {
-      console.error('Import failed:', err);
+      setJobFailed(jobId, err.message || 'Import failed');
     }
   }, [activeWorkspaceId, loadFolderTree]);
 
   const handleImportWebsite = async () => {
     if (!activeWorkspaceId || !websiteUrl.trim()) return;
+    const jobId = addJob('website_page', websiteUrl.trim());
     setImportingWebsite(true);
     try {
       await importWebsiteSource(activeWorkspaceId, websiteUrl.trim());
+      setJobDone(jobId);
       setWebsiteUrl('');
       setShowWebsiteImport(false);
       await loadFolderTree(activeWorkspaceId);
     } catch (err: any) {
-      console.error('Website import failed:', err);
+      setJobFailed(jobId, err.message || 'Website import failed');
     } finally {
       setImportingWebsite(false);
     }
@@ -73,14 +81,16 @@ export function WorkspaceSidebarContent() {
 
   const handleImportPdf = async () => {
     if (!activeWorkspaceId || !pdfUrl.trim()) return;
+    const jobId = addJob('pdf_document', pdfUrl.trim());
     setImportingPdf(true);
     try {
       await importPdfSource(activeWorkspaceId, pdfUrl.trim());
+      setJobDone(jobId);
       setPdfUrl('');
       setShowPdfImport(false);
       await loadFolderTree(activeWorkspaceId);
     } catch (err: any) {
-      console.error('PDF import failed:', err);
+      setJobFailed(jobId, err.message || 'PDF import failed');
     } finally {
       setImportingPdf(false);
     }
@@ -88,15 +98,18 @@ export function WorkspaceSidebarContent() {
 
   const handleImportMarkdown = async () => {
     if (!activeWorkspaceId || !markdownContent.trim()) return;
+    const title = markdownTitle.trim() || 'Markdown note';
+    const jobId = addJob('markdown_note', title);
     setImportingMarkdown(true);
     try {
       await importMarkdownSource(activeWorkspaceId, markdownContent.trim(), markdownTitle.trim());
+      setJobDone(jobId);
       setMarkdownContent('');
       setMarkdownTitle('');
       setShowMarkdownImport(false);
       await loadFolderTree(activeWorkspaceId);
     } catch (err: any) {
-      console.error('Markdown import failed:', err);
+      setJobFailed(jobId, err.message || 'Markdown import failed');
     } finally {
       setImportingMarkdown(false);
     }
@@ -104,15 +117,18 @@ export function WorkspaceSidebarContent() {
 
   const handleImportText = async () => {
     if (!activeWorkspaceId || !textContent.trim()) return;
+    const title = textTitle.trim() || 'Text note';
+    const jobId = addJob('text_note', title);
     setImportingText(true);
     try {
       await importTextSource(activeWorkspaceId, textContent.trim(), textTitle.trim());
+      setJobDone(jobId);
       setTextContent('');
       setTextTitle('');
       setShowTextImport(false);
       await loadFolderTree(activeWorkspaceId);
     } catch (err: any) {
-      console.error('Text import failed:', err);
+      setJobFailed(jobId, err.message || 'Text import failed');
     } finally {
       setImportingText(false);
     }
@@ -120,12 +136,14 @@ export function WorkspaceSidebarContent() {
 
   const handleImportDocx = async (file: File) => {
     if (!activeWorkspaceId) return;
+    const jobId = addJob('docx_document', file.name);
     setImportingDocx(true);
     try {
       await uploadDocxSource(activeWorkspaceId, file);
+      setJobDone(jobId);
       await loadFolderTree(activeWorkspaceId);
     } catch (err: any) {
-      console.error('DOCX import failed:', err);
+      setJobFailed(jobId, err.message || 'DOCX import failed');
     } finally {
       setImportingDocx(false);
     }
@@ -133,12 +151,14 @@ export function WorkspaceSidebarContent() {
 
   const handleImportPptx = async (file: File) => {
     if (!activeWorkspaceId) return;
+    const jobId = addJob('pptx_document', file.name);
     setImportingPptx(true);
     try {
       await uploadPptxSource(activeWorkspaceId, file);
+      setJobDone(jobId);
       await loadFolderTree(activeWorkspaceId);
     } catch (err: any) {
-      console.error('PPTX import failed:', err);
+      setJobFailed(jobId, err.message || 'PPTX import failed');
     } finally {
       setImportingPptx(false);
     }
@@ -502,6 +522,7 @@ export function WorkspaceSidebarContent() {
           onImport={handleImportYoutube}
         />
       ))}
+      <ImportNotifications />
     </div>
   );
 }
