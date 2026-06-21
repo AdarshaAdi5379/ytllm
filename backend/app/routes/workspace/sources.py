@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.services.auth_service import get_current_user
-from app.db_models import User, Source, Workspace
+from app.services.auth_service import get_current_user, verify_workspace_access
+from app.db_models import User, Source
 from app.models import SourceResponse
 from app.services import embedding_service
 
@@ -28,20 +28,6 @@ def _source_to_response(s: Source) -> SourceResponse:
     )
 
 
-async def _verify_workspace_access(
-    db: AsyncSession, workspace_id: str, user_id: str,
-) -> Workspace:
-    result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == workspace_id, Workspace.owner_id == user_id
-        )
-    )
-    ws = result.scalar_one_or_none()
-    if not ws:
-        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
-    return ws
-
-
 @router.get("/", response_model=list[SourceResponse])
 async def list_sources(
     workspace_id: str,
@@ -49,7 +35,7 @@ async def list_sources(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_workspace_access(db, workspace_id, user.id)
+    await verify_workspace_access(db, workspace_id, user.id)
     clauses = [Source.workspace_id == workspace_id]
     if folder_id:
         clauses.append(Source.folder_id == folder_id)
@@ -66,7 +52,7 @@ async def get_source(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_workspace_access(db, workspace_id, user.id)
+    await verify_workspace_access(db, workspace_id, user.id)
     result = await db.execute(
         select(Source).where(Source.id == source_id, Source.workspace_id == workspace_id)
     )
@@ -83,7 +69,7 @@ async def delete_source(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_workspace_access(db, workspace_id, user.id)
+    await verify_workspace_access(db, workspace_id, user.id)
     result = await db.execute(
         select(Source).where(Source.id == source_id, Source.workspace_id == workspace_id)
     )

@@ -6,7 +6,7 @@ from app.db_models import User, Folder, Source
 from app.models import (
     FolderResponse, CreateFolderRequest, UpdateFolderRequest, FolderTreeItem,
 )
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, verify_workspace_access
 
 router = APIRouter()
 
@@ -88,15 +88,7 @@ async def create_folder(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Verify workspace ownership
-    from app.db_models import Workspace
-    ws_result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == workspace_id, Workspace.owner_id == user.id
-        )
-    )
-    if not ws_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
+    await verify_workspace_access(db, workspace_id, user.id)
 
     # If parent_id is given, verify it exists in this workspace
     if req.parent_id:

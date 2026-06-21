@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.config import config
 from app.database import get_db
-from app.db_models import User
+from app.db_models import User, WorkspaceMember, Workspace
 
 security = HTTPBearer(auto_error=False)
 
@@ -67,3 +67,63 @@ async def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
+
+
+async def check_workspace_access(
+    db: AsyncSession, workspace_id: str, user_id: str, required_roles: tuple[str, ...] = ("owner", "admin", "editor", "viewer"),
+) -> str | None:
+    """Return the user's role for a workspace if they have access, or None."""
+    # Owner always has access
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.id == workspace_id, Workspace.owner_id == user_id)
+    )
+    if ws_result.scalar_one_or_none():
+        return "owner"
+
+    # Check membership
+    member_result = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id,
+        )
+    )
+    member = member_result.scalar_one_or_none()
+    if member and member.role in required_roles:
+        return member.role
+    return None
+
+
+async def require_workspace_role(
+    db: AsyncSession, workspace_id: str, user_id: str, required_roles: tuple[str, ...] = ("owner", "admin", "editor", "viewer"),
+) -> str:
+    """Check workspace access and return role, or raise HTTPException."""
+    role = await check_workspace_access(db, workspace_id, user_id, required_roles)
+    if role is None:
+        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
+    return role
+
+
+WRITE_ROLES = ("owner", "admin", "editor")
+READ_ROLES = ("owner", "admin", "editor", "viewer")
+ADMIN_ROLES = ("owner", "admin")
+
+
+async def verify_workspace_access(db: AsyncSession, workspace_id: str, user_id: str) -> Workspace:
+    """Verify user has access to workspace (owner or member). Returns workspace or raises 404."""
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.id == workspace_id)
+    )
+    ws = ws_result.scalar_one_or_none()
+    if not ws:
+        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
+    if ws.owner_id == user_id:
+        return ws
+    member_result = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id,
+        )
+    )
+    if member_result.scalar_one_or_none():
+        return ws
+    raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})

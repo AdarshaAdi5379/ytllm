@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
-from app.db_models import User, Workspace
+from app.db_models import User, Workspace, WorkspaceMember
 from app.models import (
     WorkspaceResponse, CreateWorkspaceRequest, UpdateWorkspaceRequest,
 )
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, require_workspace_role, ADMIN_ROLES, WRITE_ROLES
 
 router = APIRouter()
 
@@ -25,12 +25,30 @@ async def list_workspaces(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Workspace)
-        .where(Workspace.owner_id == user.id)
-        .order_by(Workspace.created_at)
+    # Workspaces where user is owner OR member
+    owned = await db.execute(
+        select(Workspace).where(Workspace.owner_id == user.id).order_by(Workspace.created_at)
     )
-    return [_ws_to_response(ws) for ws in result.scalars().all()]
+    owned_ids = {ws.id for ws in owned.scalars().all()}
+
+    member_result = await db.execute(
+        select(WorkspaceMember.workspace_id).where(WorkspaceMember.user_id == user.id)
+    )
+    member_ids = {row[0] for row in member_result.fetchall() if row[0] not in owned_ids}
+
+    all_ws = []
+    if owned_ids:
+        owned_result = await db.execute(
+            select(Workspace).where(Workspace.id.in_(owned_ids)).order_by(Workspace.created_at)
+        )
+        all_ws.extend(owned_result.scalars().all())
+    if member_ids:
+        member_result = await db.execute(
+            select(Workspace).where(Workspace.id.in_(member_ids)).order_by(Workspace.created_at)
+        )
+        all_ws.extend(member_result.scalars().all())
+
+    return [_ws_to_response(ws) for ws in all_ws]
 
 
 @router.post("/", response_model=WorkspaceResponse, status_code=201)
@@ -52,11 +70,8 @@ async def get_workspace(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == workspace_id, Workspace.owner_id == user.id
-        )
-    )
+    await require_workspace_role(db, workspace_id, user.id)
+    result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
     ws = result.scalar_one_or_none()
     if not ws:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
@@ -70,11 +85,8 @@ async def update_workspace(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == workspace_id, Workspace.owner_id == user.id
-        )
-    )
+    await require_workspace_role(db, workspace_id, user.id, ADMIN_ROLES)
+    result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
     ws = result.scalar_one_or_none()
     if not ws:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
@@ -90,11 +102,8 @@ async def delete_workspace(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == workspace_id, Workspace.owner_id == user.id
-        )
-    )
+    await require_workspace_role(db, workspace_id, user.id, ("owner",))
+    result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
     ws = result.scalar_one_or_none()
     if not ws:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})

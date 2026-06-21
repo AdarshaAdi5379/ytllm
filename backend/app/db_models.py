@@ -237,3 +237,24 @@ class Summary(Base):
     __table_args__ = (
         UniqueConstraint("source_id", "type", name="uq_summary_source_type"),
     )
+
+
+class WorkspaceMember(Base):
+    __tablename__ = "workspace_members"
+
+    ROLES = ("owner", "admin", "editor", "viewer")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    role = Column(String, nullable=False, default="editor")
+    invited_by = Column(String, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=_now, nullable=False)
+
+    workspace = relationship("Workspace", backref="member_rels")
+    user = relationship("User", foreign_keys=[user_id])
+    inviter = relationship("User", foreign_keys=[invited_by])
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "user_id", name="uq_workspace_member"),
+    )

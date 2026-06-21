@@ -12,7 +12,7 @@ from typing import List, Optional
 from app.database import async_session as db_async_session
 from app.database import get_db
 from app.db_models import Video as VideoModel, ChatMessage, Source, ChatSession, ChatMessageNew, Workspace, Folder
-from app.services.auth_service import get_optional_user, get_current_user
+from app.services.auth_service import get_optional_user, get_current_user, verify_workspace_access
 from app.db_models import User
 from app.services import embedding_service
 from app.services import memory_service
@@ -374,14 +374,7 @@ async def chat_workspace(
         full_response = ""
 
         try:
-            # Verify workspace ownership
-            ws_result = await db.execute(
-                select(Workspace).where(Workspace.id == workspace_id, Workspace.owner_id == user.id)
-            )
-            if not ws_result.scalar_one_or_none():
-                error_json = json.dumps({"type": "error", "message": "Workspace not found."})
-                yield f"data: {error_json}\n\n"
-                return
+            await verify_workspace_access(db, workspace_id, user.id)
 
             # Determine source IDs
             source_id_list: list[str] | None = None

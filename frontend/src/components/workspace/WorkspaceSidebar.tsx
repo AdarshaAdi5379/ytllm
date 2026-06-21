@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useImportStore } from '../../store/useImportStore';
 import { ImportNotifications } from './ImportNotifications';
+import { MembersPanel } from './MembersPanel';
 import {
   fetchSources, deleteSource,
   importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource, uploadDocxSource, uploadPptxSource,
@@ -50,6 +51,7 @@ export function WorkspaceSidebarContent() {
   const [gitHubUrl, setGitHubUrl] = useState('');
   const [importingGitHub, setImportingGitHub] = useState(false);
   const [showWsSwitcher, setShowWsSwitcher] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -248,6 +250,18 @@ export function WorkspaceSidebarContent() {
                   <Plus size={11} />
                   New Workspace
                 </button>
+                {activeWorkspaceId && (
+                  <button
+                    onClick={() => {
+                      setShowMembers(true);
+                      setShowWsSwitcher(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all"
+                  >
+                    <Shield size={11} />
+                    Share
+                  </button>
+                )}
               </div>
             </div>
           </>
@@ -559,6 +573,7 @@ export function WorkspaceSidebarContent() {
         />
       ))}
       <ImportNotifications />
+      {showMembers && <MembersPanel onClose={() => setShowMembers(false)} />}
     </div>
   );
 }

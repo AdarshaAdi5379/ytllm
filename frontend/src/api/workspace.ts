@@ -604,6 +604,49 @@ export interface SearchResponse {
   total: number;
 }
 
+// --- Members API ---
+
+export interface MemberItem {
+  id: string;
+  user_id: string;
+  email: string;
+  role: string;
+  created_at: string;
+}
+
+export async function inviteMember(
+  workspaceId: string,
+  email: string,
+  role: string,
+): Promise<MemberItem> {
+  return apiFetch<MemberItem>(`/workspace/${workspaceId}/members/`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  });
+}
+
+export async function listMembers(workspaceId: string): Promise<MemberItem[]> {
+  return apiFetch<MemberItem[]>(`/workspace/${workspaceId}/members/`);
+}
+
+export async function updateMemberRole(
+  workspaceId: string,
+  memberId: string,
+  role: string,
+): Promise<void> {
+  await apiFetch(`/workspace/${workspaceId}/members/${memberId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function removeMember(
+  workspaceId: string,
+  memberId: string,
+): Promise<void> {
+  await apiFetch(`/workspace/${workspaceId}/members/${memberId}`, { method: 'DELETE' });
+}
+
 export async function searchWorkspace(
   workspaceId: string,
   query: string,

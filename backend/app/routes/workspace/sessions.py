@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.services.auth_service import get_current_user
-from app.db_models import User, Workspace, ChatSession, ChatMessageNew, Source
+from app.services.auth_service import get_current_user, verify_workspace_access
+from app.db_models import User, ChatSession, ChatMessageNew, Source
 from app.models import (
     ChatSessionResponse, CreateChatSessionRequest, UpdateChatSessionRequest,
     WorkspaceChatMessage,
@@ -29,23 +29,13 @@ def _session_to_response(s: ChatSession) -> ChatSessionResponse:
     )
 
 
-async def _verify_ws(db, workspace_id: str, user_id: str) -> Workspace:
-    result = await db.execute(
-        select(Workspace).where(Workspace.id == workspace_id, Workspace.owner_id == user_id)
-    )
-    ws = result.scalar_one_or_none()
-    if not ws:
-        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
-    return ws
-
-
 @router.get("/", response_model=list[ChatSessionResponse])
 async def list_sessions(
     workspace_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_ws(db, workspace_id, user.id)
+    await verify_workspace_access(db, workspace_id, user.id)
     result = await db.execute(
         select(ChatSession)
         .where(ChatSession.workspace_id == workspace_id)
@@ -70,7 +60,7 @@ async def create_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    ws = await _verify_ws(db, workspace_id, user.id)
+    ws = await verify_workspace_access(db, workspace_id, user.id)
     # Verify source_ids belong to this workspace if provided
     if req.source_ids:
         result = await db.execute(
@@ -104,7 +94,7 @@ async def get_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_ws(db, workspace_id, user.id)
+    await verify_workspace_access(db, workspace_id, user.id)
     result = await db.execute(
         select(ChatSession).where(ChatSession.id == session_id, ChatSession.workspace_id == workspace_id)
     )
@@ -137,7 +127,7 @@ async def update_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_ws(db, workspace_id, user.id)
+    await verify_workspace_access(db, workspace_id, user.id)
     result = await db.execute(
         select(ChatSession).where(ChatSession.id == session_id, ChatSession.workspace_id == workspace_id)
     )
@@ -158,7 +148,7 @@ async def delete_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_ws(db, workspace_id, user.id)
+    await verify_workspace_access(db, workspace_id, user.id)
     result = await db.execute(
         select(ChatSession).where(ChatSession.id == session_id, ChatSession.workspace_id == workspace_id)
     )

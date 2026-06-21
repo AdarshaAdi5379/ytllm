@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 24 features completed out of ~25.
+**Status: ACTIVE 🚧** — 25 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -121,6 +121,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Import progress UI**: status indicators (processing/done/failed) with auto-dismiss
 - [x] **Background ingestion** — asyncio background tasks with status polling
 - [x] **Source deletion (vector cleanup)** — removed from DB AND ChromaDB vectors cleaned up (commit 5f2ce8cd)
+- [x] **Shared workspaces** — invite members by email, role-based access (owner/admin/editor/viewer), members management panel
 
 ### AI Chat
 - [x] **[REUSE]** Chat with single source — clicking a source in sidebar scopes chat via `source_ids` filter (commit 638e5dce)
@@ -292,7 +293,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 **Goal:** Collaborative learning and knowledge sharing.
 
 ### Shared Workspace
-- [ ] **Team workspace creation** — invite members by email
+- [x] **Team workspace creation** — invite members by email
 - [ ] **Workspace types** — Engineering Team, Research Team, Study Group, Class
 - [ ] **Real-time presence** — see who's currently online in the workspace
 - [ ] **Activity feed** — recent imports, chats, notes, changes per workspace member
@@ -310,11 +311,11 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **Meeting notes import** — upload meeting transcripts, AI extracts key decisions and action items
 
 ### Permissions
-- [ ] **Owner** — full control, billing, workspace deletion, member removal
-- [ ] **Admin** — manage members, modify all content, change settings
-- [ ] **Editor** — add/edit sources, create notes, start chat sessions
-- [ ] **Viewer** — read-only access to workspace content
-- [ ] **Role-based UI** — hide admin features from viewers/editors
+- [x] **Owner** — full control, billing, workspace deletion, member removal
+- [x] **Admin** — manage members, modify all content, change settings
+- [x] **Editor** — add/edit sources, create notes, start chat sessions
+- [x] **Viewer** — read-only access to workspace content
+- [x] **Role-based UI** — hide admin features from viewers/editors
 
 **See full details:** `docs/roadmap-v5.md`
 

@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.services.auth_service import get_current_user
-from app.db_models import User, Source, Workspace
+from app.services.auth_service import get_current_user, verify_workspace_access
+from app.db_models import User, Source
 from app.models import SearchRequest, SearchResponse, SearchResult
 from app.services import embedding_service
 
@@ -20,16 +20,7 @@ async def search_workspace(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    ws_result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == req.workspace_id, Workspace.owner_id == user.id
-        )
-    )
-    if not ws_result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=404,
-            detail={"error": "NOT_FOUND", "message": "Workspace not found."},
-        )
+    await verify_workspace_access(db, req.workspace_id, user.id)
 
     clauses = [
         Source.workspace_id == req.workspace_id,
