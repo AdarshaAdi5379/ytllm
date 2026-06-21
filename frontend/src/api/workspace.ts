@@ -652,6 +652,50 @@ export async function removeMember(
   await apiFetch(`/workspace/${workspaceId}/members/${memberId}`, { method: 'DELETE' });
 }
 
+// --- AI Actions API ---
+
+export const AI_ACTIONS = [
+  'explain', 'simplify', 'translate', 'expand',
+  'compare', 'examples', 'code', 'quiz',
+] as const;
+export type AIActionType = typeof AI_ACTIONS[number];
+
+export const AI_ACTION_LABELS: Record<AIActionType, string> = {
+  explain: 'Explain',
+  simplify: 'Simplify',
+  translate: 'Translate',
+  expand: 'Expand',
+  compare: 'Compare',
+  examples: 'Examples',
+  code: 'Generate Code',
+  quiz: 'Generate Quiz',
+};
+
+export interface AIActionRequest {
+  source_id: string;
+  action_type: AIActionType;
+  concept?: string;
+  concept1?: string;
+  concept2?: string;
+  language?: string;
+  topic?: string;
+  description?: string;
+}
+
+export interface AIActionResponse {
+  action_type: string;
+  source_id: string;
+  source_title: string;
+  content: string;
+}
+
+export async function runAction(req: AIActionRequest): Promise<AIActionResponse> {
+  return apiFetch<AIActionResponse>('/ai/actions/run', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
 // --- Summary API ---
 
 export interface SummaryItem {

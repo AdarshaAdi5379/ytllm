@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 28 features completed out of ~25.
+**Status: ACTIVE 🚧** — 29 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -124,6 +124,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **AI Summaries** — 6 summary types (short, detailed, executive, eli5, interview, revision) with tab selector, generate + cache, copy/download
 - [x] **Smart Search** — semantic vector search + keyword SQL LIKE fallback, grouped by source with color-coded relevance badges, folder/source-type/date filters
 - [x] **Notes auto-organization** — AI classifies topic, suggests tags, estimates difficulty, scores importance; debounced auto-analysis on create + manual "Apply" in editor; backend auto-analyzes when topic is empty
+- [x] **AI Actions** — 8 actions (explain, simplify, translate, expand, compare, examples, code, quiz) with tailored LLM prompts, param modals, results posted to chat
 
 ### AI Chat
 - [x] **[REUSE]** Chat with single source — clicking a source in sidebar scopes chat via `source_ids` filter (commit 638e5dce)
@@ -175,15 +176,15 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Search results UI**: grouped by source with section headers, snippet preview, color-coded relevance badge, method badges
 
 ### AI Actions
-- [ ] **Explain** — break down a selected concept step-by-step
-- [ ] **Simplify** — reduce complexity to plain language
-- [ ] **Translate** — translate selected content to another language
-- [ ] **Expand** — elaborate on a topic with more detail and examples
-- [ ] **Compare** — compare two concepts, papers, code implementations side-by-side
-- [ ] **Generate Examples** — produce real-world examples for any concept
-- [ ] **Generate Code** — generate code snippets from natural language description
-- [ ] **Generate Quiz** — auto-generate quiz questions from selected source content
-- [ ] **Action selector toolbar** — appears when viewing any source or selecting text
+- [x] **Explain** — break down a selected concept step-by-step
+- [x] **Simplify** — reduce complexity to plain language
+- [x] **Translate** — translate selected content to another language
+- [x] **Expand** — elaborate on a topic with more detail and examples
+- [x] **Compare** — compare two concepts, papers, code implementations side-by-side
+- [x] **Generate Examples** — produce real-world examples for any concept
+- [x] **Generate Code** — generate code snippets from natural language description
+- [x] **Generate Quiz** — auto-generate quiz questions from selected source content
+- [x] **Action selector toolbar** — Actions button in header when source active, dropdown menu, param modals
 
 **See full details:** `docs/roadmap-v2.md`
 

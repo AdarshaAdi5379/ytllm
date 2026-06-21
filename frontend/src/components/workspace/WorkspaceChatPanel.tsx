@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { NotesPanel } from './NotesPanel';
 import { SearchPanel } from './SearchPanel';
 import { SummaryPanel } from './SummaryPanel';
+import { ActionsToolbar } from './ActionsToolbar';
 
 export function WorkspaceChatPanel() {
   const { activeWorkspaceId, activeSourceId, activeSourceTitle, selectedSourceIds, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder, clearSourceSelection, setActiveSource } = useWorkspaceStore();
@@ -214,6 +215,7 @@ export function WorkspaceChatPanel() {
               <span className="text-xs font-semibold truncate max-w-[120px]">{activeFolderTitle}</span>
             </div>
           ) : null}
+          <ActionsToolbar />
           <div className="relative">
             <button
               onClick={() => setShowSettings(!showSettings)}
