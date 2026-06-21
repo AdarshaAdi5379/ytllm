@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
 import {
-  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource,
+  fetchSources, deleteSource, importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
 
@@ -28,6 +28,10 @@ export function WorkspaceSidebarContent() {
   const [showPdfImport, setShowPdfImport] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
   const [importingPdf, setImportingPdf] = useState(false);
+  const [showMarkdownImport, setShowMarkdownImport] = useState(false);
+  const [markdownContent, setMarkdownContent] = useState('');
+  const [markdownTitle, setMarkdownTitle] = useState('');
+  const [importingMarkdown, setImportingMarkdown] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -72,6 +76,22 @@ export function WorkspaceSidebarContent() {
       console.error('PDF import failed:', err);
     } finally {
       setImportingPdf(false);
+    }
+  };
+
+  const handleImportMarkdown = async () => {
+    if (!activeWorkspaceId || !markdownContent.trim()) return;
+    setImportingMarkdown(true);
+    try {
+      await importMarkdownSource(activeWorkspaceId, markdownContent.trim(), markdownTitle.trim());
+      setMarkdownContent('');
+      setMarkdownTitle('');
+      setShowMarkdownImport(false);
+      await loadFolderTree(activeWorkspaceId);
+    } catch (err: any) {
+      console.error('Markdown import failed:', err);
+    } finally {
+      setImportingMarkdown(false);
     }
   };
 
@@ -207,6 +227,53 @@ export function WorkspaceSidebarContent() {
             >
               <X size={10} />
             </button>
+          </div>
+        )}
+        <button
+          onClick={() => setShowMarkdownImport(!showMarkdownImport)}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-600/20 text-amber-300 hover:bg-amber-600/30 transition-all"
+        >
+          <Code size={12} />
+          <span>Add Markdown</span>
+        </button>
+        {showMarkdownImport && (
+          <div className="pt-1 space-y-1">
+            <input
+              value={markdownTitle}
+              onChange={(e) => setMarkdownTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setShowMarkdownImport(false); setMarkdownContent(''); setMarkdownTitle(''); }
+              }}
+              placeholder="Title (optional)"
+              className="w-full bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-amber-500"
+            />
+            <textarea
+              autoFocus
+              value={markdownContent}
+              onChange={(e) => setMarkdownContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setShowMarkdownImport(false); setMarkdownContent(''); setMarkdownTitle(''); }
+              }}
+              placeholder="Paste your markdown content here..."
+              rows={4}
+              className="w-full bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-amber-500 resize-none"
+            />
+            <div className="flex items-center justify-end gap-1">
+              <button
+                onClick={() => { setShowMarkdownImport(false); setMarkdownContent(''); setMarkdownTitle(''); }}
+                className="px-2 py-0.5 text-xs text-slate-500 hover:text-slate-300"
+              >
+                <X size={10} className="inline mr-0.5" /> Cancel
+              </button>
+              <button
+                onClick={handleImportMarkdown}
+                disabled={importingMarkdown || !markdownContent.trim()}
+                className="px-2 py-0.5 text-xs text-amber-400 hover:text-amber-300 disabled:opacity-50 flex items-center gap-1"
+              >
+                {importingMarkdown ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                {importingMarkdown ? 'Importing...' : 'Import'}
+              </button>
+            </div>
           </div>
         )}
       </div>
