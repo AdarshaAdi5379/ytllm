@@ -180,6 +180,47 @@ async def retrieve_relevant_chunks(
     return out
 
 
+async def search_across_collections(
+    collection_keys: list[str],
+    query: str,
+    top_k_per_source: int = 3,
+    max_results: int = 20,
+) -> list[dict]:
+    """Search across multiple ChromaDB collections and return ranked results."""
+    all_results: list[dict] = []
+
+    for key in collection_keys:
+        try:
+            collection = await get_or_create_index(key)
+        except Exception:
+            continue
+
+        query_embedding = await embed_text(query)
+
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=top_k_per_source,
+            include=["documents", "metadatas", "distances"],
+        )
+
+        documents = results.get("documents", [[]])[0] or []
+        metadatas = results.get("metadatas", [[]])[0] or []
+        distances = results.get("distances", [[]])[0] or []
+
+        for doc, meta, dist in zip(documents, metadatas, distances):
+            all_results.append({
+                "text": doc,
+                "chunk_index": meta.get("chunk_index"),
+                "start_s": meta.get("start_s"),
+                "end_s": meta.get("end_s"),
+                "distance": dist,
+                "collection_key": key,
+            })
+
+    all_results.sort(key=lambda r: r.get("distance", 1.0))
+    return all_results[:max_results]
+
+
 def delete_index(video_id: str) -> None:
     """Deletes the vector index for a video (cleanup)."""
     if video_id in vector_indexes:

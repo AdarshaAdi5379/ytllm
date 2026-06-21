@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, Youtube, FolderOpen, SlidersHorizontal, Book } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, Youtube, FolderOpen, SlidersHorizontal, Book, Search } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
 import { useAuthStore } from '../../store/useAuthStore';
 import { NotesPanel } from './NotesPanel';
+import { SearchPanel } from './SearchPanel';
 
 export function WorkspaceChatPanel() {
   const { activeWorkspaceId, activeSourceId, activeSourceTitle, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder } = useWorkspaceStore();
@@ -18,7 +19,7 @@ export function WorkspaceChatPanel() {
   const [showSessions, setShowSessions] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [citationsMap, setCitationsMap] = useState<Record<number, any[]>>({});
-  const [viewMode, setViewMode] = useState<'chat' | 'notes'>('chat');
+  const [viewMode, setViewMode] = useState<'chat' | 'notes' | 'search'>('chat');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedTemperature, setSelectedTemperature] = useState(0.2);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -164,6 +165,15 @@ export function WorkspaceChatPanel() {
             <Book size={12} />
             Notes
           </button>
+          <button
+            onClick={() => setViewMode('search')}
+            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              viewMode === 'search' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Search size={12} />
+            Search
+          </button>
         </div>
         <div className="relative">
           <button
@@ -250,6 +260,8 @@ export function WorkspaceChatPanel() {
 
         {viewMode === 'notes' ? (
           <NotesPanel />
+        ) : viewMode === 'search' ? (
+          <SearchPanel />
         ) : (
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">

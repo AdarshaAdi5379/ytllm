@@ -267,3 +267,26 @@ class NoteResponse(BaseModel):
     importance: int = 3
     created_at: str
     updated_at: str
+
+
+class SearchResult(BaseModel):
+    text: str
+    source_id: str
+    source_title: str
+    source_type: str
+    chunk_index: float | None = None
+    start_s: float | None = None
+    end_s: float | None = None
+    distance: float = 1.0
+
+
+class SearchResponse(BaseModel):
+    results: list[SearchResult]
+    total: int
+
+
+class SearchRequest(BaseModel):
+    workspace_id: str
+    query: str
+    folder_id: str | None = None
+    source_type: str | None = None

@@ -406,3 +406,36 @@ export function streamWorkspaceChat(
 
   return controller;
 }
+
+export interface SearchResultItem {
+  text: string;
+  source_id: string;
+  source_title: string;
+  source_type: string;
+  chunk_index: number | null;
+  start_s: number | null;
+  end_s: number | null;
+  distance: number;
+}
+
+export interface SearchResponse {
+  results: SearchResultItem[];
+  total: number;
+}
+
+export async function searchWorkspace(
+  workspaceId: string,
+  query: string,
+  folderId?: string,
+  sourceType?: string,
+): Promise<SearchResponse> {
+  return apiFetch<SearchResponse>(`/ai/search/`, {
+    method: 'POST',
+    body: JSON.stringify({
+      workspace_id: workspaceId,
+      query,
+      folder_id: folderId || null,
+      source_type: sourceType || null,
+    }),
+  });
+}
