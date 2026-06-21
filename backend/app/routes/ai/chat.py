@@ -486,7 +486,9 @@ async def chat_workspace(
             # Stream
             llm_started = time.perf_counter()
             first = True
-            async for chunk in llm_service.stream_chat_response(context):
+            async for chunk in llm_service.stream_chat_response(
+                context, model=req.model, temperature=req.temperature,
+            ):
                 if first:
                     first = False
                     ttfb_ms = int((time.perf_counter() - llm_started) * 1000)
@@ -518,6 +520,8 @@ async def chat_workspace(
                         title=req.question[:80],
                         source_ids=json.dumps([s.id for s in sources]),
                         user_id=user.id,
+                        model=req.model,
+                        temperature=req.temperature,
                     )
                     db.add(new_session)
                     await db.commit()

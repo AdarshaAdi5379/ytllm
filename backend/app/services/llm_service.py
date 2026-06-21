@@ -27,8 +27,14 @@ class LLMContext:
         self.question = question
 
 
+DEFAULT_MODEL = config["openai_model"]
+DEFAULT_TEMPERATURE = 0.2
+
+
 async def stream_chat_response(
     context: LLMContext,
+    model: str | None = None,
+    temperature: float | None = None,
 ) -> AsyncGenerator[str, None]:
     """Assembles the full context payload and streams the OpenAI response as SSE."""
     messages: list[dict] = []
@@ -66,9 +72,9 @@ async def stream_chat_response(
     messages.append({"role": "user", "content": user_message})
 
     stream = await client.chat.completions.create(
-        model=config["openai_model"],
+        model=model or DEFAULT_MODEL,
         messages=messages,
-        temperature=0.2,
+        temperature=temperature if temperature is not None else DEFAULT_TEMPERATURE,
         max_tokens=1024,
         stream=True,
     )

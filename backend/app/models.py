@@ -193,6 +193,8 @@ class ChatSessionResponse(BaseModel):
     folder_id: str | None = None
     title: str
     source_ids: str = "[]"
+    model: str | None = None
+    temperature: float | None = None
     message_count: int = 0
     created_at: str
     updated_at: str
@@ -201,6 +203,8 @@ class ChatSessionResponse(BaseModel):
 class CreateChatSessionRequest(BaseModel):
     title: str = "New Chat"
     source_ids: list[str] = []
+    model: str | None = None
+    temperature: float | None = None
 
 
 class UpdateChatSessionRequest(BaseModel):
@@ -219,6 +223,8 @@ class WorkspaceChatRequest(BaseModel):
     chat_history: list[WorkspaceChatMessage] = []
     source_ids: list[str] | None = None
     folder_id: str | None = None
+    model: str | None = None
+    temperature: float | None = None
 
 
 class ApiError(BaseModel):

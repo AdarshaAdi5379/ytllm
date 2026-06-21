@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, UniqueConstraint, Index
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, Float, UniqueConstraint, Index
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -166,6 +166,8 @@ class ChatSession(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String, default="New Chat")
     source_ids = Column(Text, default="[]")
+    model = Column(String, nullable=True)
+    temperature = Column(Float, nullable=True)
     created_at = Column(DateTime, default=_now, nullable=False)
     updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
 

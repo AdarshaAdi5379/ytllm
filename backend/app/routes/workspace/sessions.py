@@ -21,6 +21,8 @@ def _session_to_response(s: ChatSession) -> ChatSessionResponse:
         folder_id=s.folder_id,
         title=s.title,
         source_ids=s.source_ids,
+        model=s.model,
+        temperature=s.temperature,
         message_count=0,
         created_at=s.created_at.isoformat() if s.created_at else "",
         updated_at=s.updated_at.isoformat() if s.updated_at else "",
@@ -86,6 +88,8 @@ async def create_session(
         title=req.title,
         source_ids=json.dumps(req.source_ids),
         user_id=user.id,
+        model=req.model,
+        temperature=req.temperature,
     )
     db.add(session)
     await db.commit()

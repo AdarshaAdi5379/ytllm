@@ -16,7 +16,7 @@ interface ChatSessionStore {
   loading: boolean;
 
   loadSessions: (workspaceId: string) => Promise<void>;
-  createSession: (workspaceId: string, title?: string, sourceIds?: string[]) => Promise<ChatSessionItem>;
+  createSession: (workspaceId: string, title?: string, sourceIds?: string[], model?: string, temperature?: number) => Promise<ChatSessionItem>;
   setActiveSession: (workspaceId: string, sessionId: string | null) => Promise<void>;
   deleteSessionFromStore: (workspaceId: string, sessionId: string) => Promise<void>;
   addMessage: (msg: ChatMessage) => void;
@@ -41,8 +41,8 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
     }
   },
 
-  createSession: async (workspaceId, title, sourceIds) => {
-    const session = await workspaceApi.createSession(workspaceId, title, sourceIds);
+  createSession: async (workspaceId, title, sourceIds, model, temperature) => {
+    const session = await workspaceApi.createSession(workspaceId, title, sourceIds, model, temperature);
     const { sessions } = get();
     set({ sessions: [session, ...sessions] });
     return session;

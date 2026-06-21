@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, Youtube, FolderOpen } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, Youtube, FolderOpen, SlidersHorizontal } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
@@ -15,7 +15,19 @@ export function WorkspaceChatPanel() {
 
   const [input, setInput] = useState('');
   const [showSessions, setShowSessions] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [selectedTemperature, setSelectedTemperature] = useState(0.2);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const AVAILABLE_MODELS = [
+    'gpt-4o-mini',
+    'gpt-4o',
+    'gpt-4-turbo',
+    'gpt-3.5-turbo',
+    'o1-mini',
+    'o1-preview',
+  ];
 
   useEffect(() => {
     if (activeWorkspaceId && isAuthenticated) {
@@ -50,6 +62,8 @@ export function WorkspaceChatPanel() {
         chat_history: history,
         source_ids: activeSourceId ? [activeSourceId] : undefined,
         folder_id: activeFolderId || undefined,
+        model: selectedModel || undefined,
+        temperature: selectedTemperature,
       },
       (token) => {
         // Accumulate token into the last assistant message
@@ -86,13 +100,18 @@ export function WorkspaceChatPanel() {
     if (!activeWorkspaceId) return;
     clearActiveSource();
     clearActiveFolder();
-    const session = await useChatSessionStore.getState().createSession(activeWorkspaceId);
+    const session = await useChatSessionStore.getState().createSession(
+      activeWorkspaceId, undefined, undefined,
+      selectedModel || undefined, selectedTemperature,
+    );
     await setActiveSession(activeWorkspaceId, session.id);
   };
 
   const handleSelectSession = async (s: ChatSessionItem) => {
     if (!activeWorkspaceId) return;
     await setActiveSession(activeWorkspaceId, s.id);
+    if (s.model) setSelectedModel(s.model);
+    if (s.temperature != null) setSelectedTemperature(s.temperature);
     setShowSessions(false);
   };
 
@@ -100,7 +119,7 @@ export function WorkspaceChatPanel() {
 
   return (
     <main className="flex-1 flex flex-col bg-white overflow-hidden">
-      {/* Top bar with session selector */}
+      {/* Top bar with session selector + settings */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <button
@@ -118,6 +137,50 @@ export function WorkspaceChatPanel() {
             <Plus size={12} />
             New Chat
           </button>
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+            title="Chat settings"
+          >
+            <SlidersHorizontal size={13} />
+          </button>
+          {showSettings && (
+            <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-50 space-y-3">
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1.5">Model</label>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                >
+                  <option value="">Default ({AVAILABLE_MODELS[0]})</option>
+                  {AVAILABLE_MODELS.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1.5">
+                  Temperature: {selectedTemperature.toFixed(1)}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={selectedTemperature}
+                  onChange={(e) => setSelectedTemperature(parseFloat(e.target.value))}
+                  className="w-full accent-indigo-600"
+                />
+                <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                  <span>Precise (0)</span>
+                  <span>Creative (2)</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 

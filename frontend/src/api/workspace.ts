@@ -280,6 +280,8 @@ export interface ChatSessionItem {
   folder_id: string | null;
   title: string;
   source_ids: string;
+  model: string | null;
+  temperature: number | null;
   message_count: number;
   created_at: string;
   updated_at: string;
@@ -298,10 +300,12 @@ export async function createSession(
   workspaceId: string,
   title?: string,
   sourceIds?: string[],
+  model?: string,
+  temperature?: number,
 ): Promise<ChatSessionItem> {
   return apiFetch<ChatSessionItem>(`/workspace/${workspaceId}/sessions/`, {
     method: 'POST',
-    body: JSON.stringify({ title: title ?? 'New Chat', source_ids: sourceIds ?? [] }),
+    body: JSON.stringify({ title: title ?? 'New Chat', source_ids: sourceIds ?? [], model, temperature }),
   });
 }
 
@@ -332,6 +336,8 @@ export interface WorkspaceChatRequest {
   chat_history: { role: string; content: string; timestamp: string }[];
   source_ids?: string[];
   folder_id?: string;
+  model?: string;
+  temperature?: number;
 }
 
 export function streamWorkspaceChat(
