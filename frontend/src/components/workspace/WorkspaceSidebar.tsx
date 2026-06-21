@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -14,6 +14,7 @@ import {
   importYouTubeSourceBackground, importWebsiteSourceBackground, importPdfSourceBackground,
   importMarkdownSourceBackground, importTextSourceBackground,
   uploadDocxSourceBackground, uploadPptxSourceBackground,
+  importGitHubSourceBackground,
   pollImportTask,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
@@ -45,6 +46,9 @@ export function WorkspaceSidebarContent() {
   const [importingText, setImportingText] = useState(false);
   const [importingDocx, setImportingDocx] = useState(false);
   const [importingPptx, setImportingPptx] = useState(false);
+  const [showGitHubImport, setShowGitHubImport] = useState(false);
+  const [gitHubUrl, setGitHubUrl] = useState('');
+  const [importingGitHub, setImportingGitHub] = useState(false);
   const [showWsSwitcher, setShowWsSwitcher] = useState(false);
 
   useEffect(() => {
@@ -147,6 +151,17 @@ export function WorkspaceSidebarContent() {
       jobId,
       uploadPptxSourceBackground(activeWorkspaceId, file),
       () => { setImportingPptx(false); },
+    );
+  };
+
+  const handleImportGitHub = async () => {
+    if (!activeWorkspaceId || !gitHubUrl.trim()) return;
+    const jobId = addJob('github_repo', gitHubUrl.trim());
+    setImportingGitHub(true);
+    doBackgroundImport(
+      jobId,
+      importGitHubSourceBackground(activeWorkspaceId, gitHubUrl.trim()),
+      () => { setImportingGitHub(false); setGitHubUrl(''); setShowGitHubImport(false); },
     );
   };
 
@@ -450,6 +465,41 @@ export function WorkspaceSidebarContent() {
             e.target.value = '';
           }}
         />
+        <button
+          onClick={() => setShowGitHubImport(!showGitHubImport)}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-600/20 text-slate-300 hover:bg-slate-600/30 transition-all"
+        >
+          <Github size={12} />
+          <span>Import GitHub Repo</span>
+        </button>
+        {showGitHubImport && (
+          <div className="flex items-center gap-1 pt-1">
+            <input
+              autoFocus
+              value={gitHubUrl}
+              onChange={(e) => setGitHubUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleImportGitHub();
+                if (e.key === 'Escape') { setShowGitHubImport(false); setGitHubUrl(''); }
+              }}
+              placeholder="https://github.com/owner/repo"
+              className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-slate-400"
+            />
+            <button
+              onClick={handleImportGitHub}
+              disabled={importingGitHub}
+              className="p-0.5 text-slate-300 hover:text-white disabled:opacity-50"
+            >
+              {importingGitHub ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+            </button>
+            <button
+              onClick={() => { setShowGitHubImport(false); setGitHubUrl(''); }}
+              className="p-0.5 text-slate-500 hover:text-slate-300"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Folders */}
@@ -787,6 +837,8 @@ function SourceItemRow({
     icon = <FileText size={10} className="text-blue-400 flex-shrink-0" />;
   } else if (source.source_type === 'pptx_document') {
     icon = <FileText size={10} className="text-orange-400 flex-shrink-0" />;
+  } else if (source.source_type === 'github_repo') {
+    icon = <Github size={10} className="text-slate-300 flex-shrink-0" />;
   }
   const { activeSourceId, selectedSourceIds, setActiveSource, toggleSourceSelection } = useWorkspaceStore();
   const isChecked = selectedSourceIds.includes(source.id);

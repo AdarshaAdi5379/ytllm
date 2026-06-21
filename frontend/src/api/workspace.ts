@@ -295,6 +295,17 @@ export async function uploadPptxSourceBackground(
   return response.json();
 }
 
+export async function importGitHubSourceBackground(
+  workspaceId: string,
+  url: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  return apiFetch<ImportTaskResult>('/sources/github/import?background=true', {
+    method: 'POST',
+    body: JSON.stringify({ url, workspace_id: workspaceId, folder_id: folderId ?? null }),
+  });
+}
+
 export async function importPdfSource(
   workspaceId: string,
   url: string,

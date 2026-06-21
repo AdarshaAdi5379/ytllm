@@ -7,6 +7,7 @@ from app.routes.sources.markdown import router as markdown_router
 from app.routes.sources.text import router as text_router
 from app.routes.sources.docx import router as docx_router
 from app.routes.sources.pptx import router as pptx_router
+from app.routes.sources.github import router as github_router
 
 sources_router = APIRouter()
 
@@ -17,3 +18,4 @@ sources_router.include_router(markdown_router, prefix="/markdown", tags=["source
 sources_router.include_router(text_router, prefix="/text", tags=["sources/text"])
 sources_router.include_router(docx_router, prefix="/docx", tags=["sources/docx"])
 sources_router.include_router(pptx_router, prefix="/pptx", tags=["sources/pptx"])
+sources_router.include_router(github_router, prefix="/github", tags=["sources/github"])

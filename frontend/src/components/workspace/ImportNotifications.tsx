@@ -1,4 +1,4 @@
-import { Loader2, Check, X, AlertCircle, Youtube, Globe, FileText, Code } from 'lucide-react';
+import { Loader2, Check, X, AlertCircle, Youtube, Globe, FileText, Code, Github } from 'lucide-react';
 import { useImportStore } from '../../store/useImportStore';
 
 const TYPE_ICONS: Record<string, JSX.Element> = {
@@ -9,6 +9,7 @@ const TYPE_ICONS: Record<string, JSX.Element> = {
   text_note: <FileText size={12} className="text-slate-400" />,
   docx_document: <FileText size={12} className="text-blue-400" />,
   pptx_document: <FileText size={12} className="text-orange-400" />,
+  github_repo: <Github size={12} className="text-slate-300" />,
 };
 
 export function ImportNotifications() {
