@@ -91,7 +91,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 ## V2 — AI Learning Workspace (MVP)
 **Goal:** Get first 1000 users. Workspaces, multi-source import, AI chat with citations, smart search.
 
-**Status: ACTIVE 🚧** — 18 features completed out of ~25.
+**Status: ACTIVE 🚧** — 19 features completed out of ~25.
 
 ### Authentication
 - [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
@@ -106,7 +106,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Folder CRUD** — create, rename, delete, reorder folders (commit ea10ec72)
 - [ ] **Drag-and-drop folder reordering** in sidebar
 - [ ] **Breadcrumb navigation** for deep folder paths
-- [ ] **Workspace switcher** — dropdown in sidebar header
+- [x] **Workspace switcher** — dropdown in sidebar header
 
 ### Multi-Source Import
 - [x] **[REUSE]** YouTube: existing transcript pipeline adapted to new Source model (commit 1ed431e4)

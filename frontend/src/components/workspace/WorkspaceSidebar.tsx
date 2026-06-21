@@ -38,6 +38,7 @@ export function WorkspaceSidebarContent() {
   const [importingText, setImportingText] = useState(false);
   const [importingDocx, setImportingDocx] = useState(false);
   const [importingPptx, setImportingPptx] = useState(false);
+  const [showWsSwitcher, setShowWsSwitcher] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -169,33 +170,67 @@ export function WorkspaceSidebarContent() {
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
       {/* Workspace switcher */}
-      <div className="px-3 mb-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Workspace</span>
-          <button
-            onClick={() => createWorkspace('New Workspace')}
-            className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-all"
-            title="New workspace"
-          >
-            <Plus size={12} />
-          </button>
-        </div>
-        <div className="mt-1.5 space-y-0.5">
-          {workspaces.map((ws) => (
-            <button
-              key={ws.id}
-              onClick={() => setActiveWorkspace(ws.id)}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                ws.id === activeWorkspaceId
-                  ? 'bg-indigo-500/20 text-indigo-300'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-              }`}
-            >
-              <FolderOpen size={12} />
-              <span className="truncate">{ws.name}</span>
-            </button>
-          ))}
-        </div>
+      <div className="px-3 mb-2 relative">
+        <button
+          onClick={() => setShowWsSwitcher(!showWsSwitcher)}
+          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800/50 text-white hover:bg-slate-700/50 transition-all"
+        >
+          <FolderOpen size={12} className="text-indigo-400" />
+          <span className="flex-1 truncate text-left">
+            {workspaces.find((w) => w.id === activeWorkspaceId)?.name || 'Select workspace'}
+          </span>
+          <ChevronRight
+            size={12}
+            className={`text-slate-500 transition-transform ${showWsSwitcher ? 'rotate-90' : ''}`}
+          />
+        </button>
+
+        {showWsSwitcher && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowWsSwitcher(false)}
+            />
+            <div className="absolute left-3 right-3 top-full mt-1 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+              {workspaces.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-4">No workspaces</p>
+              ) : (
+                <div className="py-1">
+                  {workspaces.map((ws) => (
+                    <button
+                      key={ws.id}
+                      onClick={() => {
+                        setActiveWorkspace(ws.id);
+                        setShowWsSwitcher(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold transition-all ${
+                        ws.id === activeWorkspaceId
+                          ? 'bg-indigo-500/20 text-indigo-300'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <FolderOpen size={11} />
+                      <span className="flex-1 truncate text-left">{ws.name}</span>
+                      {ws.id === activeWorkspaceId && <Check size={10} className="text-indigo-400" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="border-t border-slate-700">
+                <button
+                  onClick={() => {
+                    createWorkspace('New Workspace');
+                    setShowWsSwitcher(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all"
+                >
+                  <Plus size={11} />
+                  New Workspace
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Add source buttons (workspace-level) */}
