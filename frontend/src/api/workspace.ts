@@ -125,6 +125,176 @@ export async function deleteSource(workspaceId: string, sourceId: string): Promi
   await apiFetch(`/workspace/${workspaceId}/sources/${sourceId}`, { method: 'DELETE' });
 }
 
+// --- Task API ---
+
+export interface TaskStatus {
+  id: string;
+  type: string;
+  name: string;
+  status: 'queued' | 'processing' | 'done' | 'failed' | 'unknown';
+  error: string | null;
+  result: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export async function getTaskStatus(taskId: string): Promise<TaskStatus> {
+  return apiFetch<TaskStatus>(`/tasks/${taskId}`);
+}
+
+export function pollImportTask(
+  taskId: string,
+  intervalMs = 2000,
+): Promise<TaskStatus> {
+  return new Promise((resolve, reject) => {
+    const poll = async () => {
+      try {
+        const task = await getTaskStatus(taskId);
+        if (task.status === 'done') { resolve(task); return; }
+        if (task.status === 'failed') { reject(new Error(task.error || 'Import failed')); return; }
+        if (task.status === 'unknown') { reject(new Error('Task not found')); return; }
+        setTimeout(poll, intervalMs);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    poll();
+  });
+}
+
+export interface ImportTaskResult {
+  task_id: string;
+  status: string;
+  source_type: string;
+}
+
+// --- Background import helpers ---
+
+export async function importPdfSourceBackground(
+  workspaceId: string,
+  url: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  return apiFetch<ImportTaskResult>('/sources/pdf/import?background=true', {
+    method: 'POST',
+    body: JSON.stringify({ url, workspace_id: workspaceId, folder_id: folderId ?? null }),
+  });
+}
+
+export async function importWebsiteSourceBackground(
+  workspaceId: string,
+  url: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  return apiFetch<ImportTaskResult>('/sources/website/import?background=true', {
+    method: 'POST',
+    body: JSON.stringify({ url, workspace_id: workspaceId, folder_id: folderId ?? null }),
+  });
+}
+
+export async function importYouTubeSourceBackground(
+  workspaceId: string,
+  url: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  return apiFetch<ImportTaskResult>('/sources/youtube/import?background=true', {
+    method: 'POST',
+    body: JSON.stringify({ url, workspace_id: workspaceId, folder_id: folderId ?? null }),
+  });
+}
+
+export async function importMarkdownSourceBackground(
+  workspaceId: string,
+  content: string,
+  title?: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  return apiFetch<ImportTaskResult>('/sources/markdown/import?background=true', {
+    method: 'POST',
+    body: JSON.stringify({ content, title: title ?? '', workspace_id: workspaceId, folder_id: folderId ?? null }),
+  });
+}
+
+export async function importTextSourceBackground(
+  workspaceId: string,
+  content: string,
+  title?: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  return apiFetch<ImportTaskResult>('/sources/text/import?background=true', {
+    method: 'POST',
+    body: JSON.stringify({ content, title: title ?? '', workspace_id: workspaceId, folder_id: folderId ?? null }),
+  });
+}
+
+export async function uploadDocxSourceBackground(
+  workspaceId: string,
+  file: File,
+  title?: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('workspace_id', workspaceId);
+  formData.append('title', title ?? '');
+  formData.append('folder_id', folderId ?? '');
+
+  const headers: Record<string, string> = {};
+  const token = getAuthToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch('/api/sources/docx/import?background=true', {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorData: any;
+    try { errorData = await response.json(); } catch { errorData = { message: `HTTP ${response.status}` }; }
+    const detail = errorData?.detail || errorData;
+    const err = new Error(detail.message || detail.error || 'Import failed');
+    (err as any).code = detail.error || 'IMPORT_FAILED';
+    throw err;
+  }
+
+  return response.json();
+}
+
+export async function uploadPptxSourceBackground(
+  workspaceId: string,
+  file: File,
+  title?: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('workspace_id', workspaceId);
+  formData.append('title', title ?? '');
+  formData.append('folder_id', folderId ?? '');
+
+  const headers: Record<string, string> = {};
+  const token = getAuthToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch('/api/sources/pptx/import?background=true', {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorData: any;
+    try { errorData = await response.json(); } catch { errorData = { message: `HTTP ${response.status}` }; }
+    const detail = errorData?.detail || errorData;
+    const err = new Error(detail.message || detail.error || 'Import failed');
+    (err as any).code = detail.error || 'IMPORT_FAILED';
+    throw err;
+  }
+
+  return response.json();
+}
+
 export async function importPdfSource(
   workspaceId: string,
   url: string,

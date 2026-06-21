@@ -1,15 +1,16 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_db, async_session
 from app.db_models import User, Source, Workspace, Folder
 from app.models import SourceResponse
 from app.services.auth_service import get_current_user
 from app.services import embedding_service
 from app.services.docx_service import process_docx
+from app.services.task_service import create_task
 
 
 router = APIRouter()
@@ -31,12 +32,13 @@ def _source_to_response(s: Source) -> SourceResponse:
     )
 
 
-@router.post("/import", response_model=SourceResponse)
+@router.post("/import")
 async def import_docx_source(
     file: UploadFile = File(...),
     workspace_id: str = Form(...),
     folder_id: str | None = Form(None),
     title: str = Form(""),
+    background: bool = Query(False),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -60,8 +62,53 @@ async def import_docx_source(
     if not file.filename or not file.filename.lower().endswith(".docx"):
         raise HTTPException(status_code=422, detail={"error": "INVALID_FILE", "message": "Only .docx files are supported."})
 
+    file_bytes = await file.read()
+
+    if background:
+        async def _bg_import():
+            async with async_session() as session:
+                try:
+                    docx = process_docx(file_bytes, title=title)
+                    chunk_count = await embedding_service.index_transcript(docx.index_key, docx.text)
+                    metadata_json = json.dumps({
+                        "index_key": docx.index_key,
+                        "title": docx.title,
+                        "filename": file.filename,
+                        "chunk_count": chunk_count,
+                    })
+                    existing = await session.execute(
+                        select(Source).where(
+                            Source.workspace_id == workspace_id,
+                            Source.source_type == "docx_document",
+                            Source.metadata_json.contains(docx.index_key),
+                        )
+                    )
+                    source = existing.scalar_one_or_none()
+                    if source:
+                        source.raw_text = docx.text
+                        source.metadata_json = metadata_json
+                        source.status = "ready"
+                    else:
+                        source = Source(
+                            workspace_id=workspace_id,
+                            folder_id=folder_id,
+                            user_id=user.id,
+                            source_type="docx_document",
+                            title=docx.title,
+                            metadata_json=metadata_json,
+                            raw_text=docx.text,
+                            status="ready",
+                        )
+                        session.add(source)
+                    await session.commit()
+                except Exception as e:
+                    logger.exception("Background DOCX import error: {}", str(e))
+                    raise
+
+        task_id = await create_task("docx_import", file.filename or "DOCX file", _bg_import())
+        return {"task_id": task_id, "status": "queued", "source_type": "docx_document"}
+
     try:
-        file_bytes = await file.read()
         docx = process_docx(file_bytes, title=title)
 
         chunk_count = await embedding_service.index_transcript(docx.index_key, docx.text)

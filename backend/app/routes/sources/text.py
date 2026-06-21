@@ -1,15 +1,16 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_db, async_session
 from app.db_models import User, Source, Workspace, Folder
 from app.models import SourceResponse
 from app.services.auth_service import get_current_user
 from app.services import embedding_service
+from app.services.task_service import create_task
 from app.services.text_service import process_text
 
 
@@ -39,9 +40,10 @@ def _source_to_response(s: Source) -> SourceResponse:
     )
 
 
-@router.post("/import", response_model=SourceResponse)
+@router.post("/import")
 async def import_text_source(
     req: TextImportRequest,
+    background: bool = Query(False),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -61,6 +63,49 @@ async def import_text_source(
         )
         if not folder_result.scalar_one_or_none():
             raise HTTPException(status_code=422, detail={"error": "INVALID_FOLDER", "message": "Folder not found in workspace."})
+
+    if background:
+        async def _bg_import():
+            async with async_session() as session:
+                try:
+                    txt = process_text(req.content, title=req.title)
+                    chunk_count = await embedding_service.index_transcript(txt.index_key, txt.text)
+                    metadata_json = json.dumps({
+                        "index_key": txt.index_key,
+                        "title": txt.title,
+                        "chunk_count": chunk_count,
+                    })
+                    existing = await session.execute(
+                        select(Source).where(
+                            Source.workspace_id == req.workspace_id,
+                            Source.source_type == "text_note",
+                            Source.metadata_json.contains(txt.index_key),
+                        )
+                    )
+                    source = existing.scalar_one_or_none()
+                    if source:
+                        source.raw_text = txt.text
+                        source.metadata_json = metadata_json
+                        source.status = "ready"
+                    else:
+                        source = Source(
+                            workspace_id=req.workspace_id,
+                            folder_id=req.folder_id,
+                            user_id=user.id,
+                            source_type="text_note",
+                            title=txt.title,
+                            metadata_json=metadata_json,
+                            raw_text=txt.text,
+                            status="ready",
+                        )
+                        session.add(source)
+                    await session.commit()
+                except Exception as e:
+                    logger.exception("Background text import error: {}", str(e))
+                    raise
+
+        task_id = await create_task("text_import", req.title or "Text note", _bg_import())
+        return {"task_id": task_id, "status": "queued", "source_type": "text_note"}
 
     try:
         txt = process_text(req.content, title=req.title)

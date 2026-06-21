@@ -1,13 +1,14 @@
 import asyncio
+import json
 import time
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.db_models import Video as VideoModel, Source, Workspace
+from app.database import get_db, async_session
+from app.db_models import Video as VideoModel, Source, Workspace, Folder
 from app.services.auth_service import get_optional_user, get_current_user
 from app.db_models import User
 from app.utils.youtube_parser import extract_video_id
@@ -17,6 +18,7 @@ from app.services import llm_service
 from app.utils import session_cache
 from app.config import config
 from app.models import YouTubeImportRequest, SourceResponse
+from app.services.task_service import create_task
 
 
 router = APIRouter()
@@ -42,9 +44,10 @@ class TranscriptRequest(BaseModel):
     url: str
 
 
-@router.post("/import", response_model=SourceResponse)
+@router.post("/import")
 async def import_youtube_source(
     req: YouTubeImportRequest,
+    background: bool = Query(False),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -56,7 +59,6 @@ async def import_youtube_source(
             detail={"error": "INVALID_URL", "message": "Invalid YouTube URL."},
         )
 
-    # Verify workspace ownership
     ws_result = await db.execute(
         select(Workspace).where(
             Workspace.id == req.workspace_id, Workspace.owner_id == user.id
@@ -65,14 +67,7 @@ async def import_youtube_source(
     if not ws_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
 
-    # Verify folder ownership if specified
     if req.folder_id:
-        folder_result = await db.execute(
-            select(Source).where(
-                Source.id == req.folder_id, Source.workspace_id == req.workspace_id
-            )
-        )
-        from app.db_models import Folder
         folder_result = await db.execute(
             select(Folder).where(
                 Folder.id == req.folder_id, Folder.workspace_id == req.workspace_id
@@ -81,22 +76,81 @@ async def import_youtube_source(
         if not folder_result.scalar_one_or_none():
             raise HTTPException(status_code=422, detail={"error": "INVALID_FOLDER", "message": "Folder not found in workspace."})
 
+    if background:
+        async def _bg_import():
+            async with async_session() as session:
+                try:
+                    metadata, transcript_result = await asyncio.gather(
+                        transcript_service.fetch_video_metadata(video_id),
+                        transcript_service.fetch_transcript(video_id),
+                    )
+                    transcript_text = transcript_result.text
+
+                    summary = ""
+                    if config.get("enable_llm_enrichment"):
+                        summary = await llm_service.generate_transcript_summary(transcript_text, metadata.title)
+
+                    chunk_count = await embedding_service.index_transcript_segments(
+                        video_id, transcript_result.segments, transcript_text
+                    )
+
+                    metadata_json = json.dumps({
+                        "video_id": video_id,
+                        "channel_name": metadata.channel_name,
+                        "duration": metadata.duration,
+                        "thumbnail_url": metadata.thumbnail_url,
+                        "summary": summary,
+                        "chunk_count": chunk_count,
+                    })
+
+                    existing = await session.execute(
+                        select(Source).where(
+                            Source.workspace_id == req.workspace_id,
+                            Source.source_type == "youtube_video",
+                            Source.metadata_json.contains(video_id),
+                        )
+                    )
+                    source = existing.scalar_one_or_none()
+                    if source:
+                        source.raw_text = transcript_text
+                        source.metadata_json = metadata_json
+                        source.status = "ready"
+                    else:
+                        source = Source(
+                            workspace_id=req.workspace_id,
+                            folder_id=req.folder_id,
+                            user_id=user.id,
+                            source_type="youtube_video",
+                            title=metadata.title,
+                            metadata_json=metadata_json,
+                            raw_text=transcript_text,
+                            status="ready",
+                        )
+                        session.add(source)
+
+                    await session.commit()
+                except Exception as e:
+                    logger.exception("Background YouTube import error: {}", str(e))
+                    raise
+
+        task_id = await create_task("youtube_import", req.url, _bg_import())
+        return {"task_id": task_id, "status": "queued", "source_type": "youtube_video"}
+
     try:
         metadata, transcript_result = await asyncio.gather(
             transcript_service.fetch_video_metadata(video_id),
             transcript_service.fetch_transcript(video_id),
         )
-        transcript = transcript_result.text
+        transcript_text = transcript_result.text
 
         summary = ""
         if config.get("enable_llm_enrichment"):
-            summary = await llm_service.generate_transcript_summary(transcript, metadata.title)
+            summary = await llm_service.generate_transcript_summary(transcript_text, metadata.title)
 
         chunk_count = await embedding_service.index_transcript_segments(
-            video_id, transcript_result.segments, transcript
+            video_id, transcript_result.segments, transcript_text
         )
 
-        import json
         metadata_json = json.dumps({
             "video_id": video_id,
             "channel_name": metadata.channel_name,
@@ -115,7 +169,7 @@ async def import_youtube_source(
         )
         source = existing.scalar_one_or_none()
         if source:
-            source.raw_text = transcript
+            source.raw_text = transcript_text
             source.metadata_json = metadata_json
             source.status = "ready"
         else:
@@ -126,7 +180,7 @@ async def import_youtube_source(
                 source_type="youtube_video",
                 title=metadata.title,
                 metadata_json=metadata_json,
-                raw_text=transcript,
+                raw_text=transcript_text,
                 status="ready",
             )
             db.add(source)
