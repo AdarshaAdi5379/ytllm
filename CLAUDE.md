@@ -129,7 +129,7 @@
 - Confirm docs stay honest when commands, environment variables, or behavior change.
 - Confirm workspace chat path (SSE endpoint `POST /api/ai/chat/workspace/{id}`) when changing chat behavior.
 
-## Session Context — V2 Features (as of Jun 21 2026)
+## Session Context — V2 Features (as of Jun 23 2026)
 
 ### First Session (Jun 20)
 1. `ea10ec72` — Workspace & Folder CRUD
@@ -152,7 +152,19 @@
 14. `d1bcf603` — AI actions: 8 tools (explain, simplify, translate, expand, compare, examples, code, quiz) with param modals
 15. `5aa530d7` — Auth flow fix: Home back button, sidebar sign-in for guests, health check retry, auth modal global state
 
+### Fourth Session (Jun 23) — Auth/Import bugs + unfiled sources
+16. `5619063c` — Reset workspace/chat state on stale JWT token; add Auth header to workspace SSE chat; show import error messages in UI; add Unfiled sources section for folderless imports; improve website extraction error message; add null folder_id filter support
+
 ### Key Files Added/Modified (All Sessions)
+- `frontend/src/api/client.ts` — Error objects get `status` property for reliable 401 detection (session 4)
+- `frontend/src/App.tsx` — Reset workspace/chat session stores on stale JWT (session 4)
+- `frontend/src/store/useWorkspaceStore.ts` — Added `resetState()`; reset on 401 in `loadWorkspaces` (session 4)
+- `frontend/src/store/useChatSessionStore.ts` — Added `resetState()` (session 4)
+- `frontend/src/components/workspace/ImportNotifications.tsx` — Visible error text instead of hidden tooltip (session 4)
+- `frontend/src/components/workspace/WorkspaceSidebar.tsx` — Unfiled sources section; `loadUnfiledSources` after import (session 4)
+- `frontend/src/api/workspace.ts` — `fetchUnfiledSources()`; `Authorization` header in `streamWorkspaceChat` (session 4)
+- `backend/app/routes/workspace/sources.py` — `folder_id=__none__` support for null folder filter (session 4)
+- `backend/app/services/website_service.py` — Improved extraction failure error message (session 4)
 - `backend/app/routes/workspace/members.py` — Member invite/list/update-role/remove (session 3)
 - `backend/app/routes/ai/summary.py` — Summary CRUD endpoints (session 3)
 - `backend/app/routes/ai/search.py` — Hybrid search with filters (session 3)
