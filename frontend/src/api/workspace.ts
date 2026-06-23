@@ -117,6 +117,10 @@ export async function fetchSources(workspaceId: string, folderId?: string): Prom
   return apiFetch<SourceItem[]>(`/workspace/${workspaceId}/sources/${params}`);
 }
 
+export async function fetchUnfiledSources(workspaceId: string): Promise<SourceItem[]> {
+  return apiFetch<SourceItem[]>(`/workspace/${workspaceId}/sources/?folder_id=__none__`);
+}
+
 export async function getSource(workspaceId: string, sourceId: string): Promise<SourceItem> {
   return apiFetch<SourceItem>(`/workspace/${workspaceId}/sources/${sourceId}`);
 }
@@ -532,9 +536,13 @@ export function streamWorkspaceChat(
 ): AbortController {
   const controller = new AbortController();
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getAuthToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   fetch(`/api/ai/chat/workspace/${workspaceId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(req),
     signal: controller.signal,
   })

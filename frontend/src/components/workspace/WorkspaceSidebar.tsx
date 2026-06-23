@@ -10,7 +10,7 @@ import { useImportStore } from '../../store/useImportStore';
 import { ImportNotifications } from './ImportNotifications';
 import { MembersPanel } from './MembersPanel';
 import {
-  fetchSources, deleteSource,
+  fetchSources, fetchUnfiledSources, deleteSource,
   importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource, uploadDocxSource, uploadPptxSource,
   importYouTubeSourceBackground, importWebsiteSourceBackground, importPdfSourceBackground,
   importMarkdownSourceBackground, importTextSourceBackground,
@@ -52,6 +52,8 @@ export function WorkspaceSidebarContent() {
   const [importingGitHub, setImportingGitHub] = useState(false);
   const [showWsSwitcher, setShowWsSwitcher] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [unfiledSources, setUnfiledSources] = useState<SourceItem[]>([]);
+  const [loadingUnfiled, setLoadingUnfiled] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -60,6 +62,25 @@ export function WorkspaceSidebarContent() {
   }, [isAuthenticated]);
 
   const { addJob, setJobDone, setJobFailed, updateJob } = useImportStore();
+
+  const loadUnfiledSources = useCallback(async () => {
+    if (!activeWorkspaceId) return;
+    setLoadingUnfiled(true);
+    try {
+      const items = await fetchUnfiledSources(activeWorkspaceId);
+      setUnfiledSources(items);
+    } catch {
+      setUnfiledSources([]);
+    } finally {
+      setLoadingUnfiled(false);
+    }
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    if (activeWorkspaceId) {
+      loadUnfiledSources();
+    }
+  }, [activeWorkspaceId]);
 
   const doBackgroundImport = async (
     jobId: string,
@@ -72,6 +93,7 @@ export function WorkspaceSidebarContent() {
       await pollImportTask(result.task_id);
       setJobDone(jobId);
       await loadFolderTree(activeWorkspaceId!);
+      loadUnfiledSources();
     } catch (err: any) {
       setJobFailed(jobId, err.message || 'Import failed');
     } finally {
@@ -572,6 +594,41 @@ export function WorkspaceSidebarContent() {
           onImport={handleImportYoutube}
         />
       ))}
+
+      {/* Unfiled sources */}
+      {activeWorkspaceId && (
+        <div className="px-3 pt-3 pb-1">
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            Unfiled
+            {unfiledSources.length > 0 && (
+              <span className="ml-1 text-[10px] text-slate-600 font-mono font-normal">{unfiledSources.length}</span>
+            )}
+          </span>
+        </div>
+      )}
+      {loadingUnfiled && (
+        <div className="flex items-center justify-center py-2">
+          <Loader2 size={10} className="animate-spin text-slate-500" />
+        </div>
+      )}
+      {!loadingUnfiled && unfiledSources.length === 0 && activeWorkspaceId && (
+        <div className="px-6 py-3 text-center">
+          <p className="text-[10px] text-slate-600">No unfiled sources</p>
+        </div>
+      )}
+      {unfiledSources.map((source) => (
+        <div key={source.id} className="px-3">
+          <SourceItemRow
+            source={source}
+            depth={0}
+            onDelete={async () => {
+              await deleteSource(activeWorkspaceId!, source.id);
+              setUnfiledSources((prev) => prev.filter((s) => s.id !== source.id));
+            }}
+          />
+        </div>
+      ))}
+
       <ImportNotifications />
       {showMembers && <MembersPanel onClose={() => setShowMembers(false)} />}
     </div>

@@ -37,7 +37,9 @@ async def list_sources(
 ):
     await verify_workspace_access(db, workspace_id, user.id)
     clauses = [Source.workspace_id == workspace_id]
-    if folder_id:
+    if folder_id == "__none__":
+        clauses.append(Source.folder_id.is_(None))
+    elif folder_id:
         clauses.append(Source.folder_id == folder_id)
     result = await db.execute(
         select(Source).where(*clauses).order_by(Source.created_at)

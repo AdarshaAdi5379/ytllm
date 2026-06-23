@@ -74,8 +74,9 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
       errorData = { error: 'UNKNOWN_ERROR', message: `HTTP ${response.status}` };
     }
     const normalized = parseApiError(errorData, response.status);
-    const err = new Error(normalized.message);
-    (err as Error & { code?: string }).code = normalized.code;
+    const err = new Error(normalized.message) as Error & { code?: string; status?: number };
+    err.code = normalized.code;
+    err.status = response.status;
     throw err;
   }
 
@@ -126,8 +127,9 @@ export async function exportChat(data: ExportRequest): Promise<Blob> {
       errorData = { error: 'EXPORT_FAILED', message: 'Export failed' };
     }
     const normalized = parseApiError(errorData, response.status);
-    const err = new Error(normalized.message);
-    (err as Error & { code?: string }).code = normalized.code;
+    const err = new Error(normalized.message) as Error & { code?: string; status?: number };
+    err.code = normalized.code;
+    err.status = response.status;
     throw err;
   }
 

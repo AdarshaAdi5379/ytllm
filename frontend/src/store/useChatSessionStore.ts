@@ -22,6 +22,7 @@ interface ChatSessionStore {
   addMessage: (msg: ChatMessage) => void;
   setStreaming: (v: boolean) => void;
   clearMessages: () => void;
+  resetState: () => void;
 }
 
 export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
@@ -85,4 +86,14 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
   setStreaming: (v) => set({ streaming: v }),
 
   clearMessages: () => set({ messages: [], activeSessionId: null }),
+
+  resetState: () => {
+    set({
+      sessions: [],
+      activeSessionId: null,
+      messages: [],
+      streaming: false,
+      loading: false,
+    });
+  },
 }));

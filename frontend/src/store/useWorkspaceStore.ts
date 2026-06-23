@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { WorkspaceItem, FolderTreeItem } from '../api/workspace';
 import * as workspaceApi from '../api/workspace';
+import { useAuthStore } from './useAuthStore';
 
 interface WorkspaceStore {
   workspaces: WorkspaceItem[];
@@ -31,6 +32,7 @@ interface WorkspaceStore {
   clearSourceSelection: () => void;
   setActiveFolder: (folderId: string | null, folderTitle?: string) => void;
   clearActiveFolder: () => void;
+  resetState: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -60,6 +62,10 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       }
     } catch (err: any) {
       set({ loading: false, error: err.message ?? 'Failed to load workspaces' });
+      if (err.status === 401) {
+        get().resetState();
+        useAuthStore.getState().clearAuth();
+      }
     }
   },
 
@@ -141,5 +147,20 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   clearActiveFolder: () => {
     set({ activeFolderId: null, activeFolderTitle: "" });
+  },
+
+  resetState: () => {
+    set({
+      workspaces: [],
+      activeWorkspaceId: null,
+      activeSourceId: null,
+      activeSourceTitle: "",
+      selectedSourceIds: [],
+      activeFolderId: null,
+      activeFolderTitle: "",
+      folderTree: [],
+      loading: false,
+      error: null,
+    });
   },
 }));

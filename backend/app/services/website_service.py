@@ -53,7 +53,10 @@ async def fetch_webpage(url: str) -> WebPageResult:
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
 
     if len(text) < 50:
-        raise ValueError("Could not extract meaningful content from this URL.")
+        raise ValueError(
+            "This page does not contain enough readable text. "
+            "Many JavaScript-heavy sites require a direct article URL instead of the homepage."
+        )
 
     site_name = _extract_site_name(url)
     return WebPageResult(url=url, title=title, text=text, site_name=site_name)

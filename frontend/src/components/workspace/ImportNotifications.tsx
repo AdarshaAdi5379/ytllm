@@ -42,8 +42,9 @@ export function ImportNotifications() {
           {job.status === 'done' && <Check size={11} className="flex-shrink-0 text-emerald-400" />}
           {job.status === 'failed' && (
             <>
-              <span title={job.error} className="flex-shrink-0"><AlertCircle size={11} className="text-rose-400" /></span>
-              <button onClick={() => dismissJob(job.id)} className="p-0.5 flex-shrink-0 text-rose-400/50 hover:text-rose-300">
+              <span className="flex-shrink-0"><AlertCircle size={11} className="text-rose-400" /></span>
+              {job.error && <span className="text-[10px] text-rose-400/80 truncate max-w-[120px]" title={job.error}>{job.error}</span>}
+              <button onClick={() => dismissJob(job.id)} className="p-0.5 flex-shrink-0 text-rose-400/50 hover:text-rose-300 ml-auto">
                 <X size={10} />
               </button>
             </>

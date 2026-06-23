@@ -144,27 +144,46 @@
 8. `faa48d61` — PDF import as Source (PyMuPDF extraction)
 9. `115c44ce` — SSRF protection for URL-based imports
 
-### Key Files Added/Modified
-- `backend/app/routes/workspace/workspaces.py` — Workspace CRUD
-- `backend/app/routes/workspace/folders.py` — Folder CRUD + tree builder
-- `backend/app/routes/workspace/sources.py` — Source list/get/delete (with vector cleanup in this session)
-- `backend/app/routes/workspace/sessions.py` — Chat session CRUD
-- `backend/app/routes/sources/youtube.py` — YouTube import as Source (new) + legacy transcript
-- `backend/app/routes/sources/website.py` — Website import (created this session)
-- `backend/app/routes/sources/pdf.py` — PDF import (created this session)
-- `backend/app/routes/ai/chat.py` — Workspace SSE chat, folder-scoped chat, `index_key` metadata support
-- `backend/app/routes/auth.py` — Auto-create default workspace on register
-- `backend/app/services/website_service.py` — Webpage fetch + extraction (created this session)
-- `backend/app/services/pdf_service.py` — PDF fetch + extraction (created this session)
-- `backend/app/utils/ssrf.py` — SSRF validation utility (created this session)
-- `backend/app/models.py` — Added `WebsiteImportRequest`; `WorkspaceChatRequest.folder_id`
-- `frontend/src/api/workspace.ts` — Workspace API + website/pdf import + `folder_id` on chat request
-- `frontend/src/store/useWorkspaceStore.ts` — Added `activeSourceId/activeFolderId` state
-- `frontend/src/store/useChatSessionStore.ts` — Chat session Zustand store
-- `frontend/src/components/workspace/WorkspaceSidebar.tsx` — Import buttons for YouTube/Website/PDF, source click-to-chat, folder chat context menu
-- `frontend/src/components/workspace/WorkspaceChatPanel.tsx` — Source/folder scoped chat via `source_ids`/`folder_id`
+### Third Session (Jun 21) — Shared Workspaces + AI Features + Bugfixes
+10. `477f0923` — Shared workspaces with role-based member management (invite/list/update-role/remove)
+11. `9341db39` — AI summaries: 6 types (short, detailed, executive, eli5, interview, revision) with generate/copy/download
+12. `4dc810a4` — Smart search: hybrid vector+keyword, grouped results by source, color-coded relevance, filters (folder/source-type/date)
+13. `0d264aed` — Notes auto-organization: AI topic/tags/difficulty/importance classification, debounced auto-analysis
+14. `d1bcf603` — AI actions: 8 tools (explain, simplify, translate, expand, compare, examples, code, quiz) with param modals
+15. `5aa530d7` — Auth flow fix: Home back button, sidebar sign-in for guests, health check retry, auth modal global state
 
-### Dependencies Added
+### Key Files Added/Modified (All Sessions)
+- `backend/app/routes/workspace/members.py` — Member invite/list/update-role/remove (session 3)
+- `backend/app/routes/ai/summary.py` — Summary CRUD endpoints (session 3)
+- `backend/app/routes/ai/search.py` — Hybrid search with filters (session 3)
+- `backend/app/routes/ai/notes.py` — Note CRUD + AI analyze endpoint (session 3)
+- `backend/app/routes/ai/actions.py` — AI actions run endpoint (session 3)
+- `backend/app/services/summary_service.py` — 6 summary prompt templates (session 3)
+- `backend/app/services/notes_ai_service.py` — LLM note analysis (session 3)
+- `backend/app/services/actions_service.py` — 8 action prompt templates (session 3)
+- `frontend/src/store/useAuthStore.ts` — Added `authModalMode` for global auth modal (session 3)
+- `frontend/src/store/useVideoStore.ts` — `setActiveVideo` accepts `null` (session 3)
+- `frontend/src/components/layout/Sidebar.tsx` — Guest sign-in buttons, health check retry (session 3)
+- `frontend/src/components/layout/MainPanel.tsx` — Auth modal moved to store (session 3)
+- `frontend/src/components/video/VideoHeader.tsx` — Home back button (session 3)
+- `frontend/src/components/workspace/MembersPanel.tsx` — Member management UI (session 3)
+- `frontend/src/components/workspace/SummaryPanel.tsx` — Summary UI (session 3)
+- `frontend/src/components/workspace/SearchPanel.tsx` — Search UI with filters (session 3)
+- `frontend/src/components/workspace/NotesPanel.tsx` — Notes UI with AI suggestions (session 3)
+- `frontend/src/components/workspace/ActionsToolbar.tsx` — Actions dropdown + param modals (session 3)
+- `backend/app/routes/workspace/workspaces.py` — Workspace CRUD (session 1)
+- `backend/app/routes/workspace/folders.py` — Folder CRUD + tree builder (session 1)
+- `backend/app/routes/workspace/sources.py` — Source list/get/delete with vector cleanup (session 2)
+- `backend/app/routes/workspace/sessions.py` — Chat session CRUD (session 1)
+- `backend/app/routes/sources/youtube.py` — YouTube import as Source (session 1)
+- `backend/app/routes/sources/website.py` — Website import (session 2)
+- `backend/app/routes/sources/pdf.py` — PDF import (session 2)
+- `backend/app/routes/ai/chat.py` — Workspace SSE chat, folder-scoped chat, index_key support (session 1)
+- `backend/app/services/website_service.py` — Webpage fetch + extraction (session 2)
+- `backend/app/services/pdf_service.py` — PDF fetch + extraction (session 2)
+- `backend/app/utils/ssrf.py` — SSRF validation (session 2)
+
+### Dependencies Added (All Sessions)
 - `readability-lxml` — main content extraction for website import
 - `PyMuPDF` — PDF text extraction
 

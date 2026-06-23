@@ -5,6 +5,8 @@ import { URLInputModal } from './components/modals/URLInputModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { useVideoStore } from './store/useVideoStore';
 import { useAuthStore } from './store/useAuthStore';
+import { useWorkspaceStore } from './store/useWorkspaceStore';
+import { useChatSessionStore } from './store/useChatSessionStore';
 import { fetchSavedVideos, fetchSavedVideoDetail, setAuthToken } from './api/client';
 
 export default function App() {
@@ -100,6 +102,12 @@ export default function App() {
         }
       } catch (err) {
         console.error('Failed to restore saved videos:', err);
+        const apiErr = err as Error & { status?: number };
+        if (apiErr.status === 401) {
+          useAuthStore.getState().clearAuth();
+          useWorkspaceStore.getState().resetState();
+          useChatSessionStore.getState().resetState();
+        }
       }
     })();
 
