@@ -197,18 +197,18 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 **Goal:** Increase retention. Active learning tools built on top of the knowledge base.
 
 ### Flashcards
-- [ ] **Auto-generate flashcards** from sources — AI extracts question-answer pairs
-- [ ] **Manual flashcard creation** — user writes custom Q&A
-- [ ] **Difficulty tagging** — easy / medium / hard (auto-detected by AI)
-- [ ] **Flashcard review session** — cue card UI with flip animation, self-rating (again/hard/good/easy)
-- [ ] **Review interval tracking** — next review date calculated per card
+- [x] **Auto-generate flashcards** from sources — AI extracts question-answer pairs
+- [x] **Manual flashcard creation** — user writes custom Q&A
+- [x] **Difficulty tagging** — easy / medium / hard (auto-detected by AI)
+- [x] **Flashcard review session** — cue card UI with flip animation, self-rating (again/hard/good/easy)
+- [x] **Review interval tracking** — next review date calculated per card
 
 ### Spaced Repetition
-- [ ] **SM-2 algorithm implementation** for optimal review scheduling
-- [ ] **Today's review queue** — cards due for review today, shown on dashboard
-- [ ] **Tomorrow's preview** — upcoming cards for next session
-- [ ] **Next week / Next month** — calendar-style view of scheduled reviews
-- [ ] **Review statistics** — cards reviewed today, retention rate, streak count
+- [x] **SM-2 algorithm implementation** for optimal review scheduling
+- [x] **Today's review queue** — cards due for review today, shown on dashboard
+- [x] **Tomorrow's preview** — upcoming cards for next session
+- [x] **Next week / Next month** — calendar-style view of scheduled reviews
+- [x] **Review statistics** — cards reviewed today, retention rate, streak count
 
 ### Quiz Generator
 - [ ] **Multiple Choice Questions (MCQ)** — 4 options, one correct answer

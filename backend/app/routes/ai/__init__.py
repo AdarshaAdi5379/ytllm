@@ -6,6 +6,7 @@ from app.routes.ai.notes import router as notes_router
 from app.routes.ai.search import router as search_router
 from app.routes.ai.actions import router as actions_router
 from app.routes.ai.flashcards import router as flashcards_router
+from app.routes.ai.quiz import router as quiz_router
 
 ai_router = APIRouter()
 
@@ -15,3 +16,4 @@ ai_router.include_router(notes_router, prefix="/notes", tags=["ai/notes"])
 ai_router.include_router(search_router, prefix="/search", tags=["ai/search"])
 ai_router.include_router(actions_router, prefix="/actions", tags=["ai/actions"])
 ai_router.include_router(flashcards_router, prefix="/flashcards", tags=["ai/flashcards"])
+ai_router.include_router(quiz_router, prefix="/quiz", tags=["ai/quiz"])

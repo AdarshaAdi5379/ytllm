@@ -272,6 +272,36 @@ class Flashcard(Base):
     )
 
 
+class Quiz(Base):
+    __tablename__ = "quizzes"
+
+    QUIZ_TYPES = ("mcq", "coding", "short_answer", "long_answer", "case_study", "interview")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    source_id = Column(String, ForeignKey("sources.id"), nullable=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    quiz_type = Column(String, nullable=False)
+    questions = Column(Text, default="[]")
+    metadata_json = Column(Text, default="{}")
+    time_limit_minutes = Column(Integer, nullable=True)
+    score = Column(Integer, nullable=True)
+    max_score = Column(Integer, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    workspace = relationship("Workspace")
+    source = relationship("Source")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("ix_quizzes_quiz_type", "quiz_type"),
+        Index("ix_quizzes_source_id", "source_id"),
+    )
+
+
 class WorkspaceMember(Base):
     __tablename__ = "workspace_members"
 

@@ -359,3 +359,44 @@ class ReviewQueueItem(BaseModel):
     last_reviewed_at: str | None = None
     total_reviews: int = 0
     correct_reviews: int = 0
+
+
+class QuizResponse(BaseModel):
+    id: str
+    workspace_id: str
+    source_id: str | None = None
+    title: str
+    quiz_type: str
+    questions: str = "[]"
+    metadata_json: str = "{}"
+    time_limit_minutes: int | None = None
+    score: int | None = None
+    max_score: int | None = None
+    completed_at: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class CreateQuizRequest(BaseModel):
+    workspace_id: str
+    source_id: str | None = None
+    title: str
+    quiz_type: str = "mcq"
+    questions: str = "[]"
+    time_limit_minutes: int | None = None
+
+
+class GenerateQuizRequest(BaseModel):
+    source_id: str
+    quiz_type: str = "mcq"
+    count: int = 5
+    time_limit_minutes: int | None = None
+
+
+class SubmitQuizAnswer(BaseModel):
+    question_id: str
+    answer: str | int | None = None
+
+
+class SubmitQuizRequest(BaseModel):
+    answers: list[SubmitQuizAnswer]
