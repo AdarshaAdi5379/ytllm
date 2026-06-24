@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Brain, BookOpen } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Brain, BookOpen, Zap } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
@@ -11,6 +11,7 @@ import { ActionsToolbar } from './ActionsToolbar';
 import { FlashcardPanel } from './FlashcardPanel';
 import { QuizPanel } from './QuizPanel';
 import { LearningPathPanel } from './LearningPathPanel';
+import { DailyRevisionPanel } from './DailyRevisionPanel';
 
 export function WorkspaceChatPanel() {
   const { activeWorkspaceId, activeSourceId, activeSourceTitle, selectedSourceIds, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder, clearSourceSelection, setActiveSource } = useWorkspaceStore();
@@ -24,7 +25,7 @@ export function WorkspaceChatPanel() {
   const [showSessions, setShowSessions] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [citationsMap, setCitationsMap] = useState<Record<number, any[]>>({});
-  const [viewMode, setViewMode] = useState<'chat' | 'notes' | 'search' | 'summary' | 'flashcard' | 'quiz' | 'path'>('chat');
+  const [viewMode, setViewMode] = useState<'chat' | 'notes' | 'search' | 'summary' | 'flashcard' | 'quiz' | 'path' | 'revision'>('chat');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedTemperature, setSelectedTemperature] = useState(0.2);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -219,6 +220,15 @@ export function WorkspaceChatPanel() {
             <BookOpen size={12} />
             Learning Path
           </button>
+          <button
+            onClick={() => setViewMode('revision')}
+            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              viewMode === 'revision' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Zap size={12} />
+            Daily Revision
+          </button>
         </div>
         <div className="flex items-center gap-2">
           {/* Source scope indicator */}
@@ -342,6 +352,8 @@ export function WorkspaceChatPanel() {
           <QuizPanel />
         ) : viewMode === 'path' ? (
           <LearningPathPanel />
+        ) : viewMode === 'revision' ? (
+          <DailyRevisionPanel />
         ) : (
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">

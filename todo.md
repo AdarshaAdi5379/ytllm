@@ -224,11 +224,11 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
   - Exam mode (all questions, no hints, scored at end)
 
 ### Learning Path
-- [ ] **Skill assessment** — initial quiz to determine current knowledge level
-- [ ] **AI analysis** — identify knowledge gaps from imported sources
-- [ ] **Personalized roadmap** — ordered list of topics to learn, with source recommendations
-- [ ] **Progress tracking** — mark topics complete, log time spent
-- [ ] **Roadmap visualization** — progress bar per milestone, overall completion percentage
+- [x] **Skill assessment** — initial quiz to determine current knowledge level
+- [x] **AI analysis** — identify knowledge gaps from imported sources
+- [x] **Personalized roadmap** — ordered list of topics to learn, with source recommendations
+- [x] **Progress tracking** — mark topics complete, log time spent
+- [x] **Roadmap visualization** — progress bar per milestone, overall completion percentage
 
 ### Daily Revision
 - [ ] **Weak topics identification** — computed from quiz and flashcard performance
