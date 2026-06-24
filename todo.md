@@ -231,20 +231,20 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Roadmap visualization** — progress bar per milestone, overall completion percentage
 
 ### Daily Revision
-- [ ] **Weak topics identification** — computed from quiz and flashcard performance
-- [ ] **Strong topics tracking** — what you've demonstrated mastery of
-- [ ] **Missed questions review** — curated list of all incorrect answers
-- [ ] **AI suggestions** — "Based on your weak areas, review these 3 sources"
+- [x] **Weak topics identification** — computed from quiz and flashcard performance
+- [x] **Strong topics tracking** — what you've demonstrated mastery of
+- [x] **Missed questions review** — curated list of all incorrect answers
+- [x] **AI suggestions** — "Based on your weak areas, review these 3 sources"
 - [ ] **Daily digest email** (optional) — "Your 5-minute daily review summary"
 
 ### Progress Dashboard
-- [ ] **Learning hours** — total tracked time + per-topic breakdown
-- [ ] **Completed topics** — count and percentage of roadmap completed
-- [ ] **Accuracy** — quiz and flashcard correct percentage over time (line chart)
-- [ ] **Revision streak** — consecutive calendar days with review activity
-- [ ] **Knowledge score** — composite score (0-1000) from all metrics combined
-- [ ] **Consistency graph** — GitHub-style daily activity heatmap
-- [ ] **Weekly/monthly reports** — auto-generated progress summaries
+- [x] **Learning hours** — total tracked time + per-topic breakdown
+- [x] **Completed topics** — count and percentage of roadmap completed
+- [x] **Accuracy** — quiz and flashcard correct percentage over time (line chart)
+- [x] **Revision streak** — consecutive calendar days with review activity
+- [x] **Knowledge score** — composite score (0-1000) from all metrics combined
+- [x] **Consistency graph** — GitHub-style daily activity heatmap
+- [x] **Weekly/monthly reports** — auto-generated progress summaries
 
 ### AI Mentor
 - [ ] **Reverse interaction** — AI asks YOU questions instead of answering

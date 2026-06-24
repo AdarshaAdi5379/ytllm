@@ -9,6 +9,7 @@ from app.routes.ai.flashcards import router as flashcards_router
 from app.routes.ai.quiz import router as quiz_router
 from app.routes.ai.learning_path import router as learning_path_router
 from app.routes.ai.daily_revision import router as daily_revision_router
+from app.routes.ai.progress import router as progress_router
 
 ai_router = APIRouter()
 
@@ -21,3 +22,4 @@ ai_router.include_router(flashcards_router, prefix="/flashcards", tags=["ai/flas
 ai_router.include_router(quiz_router, prefix="/quiz", tags=["ai/quiz"])
 ai_router.include_router(learning_path_router, prefix="/learning-path", tags=["ai/learning-path"])
 ai_router.include_router(daily_revision_router, prefix="/daily-revision", tags=["ai/daily-revision"])
+ai_router.include_router(progress_router, prefix="/progress", tags=["ai/progress"])
