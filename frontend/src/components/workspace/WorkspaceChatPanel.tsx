@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Brain, BookOpen, Zap, BarChart3 } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Brain, BookOpen, Zap, BarChart3, GraduationCap } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
@@ -13,6 +13,7 @@ import { QuizPanel } from './QuizPanel';
 import { LearningPathPanel } from './LearningPathPanel';
 import { DailyRevisionPanel } from './DailyRevisionPanel';
 import { ProgressDashboardPanel } from './ProgressDashboard';
+import { MentorPanel } from './MentorPanel';
 
 export function WorkspaceChatPanel() {
   const { activeWorkspaceId, activeSourceId, activeSourceTitle, selectedSourceIds, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder, clearSourceSelection, setActiveSource } = useWorkspaceStore();
@@ -26,7 +27,7 @@ export function WorkspaceChatPanel() {
   const [showSessions, setShowSessions] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [citationsMap, setCitationsMap] = useState<Record<number, any[]>>({});
-  const [viewMode, setViewMode] = useState<'chat' | 'notes' | 'search' | 'summary' | 'flashcard' | 'quiz' | 'path' | 'revision' | 'progress'>('chat');
+  const [viewMode, setViewMode] = useState<'chat' | 'notes' | 'search' | 'summary' | 'flashcard' | 'quiz' | 'path' | 'revision' | 'progress' | 'mentor'>('chat');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedTemperature, setSelectedTemperature] = useState(0.2);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -231,6 +232,15 @@ export function WorkspaceChatPanel() {
             Daily Revision
           </button>
           <button
+            onClick={() => setViewMode('mentor')}
+            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              viewMode === 'mentor' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <GraduationCap size={12} />
+            Mentor
+          </button>
+          <button
             onClick={() => setViewMode('progress')}
             className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
               viewMode === 'progress' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -364,6 +374,8 @@ export function WorkspaceChatPanel() {
           <LearningPathPanel />
         ) : viewMode === 'revision' ? (
           <DailyRevisionPanel />
+        ) : viewMode === 'mentor' ? (
+          <MentorPanel />
         ) : viewMode === 'progress' ? (
           <ProgressDashboardPanel />
         ) : (

@@ -247,12 +247,12 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Weekly/monthly reports** — auto-generated progress summaries
 
 ### AI Mentor
-- [ ] **Reverse interaction** — AI asks YOU questions instead of answering
-- [ ] **Topic select** — choose a topic and AI quizzes you on it
-- [ ] **Follow-up questions** — "Why is BFS better than DFS here?" which adapts based on your answer
-- [ ] **Problem-solving sessions** — AI presents a problem, you solve it, AI evaluates
-- [ ] **Gap detection** — AI identifies what you got wrong and suggests remedial sources
-- [ ] **Mentor session history** — review past mentor sessions with improvement tracking
+- [x] **Reverse interaction** — AI asks YOU questions instead of answering
+- [x] **Topic select** — choose a topic and AI quizzes you on it
+- [x] **Follow-up questions** — "Why is BFS better than DFS here?" which adapts based on your answer
+- [x] **Problem-solving sessions** — AI presents a problem, you solve it, AI evaluates
+- [x] **Gap detection** — AI identifies what you got wrong and suggests remedial sources
+- [x] **Mentor session history** — review past mentor sessions with improvement tracking
 
 **See full details:** `docs/roadmap-v3.md`
 

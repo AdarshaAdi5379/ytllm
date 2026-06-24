@@ -445,3 +445,36 @@ class UpdatePathRequest(BaseModel):
     title: str | None = None
     description: str | None = None
     status: str | None = None
+
+
+class MentorMessage(BaseModel):
+    role: str  # "ai" | "user"
+    content: str
+    evaluation: str | None = None  # "correct" | "partial" | "incorrect"
+
+
+class MentorSessionResponse(BaseModel):
+    id: str
+    workspace_id: str
+    topic: str
+    source_ids: str = "[]"
+    messages: str = "[]"
+    status: str = "active"
+    summary: str | None = None
+    gap_report: str | None = None
+    correct_count: int = 0
+    total_questions: int = 0
+    created_at: str
+    updated_at: str
+
+
+class StartMentorSessionRequest(BaseModel):
+    workspace_id: str
+    topic: str
+    source_ids: list[str] = []
+    context: str = ""
+
+
+class MentorRespondRequest(BaseModel):
+    session_id: str
+    answer: str

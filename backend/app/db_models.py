@@ -352,6 +352,34 @@ class LearningPathTopic(Base):
 LearningPath.topics = relationship("LearningPathTopic", back_populates="learning_path", cascade="all, delete-orphan")
 
 
+class MentorSession(Base):
+    __tablename__ = "mentor_sessions"
+
+    STATUSES = ("active", "completed")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    topic = Column(String, nullable=False)
+    source_ids = Column(Text, default="[]")
+    messages = Column(Text, default="[]")
+    status = Column(String, nullable=False, default="active")
+    summary = Column(Text, nullable=True)
+    gap_report = Column(Text, nullable=True)
+    correct_count = Column(Integer, default=0)
+    total_questions = Column(Integer, default=0)
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    workspace = relationship("Workspace")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("ix_mentor_sessions_status", "status"),
+        Index("ix_mentor_sessions_topic", "topic"),
+    )
+
+
 class WorkspaceMember(Base):
     __tablename__ = "workspace_members"
 
