@@ -211,13 +211,13 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Review statistics** — cards reviewed today, retention rate, streak count
 
 ### Quiz Generator
-- [ ] **Multiple Choice Questions (MCQ)** — 4 options, one correct answer
-- [ ] **Coding questions** — problem description + expected solution pattern
-- [ ] **Short answer questions** — with expected answer for self-assessment
-- [ ] **Long answer questions** — essay-style prompts with rubric
-- [ ] **Case study analysis** — scenario-based questions from video/paper content
-- [ ] **Interview questions** — role-specific questions (SWE, ML, PM, etc.)
-- [ ] **Quiz modes**:
+- [x] **Multiple Choice Questions (MCQ)** — 4 options, one correct answer
+- [x] **Coding questions** — problem description + expected solution pattern
+- [x] **Short answer questions** — with expected answer for self-assessment
+- [x] **Long answer questions** — essay-style prompts with rubric
+- [x] **Case study analysis** — scenario-based questions from video/paper content
+- [x] **Interview questions** — role-specific questions (SWE, ML, PM, etc.)
+- [x] **Quiz modes**:
   - Timed mode (countdown timer)
   - Practice mode (hints available on request)
   - Review mode (show correct answer immediately after answering)

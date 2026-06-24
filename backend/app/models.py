@@ -400,3 +400,48 @@ class SubmitQuizAnswer(BaseModel):
 
 class SubmitQuizRequest(BaseModel):
     answers: list[SubmitQuizAnswer]
+
+
+class LearningPathTopicResponse(BaseModel):
+    id: str
+    learning_path_id: str
+    title: str
+    description: str = ""
+    sort_order: int = 0
+    source_ids: str = "[]"
+    completed: int = 0
+    completed_at: str | None = None
+    time_spent_minutes: int = 0
+    created_at: str
+    updated_at: str
+
+
+class LearningPathResponse(BaseModel):
+    id: str
+    workspace_id: str
+    title: str
+    description: str = ""
+    total_topics: int = 0
+    completed_topics: int = 0
+    time_spent_minutes: int = 0
+    status: str = "active"
+    topics: list[LearningPathTopicResponse] = []
+    created_at: str
+    updated_at: str
+
+
+class GeneratePathRequest(BaseModel):
+    workspace_id: str
+    title: str = ""
+    focus_area: str = ""
+
+
+class UpdatePathTopicRequest(BaseModel):
+    completed: int | None = None
+    time_spent_minutes: int | None = None
+
+
+class UpdatePathRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None

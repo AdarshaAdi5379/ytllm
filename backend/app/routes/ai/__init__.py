@@ -7,6 +7,7 @@ from app.routes.ai.search import router as search_router
 from app.routes.ai.actions import router as actions_router
 from app.routes.ai.flashcards import router as flashcards_router
 from app.routes.ai.quiz import router as quiz_router
+from app.routes.ai.learning_path import router as learning_path_router
 
 ai_router = APIRouter()
 
@@ -17,3 +18,4 @@ ai_router.include_router(search_router, prefix="/search", tags=["ai/search"])
 ai_router.include_router(actions_router, prefix="/actions", tags=["ai/actions"])
 ai_router.include_router(flashcards_router, prefix="/flashcards", tags=["ai/flashcards"])
 ai_router.include_router(quiz_router, prefix="/quiz", tags=["ai/quiz"])
+ai_router.include_router(learning_path_router, prefix="/learning-path", tags=["ai/learning-path"])

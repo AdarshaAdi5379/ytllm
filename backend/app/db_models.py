@@ -302,6 +302,56 @@ class Quiz(Base):
     )
 
 
+class LearningPath(Base):
+    __tablename__ = "learning_paths"
+
+    STATUSES = ("active", "completed", "archived")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    total_topics = Column(Integer, default=0)
+    completed_topics = Column(Integer, default=0)
+    time_spent_minutes = Column(Integer, default=0)
+    status = Column(String, nullable=False, default="active")
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    workspace = relationship("Workspace")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("ix_learning_paths_status", "status"),
+    )
+
+
+class LearningPathTopic(Base):
+    __tablename__ = "learning_path_topics"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    learning_path_id = Column(String, ForeignKey("learning_paths.id"), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    sort_order = Column(Integer, default=0)
+    source_ids = Column(Text, default="[]")
+    completed = Column(Integer, default=0)
+    completed_at = Column(DateTime, nullable=True)
+    time_spent_minutes = Column(Integer, default=0)
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    learning_path = relationship("LearningPath", back_populates="topics")
+
+    __table_args__ = (
+        Index("ix_lp_topic_sort_order", "sort_order"),
+    )
+
+
+LearningPath.topics = relationship("LearningPathTopic", back_populates="learning_path", cascade="all, delete-orphan")
+
+
 class WorkspaceMember(Base):
     __tablename__ = "workspace_members"
 
