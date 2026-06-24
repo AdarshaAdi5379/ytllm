@@ -39,23 +39,29 @@
   - `useVideoStore.ts` — per-video UI/chat state (legacy video list, current video)
   - `useWorkspaceStore.ts` — workspaces list, current workspace, folder tree, sources, load/create/rename/delete operations
   - `useChatSessionStore.ts` — chat sessions list, current session, messages, streaming state, session CRUD
+  - `useFlashcardStore.ts` — flashcards CRUD, review queue, SM-2 stats
+  - `useQuizStore.ts` — quizzes CRUD, generate, submit, taking state
+  - `useLearningPathStore.ts` — learning paths CRUD, generate, topic update
+  - `useNoteStore.ts` — notes CRUD, AI analysis
+  - `useProgressStore.ts` — progress dashboard data
+  - `useMentorStore.ts` — mentor sessions, messages, respond/end flow
 - `frontend/src/api/`
   - `client.ts` — base API client and auth header handling, SSE streaming helpers
   - `workspace.ts` — workspace, folder, source, session, and workspace chat API methods (snake_case matching FastAPI)
 - `backend/app/routes/` HTTP route layer organized by domain:
   - `routes/workspace/` — workspaces, folders, sessions, sources (under workspace), search
   - `routes/sources/` — youtube import (new) + old transcript endpoint
-  - `routes/ai/` — chat (single, multi, workspace), summary, actions, notes
+  - `routes/ai/` — chat, summary, actions, notes, flashcards, quiz, learning-path, daily-revision, progress, mentor
   - `routes/auth.py` — register/login, auto-creates default "My Workspace"
   - `routes/chat.py` — legacy single-video chat (keep for backward compat)
   - `routes/transcript.py` — legacy transcript load
   - `routes/videos.py` — legacy video CRUD
   - `routes/export.py` — PDF/DOCX export
   - `routes/health.py` — health check
-- `backend/app/services/` transcript, embeddings, LLM, auth, memory, export logic
+- `backend/app/services/` transcript, embeddings, LLM, auth, memory, export, spaced_repetition, flashcards, quiz, learning_path, daily_revision, progress, mentor
 - `backend/app/utils/` chunking, retry, YouTube parsing, session cache
-- `backend/app/db_models.py` SQLAlchemy ORM models (11 tables: User, Video, ChatMessage legacy + Workspace, Folder, Source, SourceChunk, ChatSession, ChatMessageNew, Note, Summary)
-- `backend/app/models.py` All Pydantic schemas (V0+V2)
+- `backend/app/db_models.py` SQLAlchemy ORM models (14 tables: User, Video, ChatMessage legacy + Workspace, Folder, Source, SourceChunk, ChatSession, ChatMessageNew, Note, Summary, Flashcard, Quiz, LearningPath, LearningPathTopic, WorkspaceMember, MentorSession)
+- `backend/app/models.py` All Pydantic schemas (V0+V2+V3)
 - `backend/tests/` backend tests
 
 ## Conventions
@@ -129,14 +135,14 @@
 - Confirm docs stay honest when commands, environment variables, or behavior change.
 - Confirm workspace chat path (SSE endpoint `POST /api/ai/chat/workspace/{id}`) when changing chat behavior.
 
-## Session Context — V2 Features (as of Jun 23 2026)
+## Session Context — V2 + V3 Features (as of Jun 24 2026)
 
-### First Session (Jun 20)
+### First Session (Jun 20) — Workspace foundation
 1. `ea10ec72` — Workspace & Folder CRUD
 2. `1ed431e4` — YouTube import as Source into workspace folders
 3. `b0c202b6` — Workspace chat with session management
 
-### Second Session (Jun 21) — 5 new features + security
+### Second Session (Jun 21) — Import types + SSRF protection
 4. `5f2ce8cd` — Source deletion cleanup (ChromaDB vector removal)
 5. `638e5dce` — Chat with single source via `source_ids` filter
 6. `fd0e23a0` — Chat with entire folder (recursive source resolution)
@@ -145,59 +151,90 @@
 9. `115c44ce` — SSRF protection for URL-based imports
 
 ### Third Session (Jun 21) — Shared Workspaces + AI Features + Bugfixes
-10. `477f0923` — Shared workspaces with role-based member management (invite/list/update-role/remove)
-11. `9341db39` — AI summaries: 6 types (short, detailed, executive, eli5, interview, revision) with generate/copy/download
-12. `4dc810a4` — Smart search: hybrid vector+keyword, grouped results by source, color-coded relevance, filters (folder/source-type/date)
-13. `0d264aed` — Notes auto-organization: AI topic/tags/difficulty/importance classification, debounced auto-analysis
-14. `d1bcf603` — AI actions: 8 tools (explain, simplify, translate, expand, compare, examples, code, quiz) with param modals
+10. `477f0923` — Shared workspaces with role-based member management
+11. `9341db39` — AI summaries: 6 types (short, detailed, executive, eli5, interview, revision)
+12. `4dc810a4` — Smart search: hybrid vector+keyword, grouped results by source
+13. `0d264aed` — Notes auto-organization: AI topic/tags/difficulty/importance classification
+14. `d1bcf603` — AI actions: 8 tools (explain, simplify, translate, expand, compare, examples, code, quiz)
 15. `5aa530d7` — Auth flow fix: Home back button, sidebar sign-in for guests, health check retry, auth modal global state
 
 ### Fourth Session (Jun 23) — Auth/Import bugs + unfiled sources
-16. `5619063c` — Reset workspace/chat state on stale JWT token; add Auth header to workspace SSE chat; show import error messages in UI; add Unfiled sources section for folderless imports; improve website extraction error message; add null folder_id filter support
+16. `5619063c` — Auth/import bugfixes: reset state on stale JWT, Auth header on SSE, import error messages, Unfiled sources, null folder_id filter
 
-### Key Files Added/Modified (All Sessions)
-- `frontend/src/api/client.ts` — Error objects get `status` property for reliable 401 detection (session 4)
-- `frontend/src/App.tsx` — Reset workspace/chat session stores on stale JWT (session 4)
-- `frontend/src/store/useWorkspaceStore.ts` — Added `resetState()`; reset on 401 in `loadWorkspaces` (session 4)
-- `frontend/src/store/useChatSessionStore.ts` — Added `resetState()` (session 4)
-- `frontend/src/components/workspace/ImportNotifications.tsx` — Visible error text instead of hidden tooltip (session 4)
-- `frontend/src/components/workspace/WorkspaceSidebar.tsx` — Unfiled sources section; `loadUnfiledSources` after import (session 4)
-- `frontend/src/api/workspace.ts` — `fetchUnfiledSources()`; `Authorization` header in `streamWorkspaceChat` (session 4)
-- `backend/app/routes/workspace/sources.py` — `folder_id=__none__` support for null folder filter (session 4)
-- `backend/app/services/website_service.py` — Improved extraction failure error message (session 4)
-- `backend/app/routes/workspace/members.py` — Member invite/list/update-role/remove (session 3)
-- `backend/app/routes/ai/summary.py` — Summary CRUD endpoints (session 3)
-- `backend/app/routes/ai/search.py` — Hybrid search with filters (session 3)
-- `backend/app/routes/ai/notes.py` — Note CRUD + AI analyze endpoint (session 3)
-- `backend/app/routes/ai/actions.py` — AI actions run endpoint (session 3)
-- `backend/app/services/summary_service.py` — 6 summary prompt templates (session 3)
-- `backend/app/services/notes_ai_service.py` — LLM note analysis (session 3)
-- `backend/app/services/actions_service.py` — 8 action prompt templates (session 3)
-- `frontend/src/store/useAuthStore.ts` — Added `authModalMode` for global auth modal (session 3)
-- `frontend/src/store/useVideoStore.ts` — `setActiveVideo` accepts `null` (session 3)
-- `frontend/src/components/layout/Sidebar.tsx` — Guest sign-in buttons, health check retry (session 3)
-- `frontend/src/components/layout/MainPanel.tsx` — Auth modal moved to store (session 3)
-- `frontend/src/components/video/VideoHeader.tsx` — Home back button (session 3)
-- `frontend/src/components/workspace/MembersPanel.tsx` — Member management UI (session 3)
-- `frontend/src/components/workspace/SummaryPanel.tsx` — Summary UI (session 3)
-- `frontend/src/components/workspace/SearchPanel.tsx` — Search UI with filters (session 3)
-- `frontend/src/components/workspace/NotesPanel.tsx` — Notes UI with AI suggestions (session 3)
-- `frontend/src/components/workspace/ActionsToolbar.tsx` — Actions dropdown + param modals (session 3)
-- `backend/app/routes/workspace/workspaces.py` — Workspace CRUD (session 1)
-- `backend/app/routes/workspace/folders.py` — Folder CRUD + tree builder (session 1)
-- `backend/app/routes/workspace/sources.py` — Source list/get/delete with vector cleanup (session 2)
-- `backend/app/routes/workspace/sessions.py` — Chat session CRUD (session 1)
-- `backend/app/routes/sources/youtube.py` — YouTube import as Source (session 1)
-- `backend/app/routes/sources/website.py` — Website import (session 2)
-- `backend/app/routes/sources/pdf.py` — PDF import (session 2)
-- `backend/app/routes/ai/chat.py` — Workspace SSE chat, folder-scoped chat, index_key support (session 1)
-- `backend/app/services/website_service.py` — Webpage fetch + extraction (session 2)
-- `backend/app/services/pdf_service.py` — PDF fetch + extraction (session 2)
-- `backend/app/utils/ssrf.py` — SSRF validation (session 2)
+### Fifth Session (Jun 24) — V3 AI Tutor: All 6 features
+17. `dd143cf55702` — Flashcards + SM-2 spaced repetition (session 3 via separate commits)
+18. `87e0037f166b` — Quiz Generator with 6 types (MCQ, coding, short/long answer, case study, interview)
+19. `a5795540fa44` — Learning Path with AI roadmap generation + topic tree
+20. Commits under V3 umbrella — Daily Revision (weak topics, missed questions, streaks, AI suggestions)
+21. `a90fd734` — Progress Dashboard (knowledge score 0-1000, accuracy trend, activity heatmap, weekly report)
+22. `7782bfcb` — AI Mentor (reverse Q&A tutoring, evaluation, gap detection, session history)
 
-### Dependencies Added (All Sessions)
-- `readability-lxml` — main content extraction for website import
-- `PyMuPDF` — PDF text extraction
+### Key Files Added (V3 Sessions)
+- `backend/app/routes/ai/flashcards.py` — 9 endpoints for flashcard CRUD + generation + review + queue + stats
+- `backend/app/routes/ai/quiz.py` — 5 endpoints for quiz CRUD + generate + submit
+- `backend/app/routes/ai/learning_path.py` — 6 endpoints for learning path CRUD + generate + topic update
+- `backend/app/routes/ai/daily_revision.py` — 2 endpoints for summary + suggestions
+- `backend/app/routes/ai/progress.py` — 2 endpoints for dashboard + weekly report
+- `backend/app/routes/ai/mentor.py` — 6 endpoints for mentor session CRUD + start/respond/end
+- `backend/app/services/spaced_repetition.py` — SM-2 algorithm
+- `backend/app/services/flashcard_service.py` — AI flashcard generation
+- `backend/app/services/quiz_service.py` — 6 AI prompt templates + scorer
+- `backend/app/services/learning_path_service.py` — AI roadmap generation from workspace sources
+- `backend/app/services/daily_revision_service.py` — analytics aggregation + streak + AI suggestions
+- `backend/app/services/progress_service.py` — unified dashboard builder from all V3 data
+- `backend/app/services/mentor_service.py` — 3 AI operations: start/respond/end with gap detection
+- `frontend/src/components/workspace/FlashcardPanel.tsx` — flashcard list + generate + review queue + stats
+- `frontend/src/components/workspace/FlashcardReview.tsx` — flip-card review session
+- `frontend/src/components/workspace/QuizPanel.tsx` — quiz list + generate + type filters
+- `frontend/src/components/workspace/QuizTake.tsx` — question-by-question quiz taker with timer
+- `frontend/src/components/workspace/LearningPathPanel.tsx` — path list + detail view with topic tree
+- `frontend/src/components/workspace/DailyRevisionPanel.tsx` — revision dashboard with streak + weak areas
+- `frontend/src/components/workspace/ProgressDashboard.tsx` — knowledge score gauge, heatmap, trend, report
+- `frontend/src/components/workspace/MentorPanel.tsx` — 3-view mentor (list/start/conversation) with gap report
+- `frontend/src/api/flashcard.ts`, `quiz.ts`, `learningPath.ts`, `dailyRevision.ts`, `progress.ts`, `mentor.ts`
+- `frontend/src/store/useFlashcardStore.ts`, `useQuizStore.ts`, `useLearningPathStore.ts`, `useProgressStore.ts`, `useMentorStore.ts`
+
+### Key Files Modified (V3)
+- `backend/app/routes/ai/__init__.py` — All 6 V3 routers registered
+- `backend/app/db_models.py` — Added Flashcard, Quiz, LearningPath, LearningPathTopic, MentorSession
+- `backend/app/models.py` — Added Flashcard/Quiz/LearningPath/Mentor Pydantic schemas
+- `frontend/src/components/workspace/WorkspaceChatPanel.tsx` — viewMode union type grew from 4 to 10 modes (chat, notes, search, summary, flashcard, quiz, path, revision, progress, mentor)
+
+## Anchored Summary
+
+### Goal
+- V3 AI Tutor features (all 6 complete): Flashcards + SM-2, Quiz Generator (6 types), Learning Path, Daily Revision, Progress Dashboard, AI Mentor
+
+### Constraints & Preferences
+- All workspace-scoped features use `verify_workspace_access()` auth guard
+- Backend pattern: `routes/ai/` → `services/` → `models.py` + `db_models.py`
+- Frontend pattern: `api/` → `store/` → `components/workspace/`
+- No React Router; view switching uses `viewMode` state in `WorkspaceChatPanel.tsx`
+- New features get a nav button in the toolbar inside `WorkspaceChatPanel`
+- Each feature gets Alembic migration, backend tests, TypeScript check, build verification, and commit per CLAUDE.md
+- `backend/` is active; `server/` is stale
+
+### Next Steps
+1. V4 — Developer Mode / GitHub Import (repo URL import, file tree browser, smart file selection)
+2. Or maintain existing features as user requests
+
+### Critical Context
+- `generate_text()` available on `llm_service` for all AI generation
+- All new routes registered in `backend/app/routes/ai/__init__.py` with `/flashcards`, `/quiz`, `/learning-path`, `/daily-revision`, `/progress`, `/mentor` prefixes
+- View navigation uses `viewMode` state union (`'chat' | 'notes' | 'search' | 'summary' | 'flashcard' | 'quiz' | 'path' | 'revision' | 'progress' | 'mentor'`) inside `WorkspaceChatPanel`
+- SM-2 rating scale: 0=again, 1=hard, 2=good, 3=easy
+- Quiz submission stores only total score/max_score; individual question results not persisted
+- Learning path topics use `completed: int` (0/1) flag for SQLite compatibility
+- Mentor sessions persist messages as JSON text, gap_report as JSON text
+- Daily revision streak computed checking both flashcard `last_reviewed_at` and quiz `completed_at`
+
+### DB Models (14 tables)
+- V0: User, Video, ChatMessage
+- V1+: Workspace, Folder, Source, SourceChunk, ChatSession, ChatMessageNew, Note, Summary, WorkspaceMember
+- V3: Flashcard, Quiz, LearningPath, LearningPathTopic, MentorSession
+
+### Migrations (head: `01f44cb84f03`)
+Chain: `6c24d2dbf94d` → `e251248d244c` → `12225ad9fa3d` → `6a1135035b8e` → `dd143cf55702` → `87e0037f166b` → `a5795540fa44` → `01f44cb84f03`
 
 ## Change Guidance
 - Before editing chat behavior, inspect both single-video and multi-video paths AND workspace chat (`routes/ai/chat.py`). The workspace chat resolves sources via `video_id` (YouTube) or `index_key` (website/PDF) in `metadata_json`.
@@ -205,4 +242,5 @@
 - Before editing transcript retrieval/indexing, inspect `transcript_service.py`, `embedding_service.py`, and `chunk_segments.py` together.
 - Before editing persistence flows, inspect both backend DB routes and frontend restore/auth store behavior.
 - Before editing workspace/chat/sources, inspect the V2 routes in `routes/workspace/`, `routes/sources/`, and `routes/ai/chat.py`.
+- Before editing V3 features, inspect the corresponding route in `routes/ai/`, service in `services/`, and component in `components/workspace/`.
 - Avoid introducing a new backend stack or duplicating logic into the stale `server/` directory.
