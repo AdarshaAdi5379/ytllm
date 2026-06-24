@@ -31,6 +31,22 @@ DEFAULT_MODEL = config["openai_model"]
 DEFAULT_TEMPERATURE = 0.2
 
 
+async def generate_text(
+    prompt: str,
+    model: str | None = None,
+    temperature: float = 0.3,
+    max_tokens: int = 2048,
+) -> str:
+    """Generate a non-streaming text completion."""
+    resp = await client.chat.completions.create(
+        model=model or DEFAULT_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    return (resp.choices[0].message.content or "").strip()
+
+
 async def stream_chat_response(
     context: LLMContext,
     model: str | None = None,

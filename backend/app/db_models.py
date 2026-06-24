@@ -239,6 +239,39 @@ class Summary(Base):
     )
 
 
+class Flashcard(Base):
+    __tablename__ = "flashcards"
+
+    DIFFICULTIES = ("easy", "medium", "hard")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    source_id = Column(String, ForeignKey("sources.id"), nullable=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+    difficulty = Column(String, nullable=False, default="medium")
+    tags = Column(Text, default="[]")
+    easiness_factor = Column(Float, default=2.5)
+    interval_days = Column(Integer, default=0)
+    repetitions = Column(Integer, default=0)
+    next_review_date = Column(DateTime, nullable=True)
+    last_reviewed_at = Column(DateTime, nullable=True)
+    total_reviews = Column(Integer, default=0)
+    correct_reviews = Column(Integer, default=0)
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    workspace = relationship("Workspace")
+    source = relationship("Source")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("ix_flashcards_next_review", "next_review_date"),
+        Index("ix_flashcards_difficulty", "difficulty"),
+    )
+
+
 class WorkspaceMember(Base):
     __tablename__ = "workspace_members"
 

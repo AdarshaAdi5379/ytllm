@@ -298,3 +298,64 @@ class SearchRequest(BaseModel):
     source_type: str | None = None
     date_from: str | None = None
     date_to: str | None = None
+
+
+class FlashcardResponse(BaseModel):
+    id: str
+    workspace_id: str
+    source_id: str | None = None
+    question: str
+    answer: str
+    difficulty: str = "medium"
+    tags: str = "[]"
+    easiness_factor: float = 2.5
+    interval_days: int = 0
+    repetitions: int = 0
+    next_review_date: str | None = None
+    last_reviewed_at: str | None = None
+    total_reviews: int = 0
+    correct_reviews: int = 0
+    created_at: str
+    updated_at: str
+
+
+class CreateFlashcardRequest(BaseModel):
+    workspace_id: str
+    source_id: str | None = None
+    question: str
+    answer: str
+    difficulty: str = "medium"
+    tags: list[str] = []
+
+
+class UpdateFlashcardRequest(BaseModel):
+    question: str | None = None
+    answer: str | None = None
+    difficulty: str | None = None
+    tags: list[str] | None = None
+
+
+class GenerateFlashcardsRequest(BaseModel):
+    source_id: str
+    count: int = 10
+
+
+class ReviewFlashcardRequest(BaseModel):
+    rating: int  # 0=again, 1=hard, 2=good, 3=easy
+
+
+class ReviewQueueItem(BaseModel):
+    id: str
+    workspace_id: str
+    source_id: str | None = None
+    question: str
+    answer: str
+    difficulty: str
+    tags: str = "[]"
+    easiness_factor: float = 2.5
+    interval_days: int = 0
+    repetitions: int = 0
+    next_review_date: str | None = None
+    last_reviewed_at: str | None = None
+    total_reviews: int = 0
+    correct_reviews: int = 0
