@@ -170,7 +170,13 @@ async def _compute_streaks(
             ).distinct()
         )
         for (d,) in result.all():
-            if d:
+            if d is None:
+                continue
+            if isinstance(d, str):
+                days_set.add(date_type.fromisoformat(d))
+            elif isinstance(d, datetime):
+                days_set.add(d.date())
+            else:
                 days_set.add(d)
 
     sorted_days = sorted(days_set, reverse=True)
@@ -224,7 +230,13 @@ async def _compute_daily_activity(
         ).group_by(func.date(Flashcard.last_reviewed_at))
     )
     for d, cnt in fc_result.all():
-        if d:
+        if d is None:
+            continue
+        if isinstance(d, str):
+            activity[date_type.fromisoformat(d)] += cnt
+        elif isinstance(d, datetime):
+            activity[d.date()] += cnt
+        else:
             activity[d] += cnt
 
     # Quiz completions
@@ -237,7 +249,13 @@ async def _compute_daily_activity(
         ).group_by(func.date(Quiz.completed_at))
     )
     for d, cnt in qz_result.all():
-        if d:
+        if d is None:
+            continue
+        if isinstance(d, str):
+            activity[date_type.fromisoformat(d)] += cnt
+        elif isinstance(d, datetime):
+            activity[d.date()] += cnt
+        else:
             activity[d] += cnt
 
     # Fill all 90 days
@@ -245,8 +263,8 @@ async def _compute_daily_activity(
     for i in range(90):
         d = today - timedelta(days=89 - i)
         result.append({
-            "date": d.isoformat(),
-            "count": activity.get(d, 0),
+            "date": d.date().isoformat(),
+            "count": activity.get(d.date(), 0),
         })
     return result
 
