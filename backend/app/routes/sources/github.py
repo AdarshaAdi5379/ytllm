@@ -2,7 +2,8 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import or_, and_, select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db, async_session
@@ -10,12 +11,37 @@ from app.db_models import User, Source, Workspace, Folder
 from app.models import SourceResponse
 from app.services.auth_service import get_current_user
 from app.services import embedding_service
-from app.services.github_service import fetch_github_repo, url_to_index_key
+from app.services.github_service import fetch_github_repo
 from app.services.task_service import create_task
 from app.config import config
 
 
 router = APIRouter()
+
+
+async def _find_existing_github_source(
+    db: AsyncSession,
+    workspace_id: str,
+    index_key: str,
+    owner: str,
+    repo: str,
+    branch: str,
+) -> Source | None:
+    result = await db.execute(
+        select(Source).where(
+            Source.workspace_id == workspace_id,
+            Source.source_type == "github_repo",
+            or_(
+                Source.metadata_json.contains(index_key),
+                and_(
+                    Source.metadata_json.contains(f'"owner": "{owner}"'),
+                    Source.metadata_json.contains(f'"repo": "{repo}"'),
+                    Source.metadata_json.contains(f'"branch": "{branch}"'),
+                ),
+            ),
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 class GitHubImportRequest(BaseModel):
@@ -84,14 +110,10 @@ async def import_github_source(
                         "file_tree": repo.file_tree,
                     })
                     title = f"{repo.owner}/{repo.repo}"
-                    existing = await session.execute(
-                        select(Source).where(
-                            Source.workspace_id == req.workspace_id,
-                            Source.source_type == "github_repo",
-                            Source.metadata_json.contains(repo.index_key),
-                        )
+                    source = await _find_existing_github_source(
+                        session, req.workspace_id, repo.index_key,
+                        repo.owner, repo.repo, repo.branch,
                     )
-                    source = existing.scalar_one_or_none()
                     if source:
                         source.raw_text = repo.text
                         source.metadata_json = metadata_json
@@ -131,14 +153,10 @@ async def import_github_source(
         })
 
         title = f"{repo.owner}/{repo.repo}"
-        existing = await db.execute(
-            select(Source).where(
-                Source.workspace_id == req.workspace_id,
-                Source.source_type == "github_repo",
-                Source.metadata_json.contains(repo.index_key),
-            )
+        source = await _find_existing_github_source(
+            db, req.workspace_id, repo.index_key,
+            repo.owner, repo.repo, repo.branch,
         )
-        source = existing.scalar_one_or_none()
         if source:
             source.raw_text = repo.text
             source.metadata_json = metadata_json
@@ -178,8 +196,6 @@ async def get_github_file_tree(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy.orm import joinedload
-
     result = await db.execute(
         select(Source)
         .options(joinedload(Source.workspace))
