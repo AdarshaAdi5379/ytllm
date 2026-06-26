@@ -310,6 +310,76 @@ export async function importGitHubSourceBackground(
   });
 }
 
+// --- Unified Document Upload ---
+
+export async function uploadDocumentBackground(
+  workspaceId: string,
+  file: File,
+  title?: string,
+  folderId?: string,
+): Promise<ImportTaskResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('workspace_id', workspaceId);
+  formData.append('title', title ?? '');
+  formData.append('folder_id', folderId ?? '');
+
+  const headers: Record<string, string> = {};
+  const token = getAuthToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch('/api/sources/upload/import?background=true', {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorData: any;
+    try { errorData = await response.json(); } catch { errorData = { message: `HTTP ${response.status}` }; }
+    const detail = errorData?.detail || errorData;
+    const err = new Error(detail.message || detail.error || 'Upload failed');
+    (err as any).code = detail.error || 'UPLOAD_FAILED';
+    throw err;
+  }
+
+  return response.json();
+}
+
+export async function uploadDocument(
+  workspaceId: string,
+  file: File,
+  title?: string,
+  folderId?: string,
+): Promise<SourceItem> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('workspace_id', workspaceId);
+  formData.append('title', title ?? '');
+  formData.append('folder_id', folderId ?? '');
+
+  const headers: Record<string, string> = {};
+  const token = getAuthToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch('/api/sources/upload/import', {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorData: any;
+    try { errorData = await response.json(); } catch { errorData = { message: `HTTP ${response.status}` }; }
+    const detail = errorData?.detail || errorData;
+    const err = new Error(detail.message || detail.error || 'Upload failed');
+    (err as any).code = detail.error || 'UPLOAD_FAILED';
+    throw err;
+  }
+
+  return response.json();
+}
+
 export async function importPdfSource(
   workspaceId: string,
   url: string,

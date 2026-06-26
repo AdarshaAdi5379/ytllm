@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield, Upload,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -11,11 +11,11 @@ import { ImportNotifications } from './ImportNotifications';
 import { MembersPanel } from './MembersPanel';
 import {
   fetchSources, fetchUnfiledSources, deleteSource,
-  importYouTubeSource, importWebsiteSource, importPdfSource, importMarkdownSource, importTextSource, uploadDocxSource, uploadPptxSource,
-  importYouTubeSourceBackground, importWebsiteSourceBackground, importPdfSourceBackground,
+  importYouTubeSource, importWebsiteSource, importMarkdownSource, importTextSource,
+  importYouTubeSourceBackground, importWebsiteSourceBackground,
   importMarkdownSourceBackground, importTextSourceBackground,
-  uploadDocxSourceBackground, uploadPptxSourceBackground,
   importGitHubSourceBackground,
+  uploadDocumentBackground, uploadDocument,
   pollImportTask,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
@@ -34,9 +34,6 @@ export function WorkspaceSidebarContent() {
   const [showWebsiteImport, setShowWebsiteImport] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [importingWebsite, setImportingWebsite] = useState(false);
-  const [showPdfImport, setShowPdfImport] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState('');
-  const [importingPdf, setImportingPdf] = useState(false);
   const [showMarkdownImport, setShowMarkdownImport] = useState(false);
   const [markdownContent, setMarkdownContent] = useState('');
   const [markdownTitle, setMarkdownTitle] = useState('');
@@ -45,8 +42,7 @@ export function WorkspaceSidebarContent() {
   const [textContent, setTextContent] = useState('');
   const [textTitle, setTextTitle] = useState('');
   const [importingText, setImportingText] = useState(false);
-  const [importingDocx, setImportingDocx] = useState(false);
-  const [importingPptx, setImportingPptx] = useState(false);
+  const [importingUpload, setImportingUpload] = useState(false);
   const [showGitHubImport, setShowGitHubImport] = useState(false);
   const [gitHubUrl, setGitHubUrl] = useState('');
   const [importingGitHub, setImportingGitHub] = useState(false);
@@ -121,17 +117,6 @@ export function WorkspaceSidebarContent() {
     );
   };
 
-  const handleImportPdf = async () => {
-    if (!activeWorkspaceId || !pdfUrl.trim()) return;
-    const jobId = addJob('pdf_document', pdfUrl.trim());
-    setImportingPdf(true);
-    doBackgroundImport(
-      jobId,
-      importPdfSourceBackground(activeWorkspaceId, pdfUrl.trim()),
-      () => { setImportingPdf(false); setPdfUrl(''); setShowPdfImport(false); },
-    );
-  };
-
   const handleImportMarkdown = async () => {
     if (!activeWorkspaceId || !markdownContent.trim()) return;
     const title = markdownTitle.trim() || 'Markdown note';
@@ -156,25 +141,14 @@ export function WorkspaceSidebarContent() {
     );
   };
 
-  const handleImportDocx = async (file: File) => {
+  const handleUploadDocument = async (file: File) => {
     if (!activeWorkspaceId) return;
-    const jobId = addJob('docx_document', file.name);
-    setImportingDocx(true);
+    const jobId = addJob('document_upload', file.name);
+    setImportingUpload(true);
     doBackgroundImport(
       jobId,
-      uploadDocxSourceBackground(activeWorkspaceId, file),
-      () => { setImportingDocx(false); },
-    );
-  };
-
-  const handleImportPptx = async (file: File) => {
-    if (!activeWorkspaceId) return;
-    const jobId = addJob('pptx_document', file.name);
-    setImportingPptx(true);
-    doBackgroundImport(
-      jobId,
-      uploadPptxSourceBackground(activeWorkspaceId, file),
-      () => { setImportingPptx(false); },
+      uploadDocumentBackground(activeWorkspaceId, file, file.name),
+      () => { setImportingUpload(false); },
     );
   };
 
@@ -335,40 +309,25 @@ export function WorkspaceSidebarContent() {
           </div>
         )}
         <button
-          onClick={() => setShowPdfImport(!showPdfImport)}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/20 text-rose-300 hover:bg-rose-600/30 transition-all"
+          onClick={() => document.getElementById('document-upload-input')?.click()}
+          disabled={importingUpload}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/20 text-rose-300 hover:bg-rose-600/30 transition-all disabled:opacity-50"
         >
-          <FileText size={12} />
-          <span>Import PDF</span>
+          <Upload size={12} />
+          <span>{importingUpload ? 'Uploading...' : 'Upload Document'}</span>
         </button>
-        {showPdfImport && (
-          <div className="flex items-center gap-1 pt-1">
-            <input
-              autoFocus
-              value={pdfUrl}
-              onChange={(e) => setPdfUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleImportPdf();
-                if (e.key === 'Escape') { setShowPdfImport(false); setPdfUrl(''); }
-              }}
-              placeholder="https://... (PDF URL)"
-              className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-rose-500"
-            />
-            <button
-              onClick={handleImportPdf}
-              disabled={importingPdf}
-              className="p-0.5 text-rose-400 hover:text-rose-300 disabled:opacity-50"
-            >
-              {importingPdf ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-            </button>
-            <button
-              onClick={() => { setShowPdfImport(false); setPdfUrl(''); }}
-              className="p-0.5 text-slate-500 hover:text-slate-300"
-            >
-              <X size={10} />
-            </button>
-          </div>
-        )}
+        <input
+          id="document-upload-input"
+          type="file"
+          accept=".pdf,.docx,.pptx,.ppt,.txt,.md"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleUploadDocument(file);
+            e.target.value = '';
+          }}
+        />
+        <div className="text-[10px] text-slate-600 px-1 pt-0.5">PDF, DOCX, PPTX, TXT, MD</div>
         <button
           onClick={() => setShowMarkdownImport(!showMarkdownImport)}
           className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-600/20 text-amber-300 hover:bg-amber-600/30 transition-all"
@@ -463,44 +422,6 @@ export function WorkspaceSidebarContent() {
             </div>
           </div>
         )}
-        <button
-          onClick={() => document.getElementById('docx-file-input')?.click()}
-          disabled={importingDocx}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 transition-all disabled:opacity-50"
-        >
-          <FileText size={12} />
-          <span>{importingDocx ? 'Importing...' : 'Import DOCX'}</span>
-        </button>
-        <input
-          id="docx-file-input"
-          type="file"
-          accept=".docx"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleImportDocx(file);
-            e.target.value = '';
-          }}
-        />
-        <button
-          onClick={() => document.getElementById('pptx-file-input')?.click()}
-          disabled={importingPptx}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-orange-600/20 text-orange-300 hover:bg-orange-600/30 transition-all disabled:opacity-50"
-        >
-          <FileText size={12} />
-          <span>{importingPptx ? 'Importing...' : 'Import PPTX'}</span>
-        </button>
-        <input
-          id="pptx-file-input"
-          type="file"
-          accept=".pptx,.ppt"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleImportPptx(file);
-            e.target.value = '';
-          }}
-        />
         <button
           onClick={() => setShowGitHubImport(!showGitHubImport)}
           className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-600/20 text-slate-300 hover:bg-slate-600/30 transition-all"

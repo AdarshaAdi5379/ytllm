@@ -10,7 +10,7 @@ from app.db_models import User, Source, Workspace, Folder
 from app.models import SourceResponse
 from app.services.auth_service import get_current_user
 from app.services import embedding_service
-from app.services.pdf_service import fetch_pdf, url_to_index_key
+from app.services.pdf_service import fetch_pdf
 from app.services.task_service import create_task
 
 
@@ -68,7 +68,7 @@ async def import_pdf_source(
             async with async_session() as session:
                 try:
                     pdf = await fetch_pdf(req.url)
-                    index_key = url_to_index_key(req.url)
+                    index_key = pdf.index_key
                     chunk_count = await embedding_service.index_transcript(index_key, pdf.text)
                     metadata_json = json.dumps({
                         "index_key": index_key,
@@ -111,7 +111,7 @@ async def import_pdf_source(
 
     try:
         pdf = await fetch_pdf(req.url)
-        index_key = url_to_index_key(req.url)
+        index_key = pdf.index_key
 
         chunk_count = await embedding_service.index_transcript(index_key, pdf.text)
 
