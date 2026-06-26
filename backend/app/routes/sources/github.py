@@ -45,6 +45,7 @@ def _source_to_response(s: Source) -> SourceResponse:
 async def import_github_source(
     req: GitHubImportRequest,
     background: bool = Query(False),
+    mode: str = Query("auto", pattern=r"^(auto|api|clone)$"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -71,7 +72,7 @@ async def import_github_source(
         async def _bg_import():
             async with async_session() as session:
                 try:
-                    repo = await fetch_github_repo(req.url, token=gh_token)
+                    repo = await fetch_github_repo(req.url, token=gh_token, mode=mode)
                     chunk_count = await embedding_service.index_code_chunks(repo.index_key, repo.chunks)
                     metadata_json = json.dumps({
                         "index_key": repo.index_key,
@@ -115,7 +116,7 @@ async def import_github_source(
         return {"task_id": task_id, "status": "queued", "source_type": "github_repo"}
 
     try:
-        repo = await fetch_github_repo(req.url, token=gh_token)
+        repo = await fetch_github_repo(req.url, token=gh_token, mode=mode)
         chunk_count = await embedding_service.index_code_chunks(repo.index_key, repo.chunks)
 
         metadata_json = json.dumps({
