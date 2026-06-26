@@ -72,7 +72,7 @@ async def import_github_source(
             async with async_session() as session:
                 try:
                     repo = await fetch_github_repo(req.url, token=gh_token)
-                    chunk_count = await embedding_service.index_transcript(repo.index_key, repo.text)
+                    chunk_count = await embedding_service.index_code_chunks(repo.index_key, repo.chunks)
                     metadata_json = json.dumps({
                         "index_key": repo.index_key,
                         "owner": repo.owner,
@@ -116,7 +116,7 @@ async def import_github_source(
 
     try:
         repo = await fetch_github_repo(req.url, token=gh_token)
-        chunk_count = await embedding_service.index_transcript(repo.index_key, repo.text)
+        chunk_count = await embedding_service.index_code_chunks(repo.index_key, repo.chunks)
 
         metadata_json = json.dumps({
             "index_key": repo.index_key,

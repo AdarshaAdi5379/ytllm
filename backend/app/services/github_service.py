@@ -6,6 +6,7 @@ import httpx
 from loguru import logger
 
 from app.utils.ssrf import validate_final_url
+from app.services.code_chunker import CodeChunk, chunk_code_file, detect_language
 
 EXCLUDED_PATTERNS = re.compile(
     r"(node_modules|\.git|__pycache__|\.venv|venv|dist|build|\.next|target|vendor|"
@@ -43,13 +44,23 @@ class RepoFile:
 
 
 class RepoResult:
-    def __init__(self, owner: str, repo: str, branch: str, files: list[RepoFile], text: str, index_key: str):
+    def __init__(
+        self,
+        owner: str,
+        repo: str,
+        branch: str,
+        files: list[RepoFile],
+        text: str,
+        index_key: str,
+        chunks: list[CodeChunk] | None = None,
+    ):
         self.owner = owner
         self.repo = repo
         self.branch = branch
         self.files = files
         self.text = text
         self.index_key = index_key
+        self.chunks = chunks or []
 
 
 def _parse_github_url(url: str) -> tuple[str, str, str]:
@@ -156,12 +167,19 @@ async def fetch_github_repo(url: str, token: str | None = None) -> RepoResult:
     if not repo_files:
         raise ValueError("No source files found in the repository.")
 
-    # Build combined text with file path headers
+    # Build combined text with file path headers (for backward compat)
     sections: list[str] = []
     for rf in repo_files:
         sections.append(f"=== {rf.path} ===")
         sections.append(rf.content)
     combined_text = "\n\n".join(sections)
+
+    # Chunk each file by function/class boundaries with per-file metadata
+    all_chunks: list[CodeChunk] = []
+    for rf in repo_files:
+        language = detect_language(rf.path)
+        file_chunks = chunk_code_file(rf.content, rf.path, language)
+        all_chunks.extend(file_chunks)
 
     index_key = url_to_index_key(url)
     return RepoResult(
@@ -171,4 +189,5 @@ async def fetch_github_repo(url: str, token: str | None = None) -> RepoResult:
         files=repo_files,
         text=combined_text,
         index_key=index_key,
+        chunks=all_chunks,
     )

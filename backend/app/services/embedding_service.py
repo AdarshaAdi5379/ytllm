@@ -9,6 +9,7 @@ from app.config import config
 from app.utils.chunk_text import chunk_text
 from app.utils.chunk_segments import TranscriptChunk, TranscriptSegment, chunk_segments
 from app.utils.retry import retry, sleep
+from app.services.code_chunker import CodeChunk
 
 client = AsyncOpenAI(
     api_key=config["openai_api_key"],
@@ -98,6 +99,45 @@ async def index_transcript(video_id: str, transcript: str) -> int:
     return len(chunk_objs)
 
 
+async def index_code_chunks(index_key: str, chunks: list[CodeChunk]) -> int:
+    """Indexes pre-chunked code with per-file metadata into ChromaDB."""
+    logger.info("Indexing {} code chunks for {}", len(chunks), index_key)
+
+    if index_key in vector_indexes:
+        del vector_indexes[index_key]
+
+    collection = await get_or_create_index(index_key)
+
+    for i in range(0, len(chunks), config["embedding_batch_size"]):
+        batch = chunks[i : i + config["embedding_batch_size"]]
+
+        for j, chunk in enumerate(batch):
+            chunk_index = i + j
+            embedding = await embed_text(chunk.text)
+
+            collection.upsert(
+                ids=[str(chunk_index)],
+                embeddings=[embedding],
+                documents=[chunk.text],
+                metadatas=[
+                    {
+                        "chunk_index": chunk_index,
+                        "file_path": chunk.file_path,
+                        "language": chunk.language,
+                        "chunk_type": chunk.chunk_type,
+                        "line_start": chunk.line_start,
+                        "line_end": chunk.line_end,
+                    }
+                ],
+            )
+
+        if i + config["embedding_batch_size"] < len(chunks):
+            await sleep(int(config["embedding_batch_delay"] * 1000))
+
+    logger.info("Indexed {} code chunks for {}", len(chunks), index_key)
+    return len(chunks)
+
+
 async def index_transcript_segments(
     video_id: str, segments: list[TranscriptSegment], transcript_text: str
 ) -> int:
@@ -175,6 +215,11 @@ async def retrieve_relevant_chunks(
                 "chunk_index": meta.get("chunk_index"),
                 "start_s": meta.get("start_s"),
                 "end_s": meta.get("end_s"),
+                "file_path": meta.get("file_path"),
+                "language": meta.get("language"),
+                "chunk_type": meta.get("chunk_type"),
+                "line_start": meta.get("line_start"),
+                "line_end": meta.get("line_end"),
             }
         )
     return out
@@ -213,6 +258,11 @@ async def search_across_collections(
                 "chunk_index": meta.get("chunk_index"),
                 "start_s": meta.get("start_s"),
                 "end_s": meta.get("end_s"),
+                "file_path": meta.get("file_path"),
+                "language": meta.get("language"),
+                "chunk_type": meta.get("chunk_type"),
+                "line_start": meta.get("line_start"),
+                "line_end": meta.get("line_end"),
                 "distance": dist,
                 "collection_key": key,
             })
