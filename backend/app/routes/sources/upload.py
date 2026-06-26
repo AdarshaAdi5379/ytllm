@@ -106,7 +106,7 @@ async def upload_document(
     effective_title = title.strip() or _title_from_filename(file.filename)
 
     if background:
-        async def _bg_import():
+        async def _bg_import(task_id: str):
             async with async_session() as session:
                 try:
                     result = _process_file(file_bytes, effective_title, source_type)
@@ -146,7 +146,7 @@ async def upload_document(
                     logger.exception("Background document upload error: {}", str(e))
                     raise
 
-        task_id = await create_task("document_upload", file.filename, _bg_import())
+        task_id = await create_task("document_upload", file.filename, _bg_import)
         return {"task_id": task_id, "status": "queued", "source_type": source_type}
 
     try:

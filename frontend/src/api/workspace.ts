@@ -138,6 +138,7 @@ export interface TaskStatus {
   status: 'queued' | 'processing' | 'done' | 'failed' | 'unknown';
   error: string | null;
   result: string | null;
+  progress: { current: number; total: number; phase: string } | null;
   created_at: number;
   updated_at: number;
 }
@@ -149,6 +150,7 @@ export async function getTaskStatus(taskId: string): Promise<TaskStatus> {
 export function pollImportTask(
   taskId: string,
   intervalMs = 2000,
+  onProgress?: (progress: { current: number; total: number; phase: string }) => void,
 ): Promise<TaskStatus> {
   return new Promise((resolve, reject) => {
     const poll = async () => {
@@ -157,6 +159,9 @@ export function pollImportTask(
         if (task.status === 'done') { resolve(task); return; }
         if (task.status === 'failed') { reject(new Error(task.error || 'Import failed')); return; }
         if (task.status === 'unknown') { reject(new Error('Task not found')); return; }
+        if (onProgress && task.progress) {
+          onProgress(task.progress as { current: number; total: number; phase: string });
+        }
         setTimeout(poll, intervalMs);
       } catch (err) {
         reject(err);
@@ -299,14 +304,37 @@ export async function uploadPptxSourceBackground(
   return response.json();
 }
 
+export interface GitHubPreviewResponse {
+  url: string;
+  owner: string;
+  repo: string;
+  branch: string;
+  file_tree: FileTreeEntry[];
+  total_files: number;
+  importable_files: number;
+}
+
+export async function previewGitHubRepo(url: string): Promise<GitHubPreviewResponse> {
+  return apiFetch<GitHubPreviewResponse>('/sources/github/preview', {
+    method: 'POST',
+    body: JSON.stringify({ url, mode: 'api' }),
+  });
+}
+
 export async function importGitHubSourceBackground(
   workspaceId: string,
   url: string,
   folderId?: string,
+  filePaths?: string[],
 ): Promise<ImportTaskResult> {
   return apiFetch<ImportTaskResult>('/sources/github/import?background=true', {
     method: 'POST',
-    body: JSON.stringify({ url, workspace_id: workspaceId, folder_id: folderId ?? null }),
+    body: JSON.stringify({
+      url,
+      workspace_id: workspaceId,
+      folder_id: folderId ?? null,
+      file_paths: filePaths ?? null,
+    }),
   });
 }
 

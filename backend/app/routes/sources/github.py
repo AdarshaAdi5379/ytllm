@@ -11,8 +11,8 @@ from app.db_models import User, Source, Workspace, Folder
 from app.models import SourceResponse
 from app.services.auth_service import get_current_user
 from app.services import embedding_service
-from app.services.github_service import fetch_github_repo
-from app.services.task_service import create_task
+from app.services.github_service import fetch_github_repo, fetch_github_file_tree_api, should_include_file
+from app.services.task_service import create_task, update_task_progress
 from app.config import config
 
 
@@ -49,6 +49,13 @@ class GitHubImportRequest(BaseModel):
     workspace_id: str
     folder_id: str | None = None
     token: str | None = None
+    file_paths: list[str] | None = None
+
+
+class GitHubPreviewRequest(BaseModel):
+    url: str
+    token: str | None = None
+    mode: str = "api"
 
 
 def _source_to_response(s: Source) -> SourceResponse:
@@ -95,10 +102,16 @@ async def import_github_source(
     gh_token = req.token or config.get("github_token") or None
 
     if background:
-        async def _bg_import():
+        async def _bg_import(task_id: str):
             async with async_session() as session:
                 try:
-                    repo = await fetch_github_repo(req.url, token=gh_token, mode=mode)
+                    async def progress_cb(current: int, total: int, phase: str):
+                        await update_task_progress(task_id, current, total, phase)
+
+                    repo = await fetch_github_repo(
+                        req.url, token=gh_token, mode=mode,
+                        file_paths=req.file_paths, progress_callback=progress_cb,
+                    )
                     chunk_count = await embedding_service.index_code_chunks(repo.index_key, repo.chunks)
                     metadata_json = json.dumps({
                         "index_key": repo.index_key,
@@ -135,11 +148,11 @@ async def import_github_source(
                     logger.exception("Background GitHub import error: {}", str(e))
                     raise
 
-        task_id = await create_task("github_import", req.url, _bg_import())
+        task_id = await create_task("github_import", req.url, _bg_import)
         return {"task_id": task_id, "status": "queued", "source_type": "github_repo"}
 
     try:
-        repo = await fetch_github_repo(req.url, token=gh_token, mode=mode)
+        repo = await fetch_github_repo(req.url, token=gh_token, mode=mode, file_paths=req.file_paths)
         chunk_count = await embedding_service.index_code_chunks(repo.index_key, repo.chunks)
 
         metadata_json = json.dumps({
@@ -188,6 +201,28 @@ async def import_github_source(
             status_code=503,
             detail={"error": "IMPORT_FAILED", "message": "Failed to import GitHub repository."},
         )
+
+
+@router.post("/preview")
+async def preview_github_repo(req: GitHubPreviewRequest):
+    """Preview a GitHub repo's file tree without importing content."""
+    gh_token = req.token or config.get("github_token") or None
+    try:
+        file_tree, all_blob_paths, owner, repo, branch = await fetch_github_file_tree_api(
+            req.url, token=gh_token,
+        )
+        code_paths = [p for p in all_blob_paths if should_include_file(p)]
+        return {
+            "url": req.url,
+            "owner": owner,
+            "repo": repo,
+            "branch": branch,
+            "file_tree": file_tree,
+            "total_files": len(all_blob_paths),
+            "importable_files": len(code_paths),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail={"error": "PREVIEW_FAILED", "message": str(e)})
 
 
 @router.get("/{source_id}/file-tree")

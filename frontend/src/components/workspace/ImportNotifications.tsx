@@ -38,7 +38,20 @@ export function ImportNotifications() {
         >
           <span className="flex-shrink-0">{TYPE_ICONS[job.sourceType] || <FileText size={12} className="text-slate-400" />}</span>
           <span className="flex-1 truncate">{job.title || 'Import'}</span>
-          {job.status === 'processing' && <Loader2 size={11} className="animate-spin flex-shrink-0 text-indigo-400" />}
+          {job.status === 'processing' && !job.progress && <Loader2 size={11} className="animate-spin flex-shrink-0 text-indigo-400" />}
+          {job.status === 'processing' && job.progress && (
+            <div className="flex items-center gap-1.5 flex-shrink-0 min-w-0">
+              <div className="w-12 h-1.5 bg-slate-700 rounded-full overflow-hidden flex-shrink-0">
+                <div
+                  className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.round((job.progress.current / job.progress.total) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-slate-500 font-mono tabular-nums flex-shrink-0">
+                {job.progress.current}/{job.progress.total}
+              </span>
+            </div>
+          )}
           {job.status === 'done' && <Check size={11} className="flex-shrink-0 text-emerald-400" />}
           {job.status === 'failed' && (
             <>

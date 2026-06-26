@@ -64,7 +64,7 @@ async def import_pdf_source(
             raise HTTPException(status_code=422, detail={"error": "INVALID_FOLDER", "message": "Folder not found in workspace."})
 
     if background:
-        async def _bg_import():
+        async def _bg_import(task_id: str):
             async with async_session() as session:
                 try:
                     pdf = await fetch_pdf(req.url)
@@ -106,7 +106,7 @@ async def import_pdf_source(
                     logger.exception("Background PDF import error: {}", str(e))
                     raise
 
-        task_id = await create_task("pdf_import", req.url, _bg_import())
+        task_id = await create_task("pdf_import", req.url, _bg_import)
         return {"task_id": task_id, "status": "queued", "source_type": "pdf_document"}
 
     try:

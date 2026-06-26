@@ -5,6 +5,7 @@ import re
 import shutil
 import tempfile
 import uuid
+from typing import Callable
 from urllib.parse import urlparse
 
 import httpx
@@ -12,6 +13,8 @@ from loguru import logger
 
 from app.utils.ssrf import validate_final_url
 from app.services.code_chunker import CodeChunk, chunk_code_file, detect_language
+
+ProgressCallback = Callable[[int, int, str], None]  # current, total, phase
 
 CLONE_MAX_SIZE = 100 * 1024 * 1024  # 100MB for clone mode
 API_MAX_SIZE = 10 * 1024 * 1024  # 10MB for API mode
@@ -150,7 +153,7 @@ def _build_result(
     )
 
 
-def _should_include(path: str) -> bool:
+def should_include_file(path: str) -> bool:
     if EXCLUDED_PATTERNS.search(path):
         return False
     ext = "." + path.rsplit(".", 1)[-1].lower() if "." in path else ""
@@ -168,11 +171,47 @@ def url_to_index_key(url: str) -> str:
     return "gh_" + hashlib.md5(url.encode()).hexdigest()[:16]
 
 
-async def fetch_github_repo(url: str, token: str | None = None, mode: str = "auto") -> RepoResult:
+async def fetch_github_file_tree_api(url: str, token: str | None = None) -> tuple[list[dict], list[str], str, str, str]:
+    """Fetch only the file tree from GitHub API (no content download)."""
+    owner, repo, branch = _parse_github_url(url)
+
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "KnowledgeOS/1.0",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1"
+    validate_final_url(api_url)
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+        tree_resp = await client.get(api_url, headers=headers)
+        if tree_resp.status_code == 403:
+            raise ValueError("GitHub API rate limit reached. Provide a GITHUB_TOKEN for higher limits.")
+        if tree_resp.status_code == 404:
+            raise ValueError(f"Repository {owner}/{repo} not found.")
+        tree_resp.raise_for_status()
+
+        tree_data = tree_resp.json()
+        items = tree_data.get("tree", [])
+
+        file_tree = _build_file_tree_from_items(items)
+        all_blob_paths = [e["path"] for e in file_tree if e["type"] == "blob"]
+        return file_tree, all_blob_paths, owner, repo, branch
+
+
+async def fetch_github_repo(
+    url: str,
+    token: str | None = None,
+    mode: str = "auto",
+    file_paths: list[str] | None = None,
+    progress_callback: ProgressCallback | None = None,
+) -> RepoResult:
     owner, repo, branch = _parse_github_url(url)
 
     if mode == "clone":
-        return await fetch_github_repo_clone(url, token)
+        return await fetch_github_repo_clone(url, token, file_paths=file_paths, progress_callback=progress_callback)
 
     headers = {
         "Accept": "application/vnd.github.v3+json",
@@ -189,7 +228,7 @@ async def fetch_github_repo(url: str, token: str | None = None, mode: str = "aut
         if tree_resp.status_code == 403:
             if mode == "auto":
                 logger.info("GitHub API rate limited, falling back to clone mode for {}", url)
-                return await fetch_github_repo_clone(url, token)
+                return await fetch_github_repo_clone(url, token, file_paths=file_paths, progress_callback=progress_callback)
             raise ValueError(
                 "GitHub API rate limit reached. Provide a GITHUB_TOKEN for higher limits."
             )
@@ -203,19 +242,30 @@ async def fetch_github_repo(url: str, token: str | None = None, mode: str = "aut
         file_tree = _build_file_tree_from_items(items)
         temp_file_paths = [e["path"] for e in file_tree if e["type"] == "blob"]
 
-        file_paths = [p for p in temp_file_paths if _should_include(p)]
+        candidate_paths = [p for p in temp_file_paths if should_include_file(p)]
 
-        if mode == "auto" and len(file_paths) > CLONE_FILE_THRESHOLD:
-            logger.info("Repository {} has {} files, switching to clone mode", url, len(file_paths))
-            return await fetch_github_repo_clone(url, token)
+        if file_paths is not None:
+            file_path_set = set(file_paths)
+            candidate_paths = [p for p in candidate_paths if p in file_path_set]
+
+        if mode == "auto" and len(candidate_paths) > CLONE_FILE_THRESHOLD:
+            logger.info("Repository {} has {} files, switching to clone mode", url, len(candidate_paths))
+            return await fetch_github_repo_clone(url, token, file_paths=file_paths, progress_callback=progress_callback)
 
         repo_files: list[RepoFile] = []
         total_size = 0
+        total_files = len(candidate_paths)
 
-        for file_path in file_paths:
+        if progress_callback:
+            await progress_callback(0, total_files, "Downloading files")
+
+        for idx, file_path in enumerate(candidate_paths):
             if total_size > API_MAX_SIZE:
                 logger.warning("GitHub API import: reached 10MB limit, stopping at {} files", len(repo_files))
                 break
+
+            if progress_callback:
+                await progress_callback(idx + 1, total_files, f"Downloading {file_path}")
 
             content_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}?ref={branch}"
             try:
@@ -241,18 +291,45 @@ async def fetch_github_repo(url: str, token: str | None = None, mode: str = "aut
     return _build_result(owner, repo, branch, repo_files, url, file_tree=file_tree)
 
 
-async def fetch_github_repo_clone(url: str, token: str | None = None) -> RepoResult:
+async def fetch_github_repo_clone(
+    url: str,
+    token: str | None = None,
+    file_paths: list[str] | None = None,
+    progress_callback: ProgressCallback | None = None,
+) -> RepoResult:
     owner, repo, branch = _parse_github_url(url)
 
     temp_dir = os.path.join(tempfile.gettempdir(), f"ytllm_github_{uuid.uuid4().hex[:12]}")
+    file_path_set = set(file_paths) if file_paths is not None else None
     try:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, _clone_and_read, url, temp_dir, branch, token)
 
         repo_files: list[RepoFile] = []
         file_tree_entries: list[dict] = []
+        all_candidates: list[str] = []
         total_size = 0
 
+        # First pass: collect all candidate paths for progress tracking
+        for root, dirs, files in os.walk(temp_dir):
+            rel_root = os.path.relpath(root, temp_dir)
+            if rel_root != ".":
+                dirs[:] = [d for d in dirs if _should_include_dir(os.path.join(rel_root, d))]
+            else:
+                dirs[:] = [d for d in dirs if _should_include_dir(d)]
+
+            for file_name in files:
+                rel_path = os.path.relpath(os.path.join(root, file_name), temp_dir)
+                if should_include_file(rel_path):
+                    all_candidates.append(rel_path)
+
+        if file_path_set is not None:
+            all_candidates = [p for p in all_candidates if p in file_path_set]
+
+        if progress_callback:
+            await progress_callback(0, len(all_candidates), "Reading files")
+
+        # Second pass: read content and build tree
         for root, dirs, files in os.walk(temp_dir):
             rel_root = os.path.relpath(root, temp_dir)
             if rel_root != ".":
@@ -262,12 +339,15 @@ async def fetch_github_repo_clone(url: str, token: str | None = None) -> RepoRes
 
             for dir_name in dirs:
                 sub_path = os.path.join(rel_root, dir_name) if rel_root != "." else dir_name
-                file_tree_entries.append({"path": sub_path, "type": "tree", "size": 0, "language": ""})
+                if file_path_set is None or any(p.startswith(sub_path + "/") for p in all_candidates):
+                    file_tree_entries.append({"path": sub_path, "type": "tree", "size": 0, "language": ""})
 
             for file_name in files:
                 file_path = os.path.join(root, file_name)
                 rel_path = os.path.relpath(file_path, temp_dir)
-                if not _should_include(rel_path):
+                if not should_include_file(rel_path):
+                    continue
+                if file_path_set is not None and rel_path not in file_path_set:
                     continue
                 try:
                     fsize = os.path.getsize(file_path)
@@ -277,6 +357,9 @@ async def fetch_github_repo_clone(url: str, token: str | None = None) -> RepoRes
                         "size": fsize,
                         "language": detect_language(rel_path),
                     })
+                    processed = len(repo_files) + 1
+                    if progress_callback:
+                        await progress_callback(processed, len(all_candidates), f"Reading {rel_path}")
                     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                         content = f.read()
                     repo_files.append(RepoFile(path=rel_path, content=content))

@@ -77,7 +77,7 @@ async def import_youtube_source(
             raise HTTPException(status_code=422, detail={"error": "INVALID_FOLDER", "message": "Folder not found in workspace."})
 
     if background:
-        async def _bg_import():
+        async def _bg_import(task_id: str):
             async with async_session() as session:
                 try:
                     metadata, transcript_result = await asyncio.gather(
@@ -133,7 +133,7 @@ async def import_youtube_source(
                     logger.exception("Background YouTube import error: {}", str(e))
                     raise
 
-        task_id = await create_task("youtube_import", req.url, _bg_import())
+        task_id = await create_task("youtube_import", req.url, _bg_import)
         return {"task_id": task_id, "status": "queued", "source_type": "youtube_video"}
 
     try:

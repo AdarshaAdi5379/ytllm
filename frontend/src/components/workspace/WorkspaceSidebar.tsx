@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield, Upload,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield, Upload, File,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -14,12 +14,13 @@ import {
   importYouTubeSource, importWebsiteSource, importMarkdownSource, importTextSource,
   importYouTubeSourceBackground, importWebsiteSourceBackground,
   importMarkdownSourceBackground, importTextSourceBackground,
-  importGitHubSourceBackground,
+  importGitHubSourceBackground, previewGitHubRepo,
   uploadDocumentBackground, uploadDocument,
   pollImportTask,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
 import { GitHubFileTree } from './GitHubFileTree';
+import type { GitHubPreviewResponse, FileTreeEntry } from '../../api/workspace';
 
 export function WorkspaceSidebarContent() {
   const {
@@ -47,6 +48,9 @@ export function WorkspaceSidebarContent() {
   const [showGitHubImport, setShowGitHubImport] = useState(false);
   const [gitHubUrl, setGitHubUrl] = useState('');
   const [importingGitHub, setImportingGitHub] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewData, setPreviewData] = useState<GitHubPreviewResponse | null>(null);
+  const [selectedGitHubFiles, setSelectedGitHubFiles] = useState<Set<string>>(new Set());
   const [showWsSwitcher, setShowWsSwitcher] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [unfiledSources, setUnfiledSources] = useState<SourceItem[]>([]);
@@ -87,7 +91,11 @@ export function WorkspaceSidebarContent() {
     try {
       const result = await importPromise;
       updateJob(jobId, { taskId: result.task_id });
-      await pollImportTask(result.task_id);
+      await pollImportTask(
+        result.task_id,
+        2000,
+        (progress) => updateJob(jobId, { progress }),
+      );
       setJobDone(jobId);
       await loadFolderTree(activeWorkspaceId!);
       loadUnfiledSources();
@@ -155,13 +163,38 @@ export function WorkspaceSidebarContent() {
 
   const handleImportGitHub = async () => {
     if (!activeWorkspaceId || !gitHubUrl.trim()) return;
-    const jobId = addJob('github_repo', gitHubUrl.trim());
+    const title = previewData ? `${previewData.owner}/${previewData.repo}` : gitHubUrl.trim();
+    const jobId = addJob('github_repo', title);
     setImportingGitHub(true);
+    const filePaths = selectedGitHubFiles.size > 0 ? Array.from(selectedGitHubFiles) : undefined;
     doBackgroundImport(
       jobId,
-      importGitHubSourceBackground(activeWorkspaceId, gitHubUrl.trim()),
-      () => { setImportingGitHub(false); setGitHubUrl(''); setShowGitHubImport(false); },
+      importGitHubSourceBackground(activeWorkspaceId, gitHubUrl.trim(), undefined, filePaths),
+      () => {
+        setImportingGitHub(false);
+        setGitHubUrl('');
+        setShowGitHubImport(false);
+        setPreviewData(null);
+        setSelectedGitHubFiles(new Set());
+      },
     );
+  };
+
+  const handleGitHubPreview = async () => {
+    if (!gitHubUrl.trim()) return;
+    setPreviewLoading(true);
+    setPreviewData(null);
+    setSelectedGitHubFiles(new Set());
+    try {
+      const data = await previewGitHubRepo(gitHubUrl.trim());
+      setPreviewData(data);
+      // Pre-select all importable files
+      setSelectedGitHubFiles(new Set(data.file_tree.filter((e) => e.type === 'blob').map((e) => e.path)));
+    } catch {
+      setPreviewData(null);
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   if (!isAuthenticated) return null;
@@ -431,31 +464,84 @@ export function WorkspaceSidebarContent() {
           <span>Import GitHub Repo</span>
         </button>
         {showGitHubImport && (
-          <div className="flex items-center gap-1 pt-1">
-            <input
-              autoFocus
-              value={gitHubUrl}
-              onChange={(e) => setGitHubUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleImportGitHub();
-                if (e.key === 'Escape') { setShowGitHubImport(false); setGitHubUrl(''); }
-              }}
-              placeholder="https://github.com/owner/repo"
-              className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-slate-400"
-            />
-            <button
-              onClick={handleImportGitHub}
-              disabled={importingGitHub}
-              className="p-0.5 text-slate-300 hover:text-white disabled:opacity-50"
-            >
-              {importingGitHub ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-            </button>
-            <button
-              onClick={() => { setShowGitHubImport(false); setGitHubUrl(''); }}
-              className="p-0.5 text-slate-500 hover:text-slate-300"
-            >
-              <X size={10} />
-            </button>
+          <div className="pt-1 space-y-1">
+            <div className="flex items-center gap-1">
+              <input
+                autoFocus
+                value={gitHubUrl}
+                onChange={(e) => { setGitHubUrl(e.target.value); setPreviewData(null); setSelectedGitHubFiles(new Set()); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !previewData) handleGitHubPreview();
+                  if (e.key === 'Escape') { setShowGitHubImport(false); setGitHubUrl(''); setPreviewData(null); }
+                }}
+                placeholder="https://github.com/owner/repo"
+                className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-slate-400"
+              />
+              {!previewData ? (
+                <button
+                  onClick={handleGitHubPreview}
+                  disabled={previewLoading || !gitHubUrl.trim()}
+                  className="px-1.5 py-0.5 text-[10px] bg-slate-700 rounded text-slate-300 hover:text-white disabled:opacity-50"
+                >
+                  {previewLoading ? <Loader2 size={10} className="animate-spin" /> : 'Preview'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleImportGitHub}
+                  disabled={importingGitHub}
+                  className="p-0.5 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+                  title={selectedGitHubFiles.size > 0 ? `Import ${selectedGitHubFiles.size} files` : 'Import All'}
+                >
+                  {importingGitHub ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                </button>
+              )}
+              <button
+                onClick={() => { setShowGitHubImport(false); setGitHubUrl(''); setPreviewData(null); setSelectedGitHubFiles(new Set()); }}
+                className="p-0.5 text-slate-500 hover:text-slate-300"
+              >
+                <X size={10} />
+              </button>
+            </div>
+
+            {previewData && (
+              <div className="bg-slate-800/50 rounded-lg border border-slate-700/50">
+                <div className="flex items-center justify-between px-2 py-1">
+                  <span className="text-[10px] text-slate-400">
+                    {selectedGitHubFiles.size}/{previewData.importable_files} files selected
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setSelectedGitHubFiles(new Set(previewData.file_tree.filter((e) => e.type === 'blob').map((e) => e.path)));
+                      }}
+                      className="text-[10px] text-slate-500 hover:text-slate-300 px-1"
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setSelectedGitHubFiles(new Set())}
+                      className="text-[10px] text-slate-500 hover:text-slate-300 px-1"
+                    >
+                      None
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-40 overflow-y-auto border-t border-slate-700/50">
+                  <GitHubFilePreviewTree
+                    entries={previewData.file_tree}
+                    selectedFiles={selectedGitHubFiles}
+                    onToggle={(path) => {
+                      setSelectedGitHubFiles((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(path)) next.delete(path);
+                        else next.add(path);
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -876,5 +962,137 @@ function SourceItemRow({
       <GitHubFileTree sourceId={source.id} />
     )}
     </>
+  );
+}
+
+// Preview tree with checkboxes for file selection
+interface PreviewNode {
+  name: string;
+  path: string;
+  type: 'blob' | 'tree';
+  size: number;
+  language: string;
+  children: PreviewNode[];
+}
+
+function buildPreviewTree(entries: FileTreeEntry[]): PreviewNode[] {
+  const root: PreviewNode[] = [];
+  const map = new Map<string, PreviewNode>();
+  for (const entry of entries) {
+    const parts = entry.path.split('/');
+    let current = root;
+    let accumulated = '';
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      accumulated = accumulated ? `${accumulated}/${part}` : part;
+      let node = map.get(accumulated);
+      if (!node) {
+        const isLast = i === parts.length - 1;
+        node = {
+          name: part,
+          path: accumulated,
+          type: isLast ? entry.type : 'tree',
+          size: isLast ? entry.size : 0,
+          language: isLast ? entry.language : '',
+          children: [],
+        };
+        map.set(accumulated, node);
+        current.push(node);
+      }
+      current = node.children;
+    }
+  }
+  return root;
+}
+
+function GitHubFilePreviewTree({
+  entries,
+  selectedFiles,
+  onToggle,
+}: {
+  entries: FileTreeEntry[];
+  selectedFiles: Set<string>;
+  onToggle: (path: string) => void;
+}) {
+  const tree = buildPreviewTree(entries);
+  return (
+    <div>
+      {tree.map((node) => (
+        <PreviewTreeNode
+          key={node.path}
+          node={node}
+          depth={0}
+          selectedFiles={selectedFiles}
+          onToggle={onToggle}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PreviewTreeNode({
+  node,
+  depth,
+  selectedFiles,
+  onToggle,
+}: {
+  node: PreviewNode;
+  depth: number;
+  selectedFiles: Set<string>;
+  onToggle: (path: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(depth < 2);
+
+  if (node.type === 'tree') {
+    return (
+      <div>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 w-full px-1 py-0.5 text-xs text-slate-400 hover:text-slate-300 hover:bg-slate-800/30 text-left transition-all"
+          style={{ paddingLeft: `${4 + depth * 14}px` }}
+        >
+          {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+          <Folder size={10} className="text-amber-500 flex-shrink-0" />
+          <span className="truncate">{node.name}</span>
+        </button>
+        {expanded && (
+          <div>
+            {node.children.map((child) => (
+              <PreviewTreeNode
+                key={child.path}
+                node={child}
+                depth={depth + 1}
+                selectedFiles={selectedFiles}
+                onToggle={onToggle}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const isSelected = selectedFiles.has(node.path);
+  return (
+    <div
+      className="flex items-center gap-1 px-1 py-0.5 text-xs text-slate-500 hover:bg-slate-800/30 transition-all cursor-pointer"
+      style={{ paddingLeft: `${4 + depth * 14}px` }}
+      onClick={() => onToggle(node.path)}
+    >
+      <div
+        className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 transition-all ${
+          isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-slate-600 hover:border-slate-400'
+        }`}
+      >
+        {isSelected && <Check size={8} className="text-white" />}
+      </div>
+      <File size={10} className="text-slate-600 flex-shrink-0" />
+      <span className="truncate">{node.name}</span>
+      {node.language && (
+        <span className="text-[9px] px-1 rounded bg-slate-800 text-slate-500 flex-shrink-0 ml-auto">
+          {node.language}
+        </span>
+      )}
+    </div>
   );
 }

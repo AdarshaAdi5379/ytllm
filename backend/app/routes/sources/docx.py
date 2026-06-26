@@ -65,7 +65,7 @@ async def import_docx_source(
     file_bytes = await file.read()
 
     if background:
-        async def _bg_import():
+        async def _bg_import(task_id: str):
             async with async_session() as session:
                 try:
                     docx = process_docx(file_bytes, title=title)
@@ -105,7 +105,7 @@ async def import_docx_source(
                     logger.exception("Background DOCX import error: {}", str(e))
                     raise
 
-        task_id = await create_task("docx_import", file.filename or "DOCX file", _bg_import())
+        task_id = await create_task("docx_import", file.filename or "DOCX file", _bg_import)
         return {"task_id": task_id, "status": "queued", "source_type": "docx_document"}
 
     try:

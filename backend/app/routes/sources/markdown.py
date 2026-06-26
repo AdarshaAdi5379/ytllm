@@ -65,7 +65,7 @@ async def import_markdown_source(
             raise HTTPException(status_code=422, detail={"error": "INVALID_FOLDER", "message": "Folder not found in workspace."})
 
     if background:
-        async def _bg_import():
+        async def _bg_import(task_id: str):
             async with async_session() as session:
                 try:
                     md = process_markdown(req.content, title=req.title)
@@ -104,7 +104,7 @@ async def import_markdown_source(
                     logger.exception("Background markdown import error: {}", str(e))
                     raise
 
-        task_id = await create_task("markdown_import", req.title or "Markdown note", _bg_import())
+        task_id = await create_task("markdown_import", req.title or "Markdown note", _bg_import)
         return {"task_id": task_id, "status": "queued", "source_type": "markdown_note"}
 
     try:

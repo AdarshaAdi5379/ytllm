@@ -1,11 +1,18 @@
 import { create } from 'zustand';
 
+export interface JobProgress {
+  current: number;
+  total: number;
+  phase: string;
+}
+
 export interface ImportJob {
   id: string;
   sourceType: string;
   title: string;
   status: 'processing' | 'done' | 'failed';
   taskId?: string;
+  progress?: JobProgress;
   error?: string;
   createdAt: number;
 }

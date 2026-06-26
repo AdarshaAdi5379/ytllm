@@ -65,7 +65,7 @@ async def import_pptx_source(
     file_bytes = await file.read()
 
     if background:
-        async def _bg_import():
+        async def _bg_import(task_id: str):
             async with async_session() as session:
                 try:
                     pptx = process_pptx(file_bytes, title=title)
@@ -105,7 +105,7 @@ async def import_pptx_source(
                     logger.exception("Background PPTX import error: {}", str(e))
                     raise
 
-        task_id = await create_task("pptx_import", file.filename or "PPTX file", _bg_import())
+        task_id = await create_task("pptx_import", file.filename or "PPTX file", _bg_import)
         return {"task_id": task_id, "status": "queued", "source_type": "pptx_document"}
 
     try:

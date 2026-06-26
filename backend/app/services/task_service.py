@@ -1,13 +1,13 @@
 import asyncio
 import uuid
 import time
-from typing import Any, Coroutine
+from typing import Any, Callable, Coroutine
 
 _task_store: dict[str, dict] = {}
 _store_lock = asyncio.Lock()
 
 
-async def create_task(task_type: str, name: str, coro: Coroutine[Any, Any, Any]) -> str:
+async def create_task(task_type: str, name: str, fn: Callable[[str], Coroutine[Any, Any, Any]]) -> str:
     task_id = str(uuid.uuid4())
     now = time.time()
     async with _store_lock:
@@ -18,6 +18,7 @@ async def create_task(task_type: str, name: str, coro: Coroutine[Any, Any, Any])
             "status": "queued",
             "error": None,
             "result": None,
+            "progress": None,
             "created_at": now,
             "updated_at": now,
         }
@@ -28,7 +29,7 @@ async def create_task(task_type: str, name: str, coro: Coroutine[Any, Any, Any])
                 _task_store[task_id]["status"] = "processing"
                 _task_store[task_id]["updated_at"] = time.time()
         try:
-            result = await coro
+            result = await fn(task_id)
             async with _store_lock:
                 if task_id in _task_store:
                     _task_store[task_id]["status"] = "done"
@@ -43,6 +44,13 @@ async def create_task(task_type: str, name: str, coro: Coroutine[Any, Any, Any])
 
     asyncio.create_task(_run())
     return task_id
+
+
+async def update_task_progress(task_id: str, current: int, total: int, phase: str) -> None:
+    async with _store_lock:
+        if task_id in _task_store:
+            _task_store[task_id]["progress"] = {"current": current, "total": total, "phase": phase}
+            _task_store[task_id]["updated_at"] = time.time()
 
 
 async def get_task(task_id: str) -> dict | None:
