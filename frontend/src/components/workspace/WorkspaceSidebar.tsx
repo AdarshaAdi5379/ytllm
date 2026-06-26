@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield, Upload, File,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield, Upload, File, AlertCircle,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -50,6 +50,7 @@ export function WorkspaceSidebarContent() {
   const [importingGitHub, setImportingGitHub] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState<GitHubPreviewResponse | null>(null);
+  const [gitHubPreviewError, setGitHubPreviewError] = useState('');
   const [selectedGitHubFiles, setSelectedGitHubFiles] = useState<Set<string>>(new Set());
   const [showWsSwitcher, setShowWsSwitcher] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
@@ -184,14 +185,15 @@ export function WorkspaceSidebarContent() {
     if (!gitHubUrl.trim()) return;
     setPreviewLoading(true);
     setPreviewData(null);
+    setGitHubPreviewError('');
     setSelectedGitHubFiles(new Set());
     try {
       const data = await previewGitHubRepo(gitHubUrl.trim());
       setPreviewData(data);
-      // Pre-select all importable files
       setSelectedGitHubFiles(new Set(data.file_tree.filter((e) => e.type === 'blob').map((e) => e.path)));
-    } catch {
+    } catch (err: any) {
       setPreviewData(null);
+      setGitHubPreviewError(err?.message || 'Preview failed. Check the URL or try again.');
     } finally {
       setPreviewLoading(false);
     }
@@ -469,7 +471,7 @@ export function WorkspaceSidebarContent() {
               <input
                 autoFocus
                 value={gitHubUrl}
-                onChange={(e) => { setGitHubUrl(e.target.value); setPreviewData(null); setSelectedGitHubFiles(new Set()); }}
+                onChange={(e) => { setGitHubUrl(e.target.value); setPreviewData(null); setGitHubPreviewError(''); setSelectedGitHubFiles(new Set()); }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !previewData) handleGitHubPreview();
                   if (e.key === 'Escape') { setShowGitHubImport(false); setGitHubUrl(''); setPreviewData(null); }
@@ -496,12 +498,19 @@ export function WorkspaceSidebarContent() {
                 </button>
               )}
               <button
-                onClick={() => { setShowGitHubImport(false); setGitHubUrl(''); setPreviewData(null); setSelectedGitHubFiles(new Set()); }}
+                onClick={() => { setShowGitHubImport(false); setGitHubUrl(''); setPreviewData(null); setGitHubPreviewError(''); setSelectedGitHubFiles(new Set()); }}
                 className="p-0.5 text-slate-500 hover:text-slate-300"
               >
                 <X size={10} />
               </button>
             </div>
+
+            {gitHubPreviewError && (
+              <div className="flex items-start gap-1 px-1 py-1 text-[10px] text-rose-400/90">
+                <AlertCircle size={10} className="mt-0.5 flex-shrink-0" />
+                <span>{gitHubPreviewError}</span>
+              </div>
+            )}
 
             {previewData && (
               <div className="bg-slate-800/50 rounded-lg border border-slate-700/50">
