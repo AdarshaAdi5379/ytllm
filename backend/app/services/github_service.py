@@ -62,6 +62,7 @@ class RepoResult:
         text: str,
         index_key: str,
         chunks: list[CodeChunk] | None = None,
+        file_tree: list[dict] | None = None,
     ):
         self.owner = owner
         self.repo = repo
@@ -70,6 +71,7 @@ class RepoResult:
         self.text = text
         self.index_key = index_key
         self.chunks = chunks or []
+        self.file_tree = file_tree or []
 
 
 def _parse_github_url(url: str) -> tuple[str, str, str]:
@@ -96,6 +98,21 @@ def _parse_github_url(url: str) -> tuple[str, str, str]:
     return owner, repo, branch
 
 
+def _build_file_tree_from_items(items: list[dict]) -> list[dict]:
+    file_tree: list[dict] = []
+    for item in items:
+        entry = {
+            "path": item["path"],
+            "type": item["type"],
+            "size": item.get("size", 0),
+            "language": "",
+        }
+        if item["type"] == "blob":
+            entry["language"] = detect_language(item["path"])
+        file_tree.append(entry)
+    return file_tree
+
+
 def _should_include_dir(dir_path: str) -> bool:
     return not EXCLUDED_PATTERNS.search(dir_path)
 
@@ -106,6 +123,7 @@ def _build_result(
     branch: str,
     files: list[RepoFile],
     url: str,
+    file_tree: list[dict] | None = None,
 ) -> RepoResult:
     sections: list[str] = []
     for rf in files:
@@ -128,6 +146,7 @@ def _build_result(
         text=combined_text,
         index_key=index_key,
         chunks=all_chunks,
+        file_tree=file_tree or [],
     )
 
 
@@ -181,11 +200,10 @@ async def fetch_github_repo(url: str, token: str | None = None, mode: str = "aut
         tree_data = tree_resp.json()
         items = tree_data.get("tree", [])
 
-        file_paths = [
-            item["path"]
-            for item in items
-            if item["type"] == "blob" and _should_include(item["path"])
-        ]
+        file_tree = _build_file_tree_from_items(items)
+        temp_file_paths = [e["path"] for e in file_tree if e["type"] == "blob"]
+
+        file_paths = [p for p in temp_file_paths if _should_include(p)]
 
         if mode == "auto" and len(file_paths) > CLONE_FILE_THRESHOLD:
             logger.info("Repository {} has {} files, switching to clone mode", url, len(file_paths))
@@ -220,7 +238,7 @@ async def fetch_github_repo(url: str, token: str | None = None, mode: str = "aut
     if not repo_files:
         raise ValueError("No source files found in the repository.")
 
-    return _build_result(owner, repo, branch, repo_files, url)
+    return _build_result(owner, repo, branch, repo_files, url, file_tree=file_tree)
 
 
 async def fetch_github_repo_clone(url: str, token: str | None = None) -> RepoResult:
@@ -232,6 +250,7 @@ async def fetch_github_repo_clone(url: str, token: str | None = None) -> RepoRes
         await loop.run_in_executor(None, _clone_and_read, url, temp_dir, branch, token)
 
         repo_files: list[RepoFile] = []
+        file_tree_entries: list[dict] = []
         total_size = 0
 
         for root, dirs, files in os.walk(temp_dir):
@@ -241,12 +260,23 @@ async def fetch_github_repo_clone(url: str, token: str | None = None) -> RepoRes
             else:
                 dirs[:] = [d for d in dirs if _should_include_dir(d)]
 
+            for dir_name in dirs:
+                sub_path = os.path.join(rel_root, dir_name) if rel_root != "." else dir_name
+                file_tree_entries.append({"path": sub_path, "type": "tree", "size": 0, "language": ""})
+
             for file_name in files:
                 file_path = os.path.join(root, file_name)
                 rel_path = os.path.relpath(file_path, temp_dir)
                 if not _should_include(rel_path):
                     continue
                 try:
+                    fsize = os.path.getsize(file_path)
+                    file_tree_entries.append({
+                        "path": rel_path,
+                        "type": "blob",
+                        "size": fsize,
+                        "language": detect_language(rel_path),
+                    })
                     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                         content = f.read()
                     repo_files.append(RepoFile(path=rel_path, content=content))
@@ -262,7 +292,7 @@ async def fetch_github_repo_clone(url: str, token: str | None = None) -> RepoRes
         if not repo_files:
             raise ValueError("No source files found in the repository.")
 
-        return _build_result(owner, repo, branch, repo_files, url)
+        return _build_result(owner, repo, branch, repo_files, url, file_tree=file_tree_entries)
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 

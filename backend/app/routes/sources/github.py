@@ -81,6 +81,7 @@ async def import_github_source(
                         "branch": repo.branch,
                         "file_count": len(repo.files),
                         "chunk_count": chunk_count,
+                        "file_tree": repo.file_tree,
                     })
                     title = f"{repo.owner}/{repo.repo}"
                     existing = await session.execute(
@@ -126,6 +127,7 @@ async def import_github_source(
             "branch": repo.branch,
             "file_count": len(repo.files),
             "chunk_count": chunk_count,
+            "file_tree": repo.file_tree,
         })
 
         title = f"{repo.owner}/{repo.repo}"
@@ -168,3 +170,35 @@ async def import_github_source(
             status_code=503,
             detail={"error": "IMPORT_FAILED", "message": "Failed to import GitHub repository."},
         )
+
+
+@router.get("/{source_id}/file-tree")
+async def get_github_file_tree(
+    source_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy.orm import joinedload
+
+    result = await db.execute(
+        select(Source)
+        .options(joinedload(Source.workspace))
+        .where(
+            Source.id == source_id,
+            Source.source_type == "github_repo",
+        )
+    )
+    source = result.scalars().first()
+    if not source:
+        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "GitHub source not found."})
+
+    if source.workspace.owner_id != user.id:
+        raise HTTPException(status_code=403, detail={"error": "FORBIDDEN", "message": "Access denied."})
+
+    try:
+        meta = json.loads(source.metadata_json) if source.metadata_json else {}
+    except (json.JSONDecodeError, TypeError):
+        meta = {}
+
+    file_tree = meta.get("file_tree", [])
+    return {"source_id": source_id, "file_tree": file_tree}

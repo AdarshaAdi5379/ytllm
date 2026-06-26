@@ -19,6 +19,7 @@ import {
   pollImportTask,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
+import { GitHubFileTree } from './GitHubFileTree';
 
 export function WorkspaceSidebarContent() {
   const {
@@ -838,6 +839,7 @@ function SourceItemRow({
   const isFocused = activeSourceId === source.id;
 
   return (
+    <>
     <div className="flex items-center gap-0.5 group" style={{ paddingLeft: `${28 + depth * 16}px` }}>
       <button
         onClick={(e) => { e.stopPropagation(); toggleSourceSelection(source.id); }}
@@ -870,5 +872,9 @@ function SourceItemRow({
         </button>
       </div>
     </div>
+    {isFocused && source.source_type === 'github_repo' && (
+      <GitHubFileTree sourceId={source.id} />
+    )}
+    </>
   );
 }

@@ -310,6 +310,22 @@ export async function importGitHubSourceBackground(
   });
 }
 
+export interface FileTreeEntry {
+  path: string;
+  type: 'blob' | 'tree';
+  size: number;
+  language: string;
+}
+
+export interface FileTreeResponse {
+  source_id: string;
+  file_tree: FileTreeEntry[];
+}
+
+export async function fetchGitHubFileTree(sourceId: string): Promise<FileTreeResponse> {
+  return apiFetch<FileTreeResponse>(`/sources/github/${sourceId}/file-tree`);
+}
+
 // --- Unified Document Upload ---
 
 export async function uploadDocumentBackground(
