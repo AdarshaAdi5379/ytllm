@@ -1,48 +1,98 @@
-# Session: Phase 7 Completion — Auth, Persistence, Cleanup
+# Session: V4 GitHub Import — All Phases Complete + V7 Planning
 
-**Date:** 2026-05-30
+**Date:** 2026-06-25 to 2026-06-26
 
 ---
 
 ## Summary
 
-Completed Phase 7 (User Authentication) end-to-end: backend video persistence routes, auto-save on transcript load and chat streaming, frontend auth UI with modal-based Login/Signup, saved videos list with restore flow, and cleanup of stale files.
+Completed all V4 GitHub Import features (phases 1a-1g): language-aware code chunking for 13 languages, clone mode for large repos, file tree endpoint + sidebar browser, robust duplicate detection, smart file selection with preview, and import progress tracking. Also planned and documented V7 (Standalone Chat & Workspace Restructure) with full roadmap.
 
 ---
 
-## Files Created
+## V4 GitHub Import — Phases Completed
+
+### Phase 1a: Language-aware Code Chunking
+- Created `backend/app/services/code_chunker.py` with regex-based function/class boundary detection for 13 languages (Python, JS, TS, Go, Rust, Java, Kotlin, Swift, Ruby, PHP, C#, Scala, C/C++)
+- Each `CodeChunk` carries `file_path`, `language`, `chunk_type`, `line_start`, `line_end`
+- Non-code files fall back to paragraph-boundary splitting
+- Added `index_code_chunks()` to `embedding_service.py` with per-file metadata in ChromaDB
+- 21 unit tests in `backend/tests/test_code_chunker.py`
+
+### Phase 1b: Clone Mode for Large Repos
+- Added `gitpython>=3.1.0` requirement
+- `fetch_github_repo_clone()` with shallow clone (`--depth 1 --single-branch`) to `/tmp`
+- `mode=auto|api|clone`: auto-detection switches to clone on 403 rate limit or >200 files
+- 100MB limit for clone mode (10x API mode limit)
+
+### Phase 1c: File Tree Endpoint + Sidebar Browser
+- `GET /api/sources/{id}/file-tree` endpoint with workspace ownership verification
+- Frontend `GitHubFileTree` component with collapsible folders (auto-expand first 2 levels), language badges
+
+### Phase 1d: Duplicate Detection Upgrade
+- Combined index_key + (owner, repo, branch) OR query
+- `_find_existing_github_source()` helper extracted
+
+### Phase 1f+1g: Smart File Selection + Import Progress
+- Refactored `task_service.py`: `create_task` now takes callable `fn(task_id)`, added `update_task_progress()`
+- Updated all 9 callers across source routes
+- `file_paths` filter on import endpoint
+- `POST /api/sources/github/preview` endpoint (no auth, returns file tree without content)
+- Frontend two-step flow: URL → Preview with checkboxes → Import selected
+- Progress bars in `ImportNotifications`
+- `pollImportTask` accepts `onProgress` callback
+
+### Bugfix
+- Fixed silent error swallowing in GitHub preview (`1cbc54a3`)
+
+---
+
+## Files Created (V4)
 
 | File | Purpose |
 |------|---------|
-| `server-python/app/routes/videos.py` | CRUD routes for user's saved videos: `GET /api/videos/`, `GET /api/videos/{id}`, `POST /api/videos/`, `DELETE /api/videos/{id}` |
-| `client/src/store/useAuthStore.ts` | Zustand slice for user + token with localStorage persistence |
-| `client/src/components/auth/AuthModal.tsx` | Tabbed Login/Signup modal |
-| `client/src/components/video/SavedVideosList.tsx` | Lists user's saved videos with thumbnail, message count, delete |
-| `client/src/hooks/useRestoreVideo.ts` | Restore flow: fetch detail → re-index → restore chat history |
+| `backend/app/services/code_chunker.py` | Function/class boundary code chunking for 13 languages |
+| `backend/app/services/github_service.py` | Repo fetching (API + clone modes), file tree, smart filtering |
+| `backend/app/services/task_service.py` | Background task management with progress |
+| `frontend/src/components/workspace/GitHubFileTree.tsx` | Collapsible file tree browser |
+| `frontend/src/utils/languageUtils.ts` | Extension-to-language mapping |
+| `backend/tests/test_code_chunker.py` | 21 unit tests for code chunker |
 
-## Files Modified
+## Files Modified (V4)
 
 | File | Change |
 |------|--------|
-| `server-python/app/services/transcript_service.py` | Removed dead YouTube Data API v3 fallback referencing missing `google_api_key` config; transcript fetcher now has clean 2-tier fallback: `youtube-transcript-api` → `timedtext` |
-| `server-python/app/routes/transcript.py` | Added `get_optional_user` + `get_db` dependencies; auto-saves video to DB after successful load when JWT present |
-| `server-python/app/routes/chat.py` | Added `get_optional_user` dependency; saves user+assistant messages to DB after SSE streaming completes when JWT present |
-| `server-python/app/main.py` | Registered `videos` router |
-| `server-python/app/models.py` | Added `SaveVideoRequest` Pydantic model |
-| `client/src/api/client.ts` | Added `setAuthToken()` to attach `Authorization: Bearer` header; added auth API functions (`loginUser`, `registerUser`, `getMe`); added saved videos API (`fetchSavedVideos`, `fetchSavedVideoDetail`, `saveVideoToServer`, `deleteSavedVideo`) |
-| `client/src/components/layout/Sidebar.tsx` | Added auth section: "Sign In" button (guest), "My Videos" list, user email + "Sign Out" (authenticated) |
+| `backend/app/services/embedding_service.py` | Added `index_code_chunks()` |
+| `backend/app/routes/sources/github.py` | Preview endpoint, file_paths, progress wiring |
+| All 8 other source routes | Updated to new `create_task` callable signature |
+| `frontend/src/components/workspace/WorkspaceSidebar.tsx` | Two-step GitHub import + error display |
+| `frontend/src/components/workspace/ImportNotifications.tsx` | Progress bars |
+| `frontend/src/api/workspace.ts` | previewGitHubRepo, progress callback |
+| `frontend/src/store/useImportStore.ts` | JobProgress type |
 
-## Files Removed
+---
 
-| Path | Reason |
-|------|--------|
-| `server/` | Stale Node.js/Express backend (superseded by `server-python/`) |
-| `designs/` | Empty directory |
-| `instrument.js` | Orphaned Sentry init at repo root |
+## V7 Planned
 
-## Key Design Decisions
+Full roadmap documented at `docs/roadmap-v7.md`. Key features:
+- **Standalone Chat**: No workspace required. Own data per session. Guest-friendly via `X-Guest-Token`.
+- **Workspace Restructure**: Sessions auto-share all workspace sources. Remove per-message source checkboxes.
+- **Inline Upload**: Text, URL, file upload scoped to the active standalone session.
+- **Move to Workspace**: Standalone session migrates to workspace with its sources.
+- **Guest Token**: Auto-generated UUID in localStorage, claimed on login.
+- **Default experience**: App opens to standalone chat (new session) without requiring auth or workspace.
 
-1. **Guest mode preserved** — Auth is optional. All transcript/chat endpoints use `get_optional_user` so unauthenticated users continue to work without changes.
-2. **Chat messages saved on stream completion** — Rather than modifying the frontend chat hook, the SSE generator function captures token content and saves messages to DB inside a new async DB session after the `done` event is yielded.
-3. **Duplicate video prevention** — `routes/transcript.py` checks for existing `(user_id, youtube_video_id)` before saving to avoid duplicates.
-4. **Restore via re-index** — Restoring a saved video calls the transcript endpoint to re-generate embeddings (since ChromaDB indexes are ephemeral), then restores chat history from the DB.
+## Files Created (V7 — Planned)
+
+| File | Purpose |
+|------|---------|
+| `docs/roadmap-v7.md` | Full V7 roadmap document |
+| `backend/app/routes/standalone/*.py` | 5 route files (sessions, sources, chat, move, guest) |
+| `backend/alembic/versions/*_create_standalone_tables.py` | Migration for 3 new tables |
+| `frontend/src/api/standalone.ts` | Standalone API functions |
+| `frontend/src/store/useStandaloneChatStore.ts` | Standalone Zustand store |
+| `frontend/src/store/useAppStore.ts` | App mode toggle |
+| `frontend/src/components/standalone/*.tsx` | StandaloneChatPanel, SidebarSection, MoveDialog |
+
+**Total planned new files:** 14  
+**Total planned modified files:** 11

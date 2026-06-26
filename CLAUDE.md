@@ -5,6 +5,8 @@
 - The active backend is `backend/`. Treat `server/` as stale unless the user explicitly says otherwise.
 - The app loads YouTube transcripts, indexes transcript chunks in Chroma, streams chat responses over SSE, and optionally persists videos/messages for authenticated users.
 - **V2 expansion:** Workspaces, folders, multi-source import (YouTube launched), workspace-scoped chat sessions with SSE streaming.
+- **V4 expansion:** GitHub Import with language-aware code chunking, API/clone modes, file tree browser, smart file selection, import progress tracking.
+- **V7 (planned):** Standalone Chat (own data per session, guest-friendly) plus Workspace Restructure (sessions auto-share all workspace sources).
 
 ## Tech Stack
 - Frontend: React 18, TypeScript, Vite, TailwindCSS, Zustand, TanStack Query
@@ -32,6 +34,7 @@
 ## Project Structure
 - `frontend/src/components/` UI components grouped by domain
   - `components/workspace/` — WorkspaceSidebar, WorkspaceChatPanel
+  - `components/standalone/` — StandaloneChatPanel, StandaloneSidebarSection (V7)
   - `components/layout/` — MainPanel, Sidebar
 - `frontend/src/hooks/` frontend behavior for transcript load, chat, export, and restore
 - `frontend/src/store/` Zustand stores
@@ -45,12 +48,15 @@
   - `useNoteStore.ts` — notes CRUD, AI analysis
   - `useProgressStore.ts` — progress dashboard data
   - `useMentorStore.ts` — mentor sessions, messages, respond/end flow
+  - `useStandaloneChatStore.ts` — standalone sessions, messages, sources, streaming (V7)
+  - `useAppStore.ts` — app mode toggle (standalone vs workspace) (V7)
 - `frontend/src/api/`
   - `client.ts` — base API client and auth header handling, SSE streaming helpers
   - `workspace.ts` — workspace, folder, source, session, and workspace chat API methods (snake_case matching FastAPI)
+  - `standalone.ts` — standalone session, source upload, chat, move API methods (V7)
 - `backend/app/routes/` HTTP route layer organized by domain:
   - `routes/workspace/` — workspaces, folders, sessions, sources (under workspace), search
-  - `routes/sources/` — youtube import (new) + old transcript endpoint
+  - `routes/sources/` — youtube, github, pdf, website, docx, pptx, markdown, text, upload imports
   - `routes/ai/` — chat, summary, actions, notes, flashcards, quiz, learning-path, daily-revision, progress, mentor
   - `routes/auth.py` — register/login, auto-creates default "My Workspace"
   - `routes/chat.py` — legacy single-video chat (keep for backward compat)
@@ -58,9 +64,11 @@
   - `routes/videos.py` — legacy video CRUD
   - `routes/export.py` — PDF/DOCX export
   - `routes/health.py` — health check
+  - `routes/standalone/` — standalone sessions, sources, chat, move, guest claim (V7)
 - `backend/app/services/` transcript, embeddings, LLM, auth, memory, export, spaced_repetition, flashcards, quiz, learning_path, daily_revision, progress, mentor
 - `backend/app/utils/` chunking, retry, YouTube parsing, session cache
 - `backend/app/db_models.py` SQLAlchemy ORM models (14 tables: User, Video, ChatMessage legacy + Workspace, Folder, Source, SourceChunk, ChatSession, ChatMessageNew, Note, Summary, Flashcard, Quiz, LearningPath, LearningPathTopic, WorkspaceMember, MentorSession)
+- V7 will add 3 more: StandaloneChatSession, StandaloneChatMessage, StandaloneChatSource (17 total)
 - `backend/app/models.py` All Pydantic schemas (V0+V2+V3)
 - `backend/tests/` backend tests
 
@@ -74,6 +82,7 @@
 - Auth is optional for transcript/chat/export flows. Do not accidentally make guest flows require JWTs.
 - Persistent saved-video behavior is additive on top of local Zustand persistence. Keep both layers working.
 - **V2 data model:** Workspace → Folder (nested via parent_id) → Source (polymorphic, linked to folder) → Chunks (in Chroma). Chat sessions are workspace-scoped with source_ids filter.
+- **V7 data model (planned):** Standalone session → Standalone source → Chunks (in Chroma, keyed `standalone_{session}_{source}`). No workspace dependency.
 
 ## Build Protocol
 - Build exactly one feature at a time. Never batch multiple features in a single session.
@@ -105,6 +114,11 @@
 - **Chat Session Management:** `routes/workspace/sessions.py` CRUD endpoints. Zustand store `useChatSessionStore.ts` manages list/create/delete; session auto-named from first user message.
 - **Workspace/Folder CRUD:** `routes/workspace/workspaces.py` + `routes/workspace/folders.py`. Folder tree supports arbitrary nesting via `parent_id`, `sort_order`, `source_count`. Default workspace auto-created on user registration.
 
+## Data Flow — V7 (Planned)
+- **Standalone Chat:** No workspace required. Sources uploaded per-session via inline upload (text, URL, file). Indexed in Chroma with key `standalone_{session_id}_{source_id}`. SSE chat queries only the active session's sources. Guest users supported via `X-Guest-Token` header.
+- **Move to Workspace:** Standalone session + its sources can be migrated to a workspace, creating Source records + ChatSession. Sources become available to all workspace sessions.
+- **Guest Token:** Auto-generated UUID in localStorage. Sent as header. On login, guest sessions are claimed and reassigned to user ID.
+
 ## Persistence Notes
 - SQLite is configured through `DATABASE_URL` in `backend/.env`.
 - DB file: `backend/knowledgeos.db` (11 tables, Alembic-managed).
@@ -135,7 +149,7 @@
 - Confirm docs stay honest when commands, environment variables, or behavior change.
 - Confirm workspace chat path (SSE endpoint `POST /api/ai/chat/workspace/{id}`) when changing chat behavior.
 
-## Session Context — V2 + V3 Features (as of Jun 24 2026)
+## Session Context — V2 + V3 + V4 Features (as of Jun 26 2026)
 
 ### First Session (Jun 20) — Workspace foundation
 1. `ea10ec72` — Workspace & Folder CRUD
@@ -200,10 +214,37 @@
 - `backend/app/models.py` — Added Flashcard/Quiz/LearningPath/Mentor Pydantic schemas
 - `frontend/src/components/workspace/WorkspaceChatPanel.tsx` — viewMode union type grew from 4 to 10 modes (chat, notes, search, summary, flashcard, quiz, path, revision, progress, mentor)
 
+### Sixth Session (Jun 25-26) — V4 GitHub Import: All phases
+23. `a0374735` — Phase 1a: Language-aware code chunking (13 languages, function/class boundaries)
+24. `729a751e` — Phase 1b: Clone mode for large repos (gitpython shallow clone, auto-detection)
+25. `14f8be69` — Phase 1c: File tree endpoint + sidebar browser (API and clone modes)
+26. `b3076f4c` — Phase 1d: Robust duplicate detection (OR-based index_key + owner/repo/branch)
+27. `603c8341` — Phase 1f+1g: Smart file selection + import progress (preview endpoint, file_paths filter, progress bars, two-step flow)
+28. `1cbc54a3` — Fix: Show GitHub preview errors instead of silent failure
+29. `dd8eadf7` — Docs: V7 roadmap (Standalone Chat & Workspace Restructure)
+
+### Key Files Created (V4)
+- `backend/app/services/code_chunker.py` — Function/class boundary code chunking for 13 languages
+- `backend/app/services/github_service.py` — Repo fetching (API + clone modes), file tree building, should_include_file filter
+- `backend/app/services/task_service.py` — Background task management with progress tracking
+- `frontend/src/components/workspace/GitHubFileTree.tsx` — Collapsible file tree browser
+- `frontend/src/utils/languageUtils.ts` — Extension-to-language mapping
+- `docs/roadmap-v7.md` — V7 roadmap
+
+### Key Files Modified (V4)
+- `backend/app/routes/sources/github.py` — Added preview endpoint, file_paths filter, progress wiring
+- `backend/app/services/embedding_service.py` — Added index_code_chunks() for code files
+- `backend/app/routes/sources/*.py` (youtube, website, pdf, docx, pptx, markdown, text, upload) — Updated to new create_task signature
+- `frontend/src/components/workspace/WorkspaceSidebar.tsx` — Two-step GitHub import flow + error display
+- `frontend/src/components/workspace/ImportNotifications.tsx` — Progress bars for import jobs
+- `frontend/src/api/workspace.ts` — previewGitHubRepo, file_paths support, pollImportTask progress callback
+- `frontend/src/store/useImportStore.ts` — JobProgress type
+
 ## Anchored Summary
 
 ### Goal
-- V3 AI Tutor features (all 6 complete): Flashcards + SM-2, Quiz Generator (6 types), Learning Path, Daily Revision, Progress Dashboard, AI Mentor
+- V4 Developer Mode / GitHub Import — all features complete (phases 1a-1g)
+- V7 (pending): Standalone Chat & Workspace Restructure
 
 ### Constraints & Preferences
 - All workspace-scoped features use `verify_workspace_access()` auth guard
@@ -215,8 +256,10 @@
 - `backend/` is active; `server/` is stale
 
 ### Next Steps
-1. V4 — Developer Mode / GitHub Import (repo URL import, file tree browser, smart file selection)
-2. Or maintain existing features as user requests
+1. V7 — Standalone Chat & Workspace Restructure (see `docs/roadmap-v7.md`)
+2. Standalone chat: own data per session, guest-friendly, SSE streaming
+3. Workspace restructure: sessions auto-share all workspace sources, remove source checkboxes
+4. Move standalone session to workspace
 
 ### Critical Context
 - `generate_text()` available on `llm_service` for all AI generation
