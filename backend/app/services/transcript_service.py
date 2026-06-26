@@ -5,6 +5,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 
 from app.config import config
 from app.utils.chunk_segments import TranscriptSegment
+from app.services.whisper_service import download_and_transcribe
 
 
 class VideoMetadata:
@@ -307,6 +308,22 @@ async def fetch_transcript(video_id: str) -> TranscriptResult:
     if timedtext_result:
         logger.info("Transcript fetched via timedtext for {}", video_id)
         return timedtext_result
+
+    # Fall back to Whisper audio transcription
+    logger.info("Trying Whisper fallback for {}...", video_id)
+    whisper_segments = await download_and_transcribe(video_id)
+    if whisper_segments:
+        text = _segments_to_text(whisper_segments)
+        if len(text.split()) >= config["transcript_min_words"]:
+            logger.info("Transcript fetched via Whisper for {}", video_id)
+            return TranscriptResult(
+                text=text,
+                language="en",
+                is_auto_generated=True,
+                segments=whisper_segments,
+            )
+        else:
+            logger.warning("Whisper transcript too short ({} words) for {}", len(text.split()), video_id)
 
     logger.warning("No captions found for {}", video_id)
     error = Exception("No captions available for this video.")

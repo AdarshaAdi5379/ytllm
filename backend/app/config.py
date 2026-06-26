@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # Transcript acceptance (helps avoid partial/bad caption fetches)
     transcript_min_words: int = Field(default=100, alias="TRANSCRIPT_MIN_WORDS")
 
+    # Whisper fallback for videos without captions
+    enable_whisper_fallback: bool = Field(default=True, alias="ENABLE_WHISPER_FALLBACK")
+    whisper_model: str = Field(default="whisper-1", alias="WHISPER_MODEL")
+
     # Cache settings
     session_cache_ttl: int = Field(default=28800, alias="SESSION_CACHE_TTL")  # seconds (8 hours)
     cleanup_interval_s: int = Field(default=600, alias="CLEANUP_INTERVAL_S")  # seconds
@@ -103,6 +107,8 @@ config = {
     "embedding_batch_delay": settings.embedding_batch_delay,
     "vector_storage_path": settings.vector_storage_path,
     "transcript_min_words": settings.transcript_min_words,
+    "enable_whisper_fallback": settings.enable_whisper_fallback,
+    "whisper_model": settings.whisper_model,
     "session_cache_ttl": settings.session_cache_ttl,
     "cleanup_interval_s": settings.cleanup_interval_s,
     "vector_index_ttl_s": settings.vector_index_ttl_s,
