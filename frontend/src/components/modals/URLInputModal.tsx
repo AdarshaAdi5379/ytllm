@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { X, Video } from 'lucide-react';
+import { X, Video, ArrowLeft } from 'lucide-react';
 import { isValidYouTubeUrl } from '../../utils/youtubeParser';
 import { useTranscript } from '../../hooks/useTranscript';
 import { useVideoStore } from '../../store/useVideoStore';
@@ -8,9 +8,7 @@ export function URLInputModal() {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const { mutate: loadTranscript, isPending } = useTranscript();
-  const { closeAddVideoModal, videos } = useVideoStore();
-
-  const hasVideos = Object.keys(videos).length > 0;
+  const { closeAddVideoModal } = useVideoStore();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -48,15 +46,13 @@ export function URLInputModal() {
             <Video size={20} className="text-brand-500" />
             <h2 className="text-base font-semibold text-gray-900">Load YouTube Video</h2>
           </div>
-          {hasVideos && (
-            <button
-              onClick={closeAddVideoModal}
-              className="p-1 rounded-lg hover:bg-gray-100 text-gray-400"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
-          )}
+          <button
+            onClick={closeAddVideoModal}
+            className="p-1 rounded-lg hover:bg-gray-100 text-gray-400"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Body */}
@@ -100,6 +96,16 @@ export function URLInputModal() {
             </div>
           )}
 
+          {isPending && (
+            <button
+              type="button"
+              onClick={closeAddVideoModal}
+              className="w-full mb-2 py-2.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ArrowLeft size={14} />
+              Cancel
+            </button>
+          )}
           <button
             type="submit"
             disabled={isPending || !url.trim()}
