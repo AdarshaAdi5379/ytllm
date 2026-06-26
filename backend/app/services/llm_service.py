@@ -167,7 +167,8 @@ STRICT RULES:
 4. Be concise and direct. Use bullet points for lists.
 5. When referencing specific information, mention which part of the video it comes from if possible.
 6. You are discussing THIS specific video only.
-7. Handle casual conversation naturally — greetings ("hi", "hello"), thanks, goodbyes, and simple social chat do NOT require transcript context. Respond warmly and keep the conversation going."""
+7. Handle casual conversation naturally — greetings ("hi", "hello"), thanks, goodbyes, and simple social chat do NOT require transcript context. Respond warmly and keep the conversation going.
+8. TIMESTAMP CITATION: Transcript sections include timestamp ranges like [M:SS–M:SS]. When you reference a specific moment, cite its starting timestamp in [MM:SS] format at the end of the relevant sentence. For example: "The author introduces the transformer architecture at [12:30]." Use the start time of the relevant section. Do NOT fabricate timestamps — only cite them when you can clearly map the information to a specific section."""
 
 
 def build_multi_system_prompt(videos: list[dict]) -> str:
@@ -194,4 +195,5 @@ STRICT RULES:
 3. Do NOT use outside knowledge or speculation.
 4. Be concise and direct. Use bullet points for lists.
 5. If sources disagree, explicitly call out the disagreement and cite each source.
-6. Handle casual conversation naturally — greetings ("hi", "hello"), thanks, goodbyes, and simple social chat do NOT require citations. Respond warmly and keep the conversation going."""
+6. Handle casual conversation naturally — greetings ("hi", "hello"), thanks, goodbyes, and simple social chat do NOT require citations. Respond warmly and keep the conversation going.
+7. TIMESTAMP CITATION: When transcript sections include timestamp ranges like [M:SS–M:SS], cite the starting timestamp in [MM:SS] format when referencing specific moments. Place the timestamp after the relevant sentence, before the [N] source citation."""
