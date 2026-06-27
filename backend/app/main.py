@@ -14,7 +14,7 @@ from app.config import config
 from app.database import init_db
 from app.middleware.error_handler import register_error_handlers
 from app.routes import health, transcript, chat, export, auth, videos
-from app.routes import workspace_router, sources_router, ai_router, tasks_router
+from app.routes import workspace_router, sources_router, ai_router, tasks_router, standalone_router
 from app.services import embedding_service
 from app.utils import session_cache
 from app.utils.logging import setup_logging
@@ -70,8 +70,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=config["cors_origins"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Guest-Token"],
 )
 
 # Rate limiting
@@ -95,6 +95,7 @@ app.include_router(workspace_router, prefix="/api/workspace", tags=["workspace"]
 app.include_router(sources_router, prefix="/api/sources", tags=["sources"])
 app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
 app.include_router(tasks_router, prefix="/api/tasks", tags=["tasks"])
+app.include_router(standalone_router, prefix="/api/standalone", tags=["standalone"])
 
 # Shared / standalone routers
 # Note: old routes/transcript.py and routes/chat.py still registered below for V0 backward compat

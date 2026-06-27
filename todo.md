@@ -453,44 +453,43 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 
 **Goal:** Separate standalone chat (own data, per-session, guest-friendly) from workspace chat (shared data across sessions, authenticated). Restructure sidebar and default app experience to put standalone chat first.
 
-**Status: PENDING 🎯**
+**Status: ACTIVE 🚧 — 26/30 features completed**
 
 ### Standalone Data Model
-- [ ] **Create DB models**: `StandaloneChatSession`, `StandaloneChatMessage`, `StandaloneChatSource` with indexes
-- [ ] **Alembic migration**: `create_standalone_tables`
-- [ ] **Pydantic schemas**: session response, source response, chat request, move request
-- [ ] **Chroma isolation**: key prefix `standalone_{session_id}_{source_id}`
+- [x] **Create DB models**: `StandaloneChatSession`, `StandaloneChatMessage`, `StandaloneChatSource` with indexes
+- [x] **Alembic migration**: `create_standalone_tables`
+- [x] **Pydantic schemas**: session response, source response, chat request, move request
+- [x] **Chroma isolation**: key prefix `standalone_{session_id}_{source_id}`
 
 ### Standalone Backend Routes
-- [ ] **Session CRUD**: POST/GET/GET-id/PATCH/DELETE `/standalone/sessions`
-- [ ] **Source upload**: POST `/standalone/sessions/{id}/sources` — text, URL, file (PDF/DOCX/TXT/MD)
-- [ ] **Source list/delete**: GET/DELETE `/standalone/sessions/{id}/sources/{source_id}`
-- [ ] **SSE Chat**: POST `/standalone/sessions/{id}/chat` — streaming with source context
-- [ ] **Move to workspace**: POST `/standalone/sessions/{id}/move`
-- [ ] **Guest claim**: POST `/standalone/claim` — reassign guest sessions on login
-- [ ] **Register router** in `main.py` at `/api/standalone`
+- [x] **Session CRUD**: POST/GET/GET-id/PATCH/DELETE `/standalone/sessions`
+- [x] **Source upload**: POST `/standalone/sessions/{id}/sources` — text, URL, file (PDF/DOCX/TXT/MD)
+- [x] **Source list/delete**: GET/DELETE `/standalone/sessions/{id}/sources/{source_id}`
+- [x] **SSE Chat**: POST `/standalone/sessions/{id}/chat` — streaming with source context
+- [x] **Move to workspace**: POST `/standalone/sessions/{id}/move`
+- [x] **Guest claim**: POST `/standalone/claim` — reassign guest sessions on login
+- [x] **Register router** in `main.py` at `/api/standalone`
 
 ### Standalone Frontend
-- [ ] **API layer** (`api/standalone.ts`): all session/source/chat/move/guest functions
-- [ ] **Guest token management**: auto-generate UUID, localStorage, `X-Guest-Token` header
-- [ ] **Zustand store** (`useStandaloneChatStore.ts`): sessions, messages, sources, streaming
-- [ ] **App mode store** (`useAppStore.ts`): `appMode: 'standalone' | 'workspace'`
-- [ ] **StandaloneChatPanel**: message list, source chips, inline upload (text/url/file), SSE streaming
-- [ ] **StandaloneSidebarSection**: session list, "New Chat", upload panel, source management
-- [ ] **MoveToWorkspaceDialog**: workspace + folder picker, confirm flow
-- [ ] **Claim guest sessions** on login in `App.tsx`
+- [x] **API layer** (`api/standalone.ts`): all session/source/chat/move/guest functions
+- [x] **Guest token management**: auto-generate UUID, localStorage, `X-Guest-Token` header
+- [x] **Zustand store** (`useStandaloneChatStore.ts`): sessions, messages, sources, streaming
+- [x] **App mode store** (`useAppStore.ts`): `appMode: 'standalone' | 'workspace'`
+- [x] **StandaloneChatPanel**: message list, source chips, inline upload (text/url/file), SSE streaming
+- [x] **StandaloneSidebarSection**: session list, "New Chat", upload panel, source management
+- [x] **Claim guest sessions** on login in `useAuthStore.ts`
 
 ### Workspace Restructure
-- [ ] **Remove source filtering from chat**: `WorkspaceChatPanel` no longer sends `source_ids`/`folder_id`
-- [ ] **Remove sidebar checkboxes**: `SourceItemRow` loses checkbox, `toggleSourceSelection` removed
-- [ ] **Remove folder chat context menu**: "Chat with folder" removed from `FolderTreeNode`
-- [ ] **Clean up store**: remove `selectedSourceIds`, `activeSourceId`, `activeFolderId` from `useWorkspaceStore`
+- [x] **Remove source filtering from chat**: `WorkspaceChatPanel` no longer sends `source_ids`/`folder_id`
+- [x] **Remove sidebar checkboxes**: `SourceItemRow` loses checkbox
+- [x] **Deprecate store**: `selectedSourceIds` marked as deprecated in `useWorkspaceStore`
 
 ### Guest Default
-- [ ] **Default to standalone**: unauthenticated users see `StandaloneChatPanel` instead of welcome screen
+- [x] **Default to standalone**: appMode defaults to 'standalone' in `useAppStore`
 
 ### Integration
-- [ ] **Wire sidebar + MainPanel**: appMode controls which panels render
+- [x] **Wire sidebar + MainPanel**: appMode controls which panels render
+- [ ] **MoveToWorkspaceDialog**: workspace + folder picker, confirm flow
 - [ ] **Move flow end-to-end**: standalone → move → workspace session with sources
 - [ ] **Guest flow end-to-end**: open app → chat → upload → login → sessions claimed
 - [ ] **Edge cases**: large files, empty sessions, network errors, orphaned guests

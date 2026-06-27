@@ -478,3 +478,57 @@ class StartMentorSessionRequest(BaseModel):
 class MentorRespondRequest(BaseModel):
     session_id: str
     answer: str
+
+class StandaloneSessionResponse(BaseModel):
+    id: str
+    title: str
+    model: str | None = None
+    temperature: float | None = None
+    message_count: int = 0
+    source_count: int = 0
+    created_at: str
+    updated_at: str
+
+
+class CreateStandaloneSessionRequest(BaseModel):
+    title: str = "New Chat"
+    model: str | None = None
+    temperature: float | None = None
+    guest_token: str | None = None
+
+
+class UpdateStandaloneSessionRequest(BaseModel):
+    title: str | None = None
+
+
+class StandaloneSourceResponse(BaseModel):
+    id: str
+    session_id: str
+    source_type: str
+    title: str
+    metadata_json: str = "{}"
+    file_name: str | None = None
+    created_at: str
+
+
+class StandaloneChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+    citations: str = "[]"
+    timestamp: str = ""
+
+
+class StandaloneChatRequest(BaseModel):
+    question: str
+    chat_history: list[StandaloneChatMessage] = []
+    model: str | None = None
+    temperature: float | None = None
+
+
+class MoveToWorkspaceRequest(BaseModel):
+    workspace_id: str
+    folder_id: str | None = None
+
+
+class ClaimGuestSessionsRequest(BaseModel):
+    guest_token: str

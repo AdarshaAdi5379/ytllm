@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2, UserPlus } from 'lucide-react';
+import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2, UserPlus, Sparkles, Layers } from 'lucide-react';
 import { VideoCard } from '../video/VideoCard';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useAppStore } from '../../store/useAppStore';
 import { checkHealth } from '../../api/client';
 import { SavedVideosList } from '../video/SavedVideosList';
 import { useRestoreVideo } from '../../hooks/useRestoreVideo';
 import { WorkspaceSidebarContent } from '../workspace/WorkspaceSidebar';
+import { StandaloneSidebarSection } from '../standalone/StandaloneSidebarSection';
 
 export function Sidebar() {
   const { videos, openAddVideoModal, clearVideos } = useVideoStore();
   const { user, isAuthenticated, clearAuth, setAuthModalMode } = useAuthStore();
+  const { appMode, setAppMode } = useAppStore();
   const videoIds = Object.keys(videos);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [showSavedVideos, setShowSavedVideos] = useState(false);
@@ -40,7 +43,7 @@ export function Sidebar() {
     <aside className="w-72 flex-shrink-0 h-full flex flex-col bg-slate-900 border-r border-slate-800 shadow-2xl z-10">
       {/* Header */}
       <div className="p-6 border-b border-slate-800/50">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <LayoutDashboard size={18} className="text-white" />
@@ -57,20 +60,51 @@ export function Sidebar() {
           </div>
         </div>
 
-        <button
-          onClick={openAddVideoModal}
-          disabled={videoIds.length >= 10}
-          className="group relative w-full overflow-hidden flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-          aria-label="Add new video"
-        >
-          <div className="absolute inset-0 bg-white/10 group-hover:bg-transparent transition-colors"></div>
-          <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
-          <span>Add New Video</span>
-        </button>
+        {/* App mode toggle */}
+        <div className="flex items-center gap-1 mb-3 bg-slate-800/50 rounded-lg p-0.5">
+          <button
+            onClick={() => setAppMode('standalone')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
+              appMode === 'standalone'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sparkles size={12} />
+            Standalone
+          </button>
+          <button
+            onClick={() => setAppMode('workspace')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
+              appMode === 'workspace'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Layers size={12} />
+            Workspace
+          </button>
+        </div>
+
+        {/* Add button for legacy video mode (standalone) */}
+        {appMode === 'standalone' && (
+          <button
+            onClick={openAddVideoModal}
+            disabled={videoIds.length >= 10}
+            className="group relative w-full overflow-hidden flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+            aria-label="Add new video"
+          >
+            <div className="absolute inset-0 bg-white/10 group-hover:bg-transparent transition-colors"></div>
+            <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+            <span>Add New Video</span>
+          </button>
+        )}
       </div>
 
-      {/* Content area: workspace sidebar for authenticated users, video list for guests */}
-      {isAuthenticated ? (
+      {/* Content area: switch based on mode */}
+      {appMode === 'standalone' ? (
+        <StandaloneSidebarSection />
+      ) : isAuthenticated ? (
         <WorkspaceSidebarContent />
       ) : (
         <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">

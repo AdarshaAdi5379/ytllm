@@ -277,6 +277,13 @@ def delete_index(video_id: str) -> None:
         del vector_indexes[video_id]
 
 
+def delete_chunks(index_key: str) -> None:
+    """Deletes the vector index for a given key (standalone or workspace)."""
+    if index_key in vector_indexes:
+        del vector_indexes[index_key]
+    delete_index_files(index_key)
+
+
 def delete_index_files(video_id: str) -> None:
     """Deletes on-disk vector index for a video."""
     index_path = get_index_path(video_id)

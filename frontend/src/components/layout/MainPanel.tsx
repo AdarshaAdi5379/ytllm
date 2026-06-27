@@ -1,6 +1,7 @@
 import { LogIn, UserPlus, MessageSquare, Youtube } from 'lucide-react';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useAppStore } from '../../store/useAppStore';
 import { VideoHeader } from '../video/VideoHeader';
 import { VideoPlayer } from '../video/VideoPlayer';
 import { SummaryCard } from '../video/SummaryCard';
@@ -9,6 +10,7 @@ import { ChatWindow } from '../chat/ChatWindow';
 import { ChatInput } from '../chat/ChatInput';
 import { LoadingSkeleton } from '../shared/LoadingSkeleton';
 import { WorkspaceChatPanel } from '../workspace/WorkspaceChatPanel';
+import { StandaloneChatPanel } from '../standalone/StandaloneChatPanel';
 import { useChat } from '../../hooks/useChat';
 
 export function MainPanel() {
@@ -16,9 +18,13 @@ export function MainPanel() {
   const video = activeVideoId ? videos[activeVideoId] : null;
   const { sendMessage } = useChat(activeVideoId);
   const { isAuthenticated, setAuthModalMode } = useAuthStore();
+  const { appMode } = useAppStore();
 
   if (!video) {
-    // Show workspace chat for authenticated users, welcome screen for guests
+    // Show standalone vs workspace based on mode
+    if (appMode === 'standalone') {
+      return <StandaloneChatPanel />;
+    }
     if (isAuthenticated) {
       return <WorkspaceChatPanel />;
     }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { setAuthToken } from '../api/client';
+import { getGuestToken, claimGuestSessions } from '../api/standalone';
 
 interface AuthUser {
   id: string;
@@ -27,9 +28,18 @@ export const useAuthStore = create<AuthStore>()(
 
       authModalMode: null,
 
-      setAuth: (user, token) => {
+      setAuth: async (user, token) => {
         setAuthToken(token);
         set({ user, token, isAuthenticated: true });
+        try {
+          const guestToken = getGuestToken();
+          const result = await claimGuestSessions(guestToken);
+          if (result.claimed > 0) {
+            localStorage.removeItem('standalone-guest-token');
+          }
+        } catch {
+          // guest claim is best-effort
+        }
       },
       clearAuth: () => {
         setAuthToken(null);

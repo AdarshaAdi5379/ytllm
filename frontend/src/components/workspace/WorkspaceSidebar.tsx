@@ -929,22 +929,12 @@ function SourceItemRow({
   } else if (source.source_type === 'github_repo') {
     icon = <Github size={10} className="text-slate-300 flex-shrink-0" />;
   }
-  const { activeSourceId, selectedSourceIds, setActiveSource, toggleSourceSelection } = useWorkspaceStore();
-  const isChecked = selectedSourceIds.includes(source.id);
+  const { activeSourceId, setActiveSource } = useWorkspaceStore();
   const isFocused = activeSourceId === source.id;
 
   return (
     <>
     <div className="flex items-center gap-0.5 group" style={{ paddingLeft: `${28 + depth * 16}px` }}>
-      <button
-        onClick={(e) => { e.stopPropagation(); toggleSourceSelection(source.id); }}
-        className={`p-0.5 flex-shrink-0 rounded transition-all ${
-          isChecked ? 'text-indigo-400' : 'text-slate-600 hover:text-slate-400'
-        }`}
-        title={isChecked ? 'Remove from selection' : 'Add to selection'}
-      >
-        <Check size={8} className={isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'} />
-      </button>
       <div
         className={`flex items-center gap-1.5 flex-1 px-1.5 py-1 rounded-lg text-xs cursor-pointer transition-all ${
           isFocused

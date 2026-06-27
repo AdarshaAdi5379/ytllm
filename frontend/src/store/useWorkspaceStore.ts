@@ -8,6 +8,7 @@ interface WorkspaceStore {
   activeWorkspaceId: string | null;
   activeSourceId: string | null;
   activeSourceTitle: string;
+  /** @deprecated unused in V7 — kept for backward compat */
   selectedSourceIds: string[];
   activeFolderId: string | null;
   activeFolderTitle: string;

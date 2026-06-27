@@ -16,7 +16,7 @@ import { ProgressDashboardPanel } from './ProgressDashboard';
 import { MentorPanel } from './MentorPanel';
 
 export function WorkspaceChatPanel() {
-  const { activeWorkspaceId, activeSourceId, activeSourceTitle, selectedSourceIds, activeFolderId, activeFolderTitle, clearActiveSource, clearActiveFolder, clearSourceSelection, setActiveSource } = useWorkspaceStore();
+  const { activeWorkspaceId } = useWorkspaceStore();
   const {
     sessions, activeSessionId, messages, streaming,
     loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming,
@@ -66,18 +66,12 @@ export function WorkspaceChatPanel() {
       timestamp: m.timestamp,
     }));
 
-    const sourceIds = selectedSourceIds.length > 0
-      ? selectedSourceIds
-      : activeSourceId ? [activeSourceId] : undefined;
-
     streamWorkspaceChat(
       activeWorkspaceId,
       {
         session_id: activeSessionId || undefined,
         question,
         chat_history: history,
-        source_ids: sourceIds,
-        folder_id: activeFolderId || undefined,
         model: selectedModel || undefined,
         temperature: selectedTemperature,
       },
@@ -119,8 +113,6 @@ export function WorkspaceChatPanel() {
 
   const handleNewChat = async () => {
     if (!activeWorkspaceId) return;
-    clearActiveSource();
-    clearActiveFolder();
     const session = await useChatSessionStore.getState().createSession(
       activeWorkspaceId, undefined, undefined,
       selectedModel || undefined, selectedTemperature,
@@ -251,30 +243,6 @@ export function WorkspaceChatPanel() {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {/* Source scope indicator */}
-          {selectedSourceIds.length > 0 ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700">
-              <span className="text-xs font-semibold">
-                {selectedSourceIds.length} source{selectedSourceIds.length > 1 ? 's' : ''} selected
-              </span>
-              <button
-                onClick={clearSourceSelection}
-                className="p-0.5 text-indigo-400 hover:text-indigo-600"
-                title="Clear selection"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          ) : activeSourceId ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700">
-              <span className="text-xs font-semibold truncate max-w-[120px]">{activeSourceTitle}</span>
-            </div>
-          ) : activeFolderId ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700">
-              <FolderOpen size={10} />
-              <span className="text-xs font-semibold truncate max-w-[120px]">{activeFolderTitle}</span>
-            </div>
-          ) : null}
           <ActionsToolbar />
           <div className="relative">
             <button
@@ -384,35 +352,13 @@ export function WorkspaceChatPanel() {
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
-                  {selectedSourceIds.length > 0 ? (
-                    <>
-                      <MessageSquare size={28} className="mx-auto text-indigo-400 mb-3" />
-                      <h2 className="text-lg font-semibold text-gray-700 mb-1">Multi-Source Chat</h2>
-                      <p className="text-sm text-gray-400">
-                        Asking across {selectedSourceIds.length} selected source{selectedSourceIds.length > 1 ? 's' : ''}.
-                      </p>
-                    </>
-                  ) : activeSourceId ? (
-                    <>
-                      <Youtube size={28} className="mx-auto text-red-400 mb-3" />
-                      <h2 className="text-lg font-semibold text-gray-700 mb-1 truncate max-w-xs mx-auto">{activeSourceTitle}</h2>
-                      <p className="text-sm text-gray-400">Ask questions about this source.</p>
-                    </>
-                  ) : activeFolderId ? (
-                    <>
-                      <FolderOpen size={28} className="mx-auto text-amber-400 mb-3" />
-                      <h2 className="text-lg font-semibold text-gray-700 mb-1 truncate max-w-xs mx-auto">{activeFolderTitle}</h2>
-                      <p className="text-sm text-gray-400">Ask questions about all sources in this folder.</p>
-                    </>
-                  ) : (
-                    <>
-                      <MessageSquare size={32} className="mx-auto text-gray-300 mb-3" />
-                      <h2 className="text-lg font-semibold text-gray-700 mb-1">Workspace Chat</h2>
-                      <p className="text-sm text-gray-400">
-                        Ask questions about all sources in this workspace.
-                      </p>
-                    </>
-                  )}
+                  <>
+                    <MessageSquare size={32} className="mx-auto text-gray-300 mb-3" />
+                    <h2 className="text-lg font-semibold text-gray-700 mb-1">Workspace Chat</h2>
+                    <p className="text-sm text-gray-400">
+                      Ask questions about all sources in this workspace.
+                    </p>
+                  </>
                 </div>
               </div>
             ) : (
@@ -436,7 +382,6 @@ export function WorkspaceChatPanel() {
                           key={ci}
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-all"
                           title={`Source: ${c.title} (${c.source_type})`}
-                          onClick={() => setActiveSource(c.source_id, c.title)}
                         >
                           {c.title}
                           {c.url && (

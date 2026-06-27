@@ -32,6 +32,7 @@ class User(Base):
     workspaces = relationship("Workspace", back_populates="owner", cascade="all, delete-orphan")
     sources = relationship("Source", back_populates="user", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
+    standalone_sessions = relationship("StandaloneSession", back_populates="user", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
 
 
@@ -399,3 +400,61 @@ class WorkspaceMember(Base):
     __table_args__ = (
         UniqueConstraint("workspace_id", "user_id", name="uq_workspace_member"),
     )
+
+class StandaloneSession(Base):
+    __tablename__ = "standalone_sessions"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    guest_token = Column(String, nullable=True, index=True)
+    title = Column(String, nullable=False, default="New Chat")
+    model = Column(String, nullable=True)
+    temperature = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    user = relationship("User", back_populates="standalone_sessions")
+    messages = relationship(
+        "StandaloneMessage",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="StandaloneMessage.timestamp",
+    )
+    sources = relationship("StandaloneSource", back_populates="session", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_standalone_sessions_user_updated", "user_id", "updated_at"),
+    )
+
+
+class StandaloneMessage(Base):
+    __tablename__ = "standalone_messages"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    session_id = Column(String, ForeignKey("standalone_sessions.id"), nullable=False, index=True)
+    role = Column(String, nullable=False)
+    content = Column(Text, default="")
+    citations = Column(Text, default="[]")
+    timestamp = Column(String, default="")
+
+    session = relationship("StandaloneSession", back_populates="messages")
+
+    __table_args__ = (
+        Index("ix_standalone_messages_session_ts", "session_id", "timestamp"),
+    )
+
+
+class StandaloneSource(Base):
+    __tablename__ = "standalone_sources"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    session_id = Column(String, ForeignKey("standalone_sessions.id"), nullable=False, index=True)
+    source_type = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False, default="")
+    metadata_json = Column(Text, default="{}")
+    index_key = Column(String, nullable=False, index=True)
+    file_name = Column(String, nullable=True)
+    created_at = Column(DateTime, default=_now, nullable=False)
+
+    session = relationship("StandaloneSession", back_populates="sources")
