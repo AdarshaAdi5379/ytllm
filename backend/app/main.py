@@ -78,6 +78,15 @@ app.add_middleware(
 # Rate limiting
 app.state.limiter = limiter
 
+# Request logging
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    auth = request.headers.get("Authorization", "none")[:30]
+    logger.info("REQUEST {} {} auth={}", request.method, request.url.path, auth)
+    response = await call_next(request)
+    logger.info("RESPONSE {} {} status={}", request.method, request.url.path, response.status_code)
+    return response
+
 # Security headers
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):

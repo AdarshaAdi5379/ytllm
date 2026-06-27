@@ -9,7 +9,6 @@ from app.services.supabase_auth_service import (
     upsert_local_user,
     get_local_user_from_supabase_token,
     SUPABASE_JWT_ALGORITHM,
-    SUPABASE_JWT_AUDIENCE,
 )
 from app.services.auth_service import get_current_user, get_optional_user
 from app.db_models import User
@@ -32,7 +31,7 @@ class TestVerifySupabaseToken(unittest.TestCase):
         payload = {
             "sub": "test-user-id-123",
             "email": "test@example.com",
-            "aud": SUPABASE_JWT_AUDIENCE,
+            "aud": "authenticated",
             "exp": datetime.utcnow() + timedelta(hours=1),
             "user_metadata": {"full_name": "Test User", "avatar_url": "https://example.com/avatar.png"},
         }
@@ -46,7 +45,7 @@ class TestVerifySupabaseToken(unittest.TestCase):
         payload = {
             "sub": "test-user-id-123",
             "email": "test@example.com",
-            "aud": SUPABASE_JWT_AUDIENCE,
+            "aud": "authenticated",
             "exp": datetime.utcnow() - timedelta(hours=1),
         }
         token = pyjwt.encode(payload, self.secret, algorithm=SUPABASE_JWT_ALGORITHM)
@@ -57,7 +56,7 @@ class TestVerifySupabaseToken(unittest.TestCase):
         payload = {
             "sub": "test-user-id-123",
             "email": "test@example.com",
-            "aud": SUPABASE_JWT_AUDIENCE,
+            "aud": "authenticated",
             "exp": datetime.utcnow() + timedelta(hours=1),
         }
         token = pyjwt.encode(payload, "wrong-secret", algorithm=SUPABASE_JWT_ALGORITHM)
@@ -164,7 +163,7 @@ class TestGetLocalUserFromSupabaseToken(unittest.IsolatedAsyncioTestCase):
         payload = {
             "sub": "token-test-id",
             "email": "token@example.com",
-            "aud": SUPABASE_JWT_AUDIENCE,
+            "aud": "authenticated",
             "exp": datetime.utcnow() + timedelta(hours=1),
             "user_metadata": {"full_name": "Token User"},
         }

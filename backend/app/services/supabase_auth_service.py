@@ -4,49 +4,112 @@ from datetime import datetime
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from jwt import PyJWKClient
 
 from app.config import config
 from app.db_models import User, Workspace
 
 SUPABASE_JWT_ALGORITHM = "HS256"
-SUPABASE_JWT_AUDIENCE = "authenticated"
+_JWKS_CLIENT: PyJWKClient | None = None
 
 
-def _resolve_secret(raw: str) -> bytes:
-    """Decode the JWT secret, trying base64 first, falling back to raw UTF-8.
-
-    Supabase displays the JWT secret as base64 in the dashboard, but users
-    may paste it raw. Try base64 decode first; if it fails, use UTF-8 bytes.
-    """
+def _get_jwks_client() -> PyJWKClient | None:
+    global _JWKS_CLIENT
+    if _JWKS_CLIENT is not None:
+        return _JWKS_CLIENT
+    supabase_url = config.get("supabase_url")
+    if not supabase_url:
+        return None
     try:
-        return base64.b64decode(raw)
-    except Exception:
-        return raw.encode("utf-8")
+        jwks_url = f"{supabase_url}/auth/v1/.well-known/jwks.json"
+        _JWKS_CLIENT = PyJWKClient(jwks_url, cache_keys=True)
+        return _JWKS_CLIENT
+    except Exception as e:
+        logger.warning("Failed to create JWKS client: {}", e)
+        return None
 
 
 def verify_supabase_token(token: str) -> dict | None:
-    """Verify a Supabase JWT locally using the SUPABASE_JWT_SECRET.
+    """Verify a Supabase JWT locally.
 
-    Returns the decoded payload dict (with sub, email, user_metadata, etc.)
-    or None if the token is invalid, expired, or misconfigured.
+    Supports both HS256 (symmetric, uses SUPABASE_JWT_SECRET) and
+    ES256 (asymmetric, uses JWKS public key from Supabase).
     """
+    logger.info("verify_supabase_token: token_prefix={}... len={}", token[:20], len(token))
+
     raw_secret = config.get("supabase_jwt_secret")
-    if not raw_secret:
-        return None
+
+    # Try HS256 with raw UTF-8 secret first (most common Supabase setup)
+    if raw_secret:
+        secret = raw_secret.encode("utf-8")
+        result = _decode_hs256(token, secret)
+        if result is not None:
+            return result
+
+    # Try HS256 with base64-decoded secret (some installations decode the secret)
+    if raw_secret:
+        try:
+            b64_secret = base64.b64decode(raw_secret)
+            if b64_secret != raw_secret.encode("utf-8"):
+                result = _decode_hs256(token, b64_secret)
+                if result is not None:
+                    return result
+        except Exception:
+            pass
+
+    # Try ES256 via JWKS (modern Supabase GoTrue)
+    result = _decode_es256(token)
+    if result is not None:
+        return result
+
+    logger.warning("Supabase token verification failed for token_prefix={}...", token[:20])
+    return None
+
+
+def _decode_hs256(token: str, secret: bytes) -> dict | None:
+    """Try to decode a Supabase JWT with HS256 using the given secret bytes."""
     try:
-        secret = _resolve_secret(raw_secret)
-        payload = pyjwt.decode(
-            token,
-            secret,
-            algorithms=[SUPABASE_JWT_ALGORITHM],
-            audience=SUPABASE_JWT_AUDIENCE,
+        decoded = pyjwt.decode(
+            token, secret,
+            algorithms=["HS256"],
+            options={"verify_aud": False},
         )
-        return payload
+        logger.info("HS256 token verified. sub={}, email={}",
+                     decoded.get("sub"), decoded.get("email"))
+        return decoded
     except pyjwt.ExpiredSignatureError:
-        logger.debug("Supabase token expired")
+        logger.warning("Supabase token expired (HS256): token_prefix={}...", token[:20])
         return None
     except pyjwt.PyJWTError as e:
-        logger.debug("Supabase token verification failed: {}", e)
+        logger.debug("HS256 decode failed for token_prefix={}...: {} {}",
+                      token[:20], type(e).__name__, e)
+        return None
+
+
+def _decode_es256(token: str) -> dict | None:
+    """Try to decode a Supabase JWT with ES256 using JWKS."""
+    try:
+        client = _get_jwks_client()
+        if client is None:
+            logger.debug("No JWKS client available for ES256 verification")
+            return None
+        signing_key = client.get_signing_key_from_jwt(token)
+        decoded = pyjwt.decode(
+            token, signing_key.key,
+            algorithms=["ES256"],
+            options={"verify_aud": False},
+        )
+        logger.info("ES256 token verified. sub={}, email={}",
+                     decoded.get("sub"), decoded.get("email"))
+        return decoded
+    except pyjwt.ExpiredSignatureError:
+        logger.warning("Supabase token expired (ES256): token_prefix={}...", token[:20])
+        return None
+    except pyjwt.PyJWTError as e:
+        logger.debug("ES256 decode failed: {} {}", type(e).__name__, e)
+        return None
+    except Exception as e:
+        logger.debug("JWKS error for ES256 decode: {} {}", type(e).__name__, e)
         return None
 
 
