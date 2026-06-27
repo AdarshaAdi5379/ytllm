@@ -11,7 +11,7 @@
 ## Tech Stack
 - Frontend: React 18, TypeScript, Vite, TailwindCSS, Zustand, TanStack Query
 - Backend: Python 3.11+, FastAPI, SQLAlchemy async, SQLite, ChromaDB, OpenAI-compatible APIs
-- Auth: JWT + bcrypt
+- Auth: Supabase (JWT + OAuth via Google/GitHub) with legacy bcrypt/pyjwt fallback
 - Export: `fpdf2` and `python-docx`
 
 ## Source Of Truth
@@ -38,7 +38,7 @@
   - `components/layout/` — MainPanel, Sidebar
 - `frontend/src/hooks/` frontend behavior for transcript load, chat, export, and restore
 - `frontend/src/store/` Zustand stores
-  - `useAuthStore.ts` — auth state (JWT, user, login/logout/register)
+  - `useAuthStore.ts` — auth state (Supabase JWT + legacy fallback, OAuth, password reset, profile)
   - `useVideoStore.ts` — per-video UI/chat state (legacy video list, current video)
   - `useWorkspaceStore.ts` — workspaces list, current workspace, folder tree, sources, load/create/rename/delete operations
   - `useChatSessionStore.ts` — chat sessions list, current session, messages, streaming state, session CRUD
@@ -240,9 +240,78 @@
 - `frontend/src/api/workspace.ts` — previewGitHubRepo, file_paths support, pollImportTask progress callback
 - `frontend/src/store/useImportStore.ts` — JobProgress type
 
+### Seventh Session (Jun 26) — V7 Standalone Chat Phase 1-5: Data model, routes, frontend, guest flow, inline source attach
+30. Commit range — Standalone DB models + Alembic migration
+31. Standalone backend routes (session CRUD, source upload, SSE chat, move, guest claim)
+32. Standalone frontend (api/standalone.ts, useStandaloneChatStore, StandaloneChatPanel, StandaloneSidebarSection)
+33. Guest token management (auto-generate UUID, localStorage, X-Guest-Token header)
+34. Workspace restructure (remove source filtering from chat, remove sidebar checkboxes, default to standalone)
+35. Inline source attach for standalone/workspace, sidebar restructure
+
+### Eighth Session (Jun 27) — Supabase Auth Phases 4-6: Session management, profile sync, auth hardening
+36. `17c10de9` — Phase 4: Session management (global 401 handler, auth loading/session recovery, resolveAuthOnMount)
+37. `1e642bce` — Phase 5: Account linking & profile sync (PATCH /auth/profile, inline name editor, OAUTH_ACCOUNT error, profile fields in all responses)
+38. `f09672e9` — Phase 6: Auth hardening (rate limiting on login/register, security headers, body size limit, email validation)
+39. `pending` — Auth documentation cleanup (mvp.md rewrite, docs/auth-flows.md, CLAUDE.md update)
+
+### Key Files Created (Supabase Auth)
+- `backend/app/services/supabase_auth_service.py` — JWT verification, local user upsert with account linking by email
+- `backend/app/middleware/rate_limit.py` — Shared Limiter instance for slowapi rate limiting
+- `frontend/src/lib/supabase.ts` — Supabase client init with graceful null fallback
+- `frontend/src/lib/auth.ts` — All auth helpers (Google/GitHub OAuth, email sign in/up, password reset, getOAuthProvider)
+- `backend/tests/test_supabase_auth.py` — 9 test cases (JWT verify, user upsert, account linking, token resolution)
+- `docs/auth-flows.md` — Comprehensive auth documentation
+
+### Key Files Modified (Supabase Auth)
+- `backend/app/config.py` — supabase_url, supabase_service_role_key, supabase_jwt_secret fields + validation
+- `backend/app/db_models.py` — User: supabase_user_id, display_name, avatar_url, updated_at; password_hash nullable
+- `backend/app/services/auth_service.py` — get_current_user/get_optional_user try Supabase first, fall back to legacy
+- `backend/app/routes/auth.py` — Profile fields in all responses, PATCH /auth/profile, OAUTH_ACCOUNT error, rate limiting
+- `backend/app/models.py` — UserResponse with display_name/avatar_url, ProfileUpdate, email validation
+- `backend/app/main.py` — Security headers middleware, body size limit, rate limiter wiring
+- `backend/.env.example` — Supabase config vars
+- `frontend/src/store/useAuthStore.ts` — setSupabaseAuth, initAuthListener, resolveAuthOnMount, isAuthLoading, updateProfile
+- `frontend/src/components/auth/AuthModal.tsx` — Google/GitHub OAuth, password reset, OAUTH_ACCOUNT handling
+- `frontend/src/components/layout/Sidebar.tsx` — User avatar/name, inline profile editor
+- `frontend/src/api/client.ts` — setOnUnauthorized, updateProfile, getMe with profile fields
+- `frontend/src/App.tsx` — resolveAuthOnMount, loading spinner, initAuthListener
+- `frontend/.env.example` — VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+
 ## Anchored Summary
 
 ### Goal
+- Supabase Auth Phases 1-6 complete — JWT verification, Google/GitHub OAuth, password reset, session management, account linking, profile sync, rate limiting, auth hardening
+- V4 Developer Mode / GitHub Import — all features complete (phases 1a-1g)
+- V7 (pending): Standalone Chat & Workspace Restructure
+23. `a0374735` — Phase 1a: Language-aware code chunking (13 languages, function/class boundaries)
+24. `729a751e` — Phase 1b: Clone mode for large repos (gitpython shallow clone, auto-detection)
+25. `14f8be69` — Phase 1c: File tree endpoint + sidebar browser (API and clone modes)
+26. `b3076f4c` — Phase 1d: Robust duplicate detection (OR-based index_key + owner/repo/branch)
+27. `603c8341` — Phase 1f+1g: Smart file selection + import progress (preview endpoint, file_paths filter, progress bars, two-step flow)
+28. `1cbc54a3` — Fix: Show GitHub preview errors instead of silent failure
+29. `dd8eadf7` — Docs: V7 roadmap (Standalone Chat & Workspace Restructure)
+
+### Key Files Created (V4)
+- `backend/app/services/code_chunker.py` — Function/class boundary code chunking for 13 languages
+- `backend/app/services/github_service.py` — Repo fetching (API + clone modes), file tree building, should_include_file filter
+- `backend/app/services/task_service.py` — Background task management with progress tracking
+- `frontend/src/components/workspace/GitHubFileTree.tsx` — Collapsible file tree browser
+- `frontend/src/utils/languageUtils.ts` — Extension-to-language mapping
+- `docs/roadmap-v7.md` — V7 roadmap
+
+### Key Files Modified (V4)
+- `backend/app/routes/sources/github.py` — Added preview endpoint, file_paths filter, progress wiring
+- `backend/app/services/embedding_service.py` — Added index_code_chunks() for code files
+- `backend/app/routes/sources/*.py` (youtube, website, pdf, docx, pptx, markdown, text, upload) — Updated to new create_task signature
+- `frontend/src/components/workspace/WorkspaceSidebar.tsx` — Two-step GitHub import flow + error display
+- `frontend/src/components/workspace/ImportNotifications.tsx` — Progress bars for import jobs
+- `frontend/src/api/workspace.ts` — previewGitHubRepo, file_paths support, pollImportTask progress callback
+- `frontend/src/store/useImportStore.ts` — JobProgress type
+
+## Anchored Summary
+
+### Goal
+- Supabase Auth Phases 1-6 complete — JWT verification, Google/GitHub OAuth, password reset, session management, account linking, profile sync, rate limiting, auth hardening
 - V4 Developer Mode / GitHub Import — all features complete (phases 1a-1g)
 - V7 (pending): Standalone Chat & Workspace Restructure
 
@@ -271,13 +340,14 @@
 - Mentor sessions persist messages as JSON text, gap_report as JSON text
 - Daily revision streak computed checking both flashcard `last_reviewed_at` and quiz `completed_at`
 
-### DB Models (14 tables)
+### DB Models (16 tables)
 - V0: User, Video, ChatMessage
 - V1+: Workspace, Folder, Source, SourceChunk, ChatSession, ChatMessageNew, Note, Summary, WorkspaceMember
 - V3: Flashcard, Quiz, LearningPath, LearningPathTopic, MentorSession
+- V7 (standalone): StandaloneChatSession, StandaloneChatMessage, StandaloneChatSource
 
-### Migrations (head: `01f44cb84f03`)
-Chain: `6c24d2dbf94d` → `e251248d244c` → `12225ad9fa3d` → `6a1135035b8e` → `dd143cf55702` → `87e0037f166b` → `a5795540fa44` → `01f44cb84f03`
+### Migrations (head: currently at 12+ revisions)
+Chain: `6c24d2dbf94d` → `e251248d244c` → `12225ad9fa3d` → `6a1135035b8e` → `dd143cf55702` → `87e0037f166b` → `a5795540fa44` → `01f44cb84f03` + Supabase auth fields migration
 
 ## Change Guidance
 - Before editing chat behavior, inspect both single-video and multi-video paths AND workspace chat (`routes/ai/chat.py`). The workspace chat resolves sources via `video_id` (YouTube) or `index_key` (website/PDF) in `metadata_json`.
