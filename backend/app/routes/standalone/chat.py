@@ -45,11 +45,6 @@ async def _generate_standalone_stream(
             )
             sources = src_result.scalars().all()
 
-        if not sources:
-            error_json = json.dumps({"type": "error", "message": "No sources in this session. Add a source first."})
-            yield f"data: {error_json}\n\n"
-            return
-
         retrieval_started = time.perf_counter()
         all_chunks: list[str] = []
         source_infos: list[dict] = []
@@ -85,12 +80,12 @@ async def _generate_standalone_stream(
         )
         memory_ms = int((time.perf_counter() - memory_started) * 1000)
 
-        source_list_str = "\n".join(
-            f"[{idx + 1}] {s['title']} ({s['source_type']})"
-            for idx, s in enumerate(source_infos)
-        )
-
-        system_prompt = f"""You are an AI assistant helping a user understand their learning materials.
+        if sources:
+            source_list_str = "\n".join(
+                f"[{idx + 1}] {s['title']} ({s['source_type']})"
+                for idx, s in enumerate(source_infos)
+            )
+            system_prompt = f"""You are an AI assistant helping a user understand their learning materials.
 
 SOURCES:
 {source_list_str}
@@ -104,6 +99,10 @@ STRICT RULES:
 4. Be concise and direct. Use bullet points for lists.
 5. Handle casual conversation naturally — greetings, thanks, goodbyes do NOT require citations.
 6. If sources disagree, explicitly call out the disagreement and cite each source."""
+        else:
+            system_prompt = """You are a helpful AI assistant. The user hasn't added any sources to this chat session yet, so answer using your general knowledge.
+
+At the end of each response, gently remind the user that they can add sources (text, URL, or file) via the sidebar for more accurate, source-backed answers. Keep the reminder brief and natural, varying the phrasing each time."""
 
         context = llm_service.LLMContext(
             system_prompt=system_prompt,
@@ -143,7 +142,6 @@ STRICT RULES:
                     })
                 yield f"data: {json.dumps({'type': 'citations', 'citations': citations_meta})}\n\n"
 
-            yield chunk
             if chunk.startswith("data: "):
                 try:
                     event = json.loads(chunk[6:])
@@ -151,8 +149,7 @@ STRICT RULES:
                         full_response += event.get("content", "")
                 except Exception:
                     pass
-
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            yield chunk
 
         async with db_async_session() as save_db:
             now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

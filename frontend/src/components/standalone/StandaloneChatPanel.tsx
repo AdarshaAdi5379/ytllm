@@ -50,7 +50,9 @@ export function StandaloneChatPanel() {
         setStreamText(streamTextRef.current);
       },
       onError: (msg) => {
-        setStreamText(`Error: ${msg}`);
+        streamTextRef.current = '';
+        addMessage({ role: 'assistant', content: `Error: ${msg}`, timestamp: new Date().toISOString() });
+        setStreamText('');
         setStreaming(false);
       },
       onDone: () => {
@@ -61,7 +63,7 @@ export function StandaloneChatPanel() {
         setStreaming(false);
       },
     });
-  }, [input, streaming, activeSessionId, messages, addMessage, setStreaming, streamText]);
+  }, [input, streaming, activeSessionId, messages, addMessage, setStreaming]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -134,7 +136,7 @@ export function StandaloneChatPanel() {
               </div>
               <h2 className="text-lg font-bold text-gray-800 mb-2">Ask anything</h2>
               <p className="text-sm text-gray-500 leading-relaxed">
-                Your sources will be searched for relevant context to answer your questions.
+                Add a source from the sidebar (text, URL, or file) and then ask questions about it.
               </p>
             </div>
           </div>
