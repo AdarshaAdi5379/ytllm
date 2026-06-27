@@ -85,6 +85,22 @@ class UserResponse(BaseModel):
     email: str
     display_name: str | None = None
     avatar_url: str | None = None
+    auth_provider: str | None = None
+
+
+class ProfileResponse(BaseModel):
+    id: str
+    email: str
+    display_name: str | None = None
+    avatar_url: str | None = None
+    auth_provider: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 class TokenResponse(BaseModel):

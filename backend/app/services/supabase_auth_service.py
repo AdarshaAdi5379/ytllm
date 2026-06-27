@@ -34,6 +34,10 @@ def verify_supabase_token(token: str) -> dict | None:
 
     Supports both HS256 (symmetric, uses SUPABASE_JWT_SECRET) and
     ES256 (asymmetric, uses JWKS public key from Supabase).
+
+    Returns the decoded payload dict (with sub, email, user_metadata, etc.)
+    or None if the token is invalid. Expired tokens return a dict with
+    an 'expired' key set to True.
     """
     logger.info("verify_supabase_token: token_prefix={}... len={}", token[:20], len(token))
 
@@ -45,6 +49,8 @@ def verify_supabase_token(token: str) -> dict | None:
         result = _decode_hs256(token, secret)
         if result is not None:
             return result
+        if result is None and _is_expired_hs256(token, secret):
+            return {"expired": True}
 
     # Try HS256 with base64-decoded secret (some installations decode the secret)
     if raw_secret:
@@ -64,6 +70,21 @@ def verify_supabase_token(token: str) -> dict | None:
 
     logger.warning("Supabase token verification failed for token_prefix={}...", token[:20])
     return None
+
+
+def _is_expired_hs256(token: str, secret: bytes) -> bool:
+    """Check if an HS256 token is expired without throwing on other errors."""
+    try:
+        pyjwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False, "verify_exp": False})
+        payload = pyjwt.decode(
+            token, secret, algorithms=["HS256"],
+            options={"verify_aud": False, "verify_exp": True},
+        )
+        return False
+    except pyjwt.ExpiredSignatureError:
+        return True
+    except pyjwt.PyJWTError:
+        return False
 
 
 def _decode_hs256(token: str, secret: bytes) -> dict | None:
@@ -124,8 +145,18 @@ async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
     supabase_user_id = supabase_payload.get("sub", "")
     email = supabase_payload.get("email", "")
     metadata = supabase_payload.get("user_metadata", {})
+    app_metadata = supabase_payload.get("app_metadata", {})
     display_name = metadata.get("full_name") or metadata.get("name") or ""
     avatar_url = metadata.get("avatar_url") or ""
+
+    # Determine auth provider from Supabase token metadata
+    raw_provider = app_metadata.get("provider") or metadata.get("provider") or ""
+    if raw_provider == "email":
+        auth_provider = "supabase_email"
+    elif raw_provider:
+        auth_provider = raw_provider
+    else:
+        auth_provider = "supabase"
 
     result = await db.execute(
         select(User).where(User.supabase_user_id == supabase_user_id)
@@ -134,6 +165,7 @@ async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
 
     if user:
         user.email = email
+        user.auth_provider = auth_provider
         if display_name:
             user.display_name = display_name
         if avatar_url:
@@ -147,6 +179,7 @@ async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
 
         if existing:
             existing.supabase_user_id = supabase_user_id
+            existing.auth_provider = auth_provider
             if display_name:
                 existing.display_name = display_name
             if avatar_url:
@@ -161,6 +194,7 @@ async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
             display_name=display_name or None,
             avatar_url=avatar_url or None,
             password_hash=None,
+            auth_provider=auth_provider,
         )
         db.add(user)
         await db.commit()
@@ -179,9 +213,9 @@ async def get_local_user_from_supabase_token(
 ) -> User | None:
     """Verify a Supabase token and return the local user, upserting if needed.
 
-    Returns None if the token is invalid.
+    Returns None if the token is invalid or expired.
     """
     payload = verify_supabase_token(token)
-    if payload is None:
+    if payload is None or payload.get("expired"):
         return None
     return await upsert_local_user(db, payload)

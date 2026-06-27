@@ -29,6 +29,7 @@ class User(Base):
     password_hash = Column(String, nullable=True)
     display_name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
+    auth_provider = Column(String, nullable=True)
     created_at = Column(DateTime, default=_now, nullable=False)
     updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
 

@@ -9,6 +9,7 @@ interface AuthUser {
   email: string;
   display_name: string | null;
   avatar_url: string | null;
+  auth_provider?: string | null;
 }
 
 interface AuthStore {
@@ -39,8 +40,20 @@ export const useAuthStore = create<AuthStore>()(
       authModalMode: null,
 
       resolveAuthOnMount: async () => {
-        // Register global 401 handler
-        setOnUnauthorized(() => {
+        // Register global 401 handler — attempt refresh before clearing
+        setOnUnauthorized(async () => {
+          if (supabase) {
+            try {
+              const { data } = await supabase.auth.refreshSession();
+              if (data?.session?.access_token) {
+                setAuthToken(data.session.access_token);
+                set({ token: data.session.access_token });
+                return;
+              }
+            } catch {
+              // refresh failed — fall through to clear
+            }
+          }
           setAuthToken(null);
           set({ user: null, token: null, isAuthenticated: false });
           if (supabase) {

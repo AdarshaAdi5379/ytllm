@@ -41,7 +41,7 @@ class TestVerifySupabaseToken(unittest.TestCase):
         self.assertEqual(result["sub"], "test-user-id-123")
         self.assertEqual(result["email"], "test@example.com")
 
-    def test_expired_token_returns_none(self):
+    def test_expired_token_returns_expired_flag(self):
         payload = {
             "sub": "test-user-id-123",
             "email": "test@example.com",
@@ -50,7 +50,8 @@ class TestVerifySupabaseToken(unittest.TestCase):
         }
         token = pyjwt.encode(payload, self.secret, algorithm=SUPABASE_JWT_ALGORITHM)
         result = verify_supabase_token(token)
-        self.assertIsNone(result)
+        self.assertIsNotNone(result)
+        self.assertTrue(result.get("expired"))
 
     def test_wrong_secret_returns_none(self):
         payload = {
@@ -97,6 +98,7 @@ class TestUpsertLocalUser(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user.display_name, "New User")
         self.assertEqual(user.avatar_url, "https://example.com/avatar.png")
         self.assertIsNone(user.password_hash)
+        self.assertEqual(user.auth_provider, "supabase")
 
     async def test_updates_existing_user(self):
         existing_user = User(
@@ -207,6 +209,7 @@ class TestGetLocalUserFromSupabaseToken(unittest.IsolatedAsyncioTestCase):
         supabase_payload = {
             "sub": "new-google-id",
             "email": "legacy@example.com",
+            "app_metadata": {"provider": "google"},
             "user_metadata": {
                 "full_name": "Legacy User Now Linked",
                 "avatar_url": "https://example.com/avatar.png",
@@ -218,6 +221,7 @@ class TestGetLocalUserFromSupabaseToken(unittest.IsolatedAsyncioTestCase):
         # Should return the linked legacy user, not create a new one
         self.assertEqual(user, legacy_user)
         self.assertEqual(user.supabase_user_id, "new-google-id")
+        self.assertEqual(user.auth_provider, "google")
         self.assertEqual(user.display_name, "Legacy User Now Linked")
         self.assertEqual(user.avatar_url, "https://example.com/avatar.png")
         self.assertEqual(user.password_hash, "existing_hash")  # Preserved

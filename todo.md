@@ -103,8 +103,8 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Show user avatar + name** in sidebar for Google/GitHub users
 - [x] **Password reset flow** — forgot password email, set new password, PASSWORD_RECOVERY event handling
 - [x] **Email verification** — signup redirect, verification messaging
-- [ ] **Profile page**: avatar, display name, email, auth provider badge
-- [ ] **Session management**: refresh tokens, token rotation, expiry handling
+- [x] **Profile page**: avatar, display name, email, auth provider badge (ProfilePanel modal, GET /auth/profile)
+- [x] **Session management**: refresh tokens, token rotation, expiry handling (POST /auth/refresh, 401 handler refresh-attempt)
 
 ### Workspace & Folders
 - [x] **Workspace CRUD** — create, rename, delete workspaces (commit ea10ec72)

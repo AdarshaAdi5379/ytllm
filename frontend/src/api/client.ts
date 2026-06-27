@@ -43,13 +43,13 @@ function parseApiError(errorData: FastApiError, status: number): { code: string;
 }
 
 let _authToken: string | null = null;
-let _onUnauthorized: (() => void) | null = null;
+let _onUnauthorized: (() => void | Promise<void>) | null = null;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
 }
 
-export function setOnUnauthorized(cb: () => void) {
+export function setOnUnauthorized(cb: () => void | Promise<void>) {
   _onUnauthorized = cb;
 }
 
@@ -149,10 +149,28 @@ export async function exportChat(data: ExportRequest): Promise<Blob> {
 
 // --- Auth API ---
 
+interface AuthUserData {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  auth_provider?: string | null;
+}
+
 interface AuthResponse {
   access_token: string;
   token_type: string;
-  user: { id: string; email: string; display_name: string | null; avatar_url: string | null };
+  user: AuthUserData;
+}
+
+interface ProfileData {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  auth_provider: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export async function registerUser(email: string, password: string, confirmPassword?: string): Promise<AuthResponse> {
@@ -169,12 +187,22 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
   });
 }
 
-export async function getMe(): Promise<{ id: string; email: string; display_name: string | null; avatar_url: string | null }> {
-  return apiFetch('/auth/me');
+export async function getMe(): Promise<AuthUserData> {
+  return apiFetch<AuthUserData>('/auth/me');
 }
 
-export async function updateProfile(data: { display_name?: string | null; avatar_url?: string | null }): Promise<{ id: string; email: string; display_name: string | null; avatar_url: string | null }> {
-  return apiFetch('/auth/profile', {
+export async function fetchProfile(): Promise<ProfileData> {
+  return apiFetch<ProfileData>('/auth/profile');
+}
+
+export async function refreshAuthToken(): Promise<{ access_token: string }> {
+  return apiFetch<{ access_token: string }>('/auth/refresh', {
+    method: 'POST',
+  });
+}
+
+export async function updateProfile(data: { display_name?: string | null; avatar_url?: string | null }): Promise<AuthUserData> {
+  return apiFetch<AuthUserData>('/auth/profile', {
     method: 'PATCH',
     body: JSON.stringify(data),
   });

@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2, UserPlus, Sparkles, Layers, Check, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2, UserPlus, Sparkles, Layers } from 'lucide-react';
 import { VideoCard } from '../video/VideoCard';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -9,6 +9,7 @@ import { SavedVideosList } from '../video/SavedVideosList';
 import { useRestoreVideo } from '../../hooks/useRestoreVideo';
 import { WorkspaceSidebarContent } from '../workspace/WorkspaceSidebar';
 import { StandaloneSidebarSection } from '../standalone/StandaloneSidebarSection';
+import { ProfilePanel } from '../auth/ProfilePanel';
 
 export function Sidebar() {
   const { videos, openAddVideoModal, clearVideos } = useVideoStore();
@@ -18,9 +19,7 @@ export function Sidebar() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [showSavedVideos, setShowSavedVideos] = useState(false);
   const { restore, restoring } = useRestoreVideo();
-  const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,14 +41,8 @@ export function Sidebar() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  useEffect(() => {
-    if (editingName && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editingName]);
-
   return (
+    <>
     <aside className="w-72 flex-shrink-0 h-full flex flex-col bg-slate-900 border-r border-slate-800 shadow-2xl z-10">
       {/* Header */}
       <div className="p-6 border-b border-slate-800/50">
@@ -180,69 +173,23 @@ export function Sidebar() {
                 Restoring video...
               </div>
             )}
-            <div className="flex items-center justify-between px-3 py-2">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt=""
-                    className="w-6 h-6 rounded-full flex-shrink-0 object-cover"
-                  />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                    <User size={12} className="text-white" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  {editingName ? (
-                    <div className="flex items-center gap-1">
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        value={nameInput}
-                        onChange={(e) => setNameInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            updateProfile({ display_name: nameInput.trim() || null }).then(() => setEditingName(false));
-                          } else if (e.key === 'Escape') {
-                            setEditingName(false);
-                          }
-                        }}
-                        className="w-full text-xs bg-slate-800 text-white rounded px-1.5 py-1 outline-none ring-1 ring-indigo-500/50"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => updateProfile({ display_name: nameInput.trim() || null }).then(() => setEditingName(false))}
-                        className="p-0.5 rounded hover:bg-slate-700 text-emerald-400"
-                      >
-                        <Check size={12} />
-                      </button>
-                      <button
-                        onClick={() => setEditingName(false)}
-                        className="p-0.5 rounded hover:bg-slate-700 text-slate-400"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => { setNameInput(user.display_name || ''); setEditingName(true); }}
-                      className="block text-xs text-slate-400 truncate hover:text-white transition-colors text-left w-full"
-                      title="Click to edit display name"
-                    >
-                      {user.display_name || user.email}
-                    </button>
-                  )}
+            <button
+              onClick={() => setShowProfile(true)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all text-left"
+            >
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt=""
+                  className="w-6 h-6 rounded-full flex-shrink-0 object-cover"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+                  <User size={12} className="text-white" />
                 </div>
-              </div>
-              <button
-                onClick={() => { clearAuth(); clearVideos(); }}
-                className="p-1.5 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-all flex-shrink-0"
-                aria-label="Sign Out"
-              >
-                <LogOut size={14} />
-              </button>
-            </div>
+              )}
+              <span className="truncate">{user.display_name || user.email}</span>
+            </button>
           </div>
         </div>
       )}
@@ -262,5 +209,8 @@ export function Sidebar() {
       </div>
 
     </aside>
+
+      {showProfile && <ProfilePanel onClose={() => setShowProfile(false)} />}
+    </>
   );
 }
