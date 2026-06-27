@@ -121,8 +121,30 @@ Content-Type: application/json
 ```
 
 - Requires authentication (both Supabase and legacy tokens accepted)
-- Returns updated `UserResponse` with `id`, `email`, `display_name`, `avatar_url`
+- Returns updated `UserResponse` with `id`, `email`, `display_name`, `avatar_url`, `auth_provider`
 - Null fields are left unchanged
+
+### Profile Enrichment
+
+Returns richer profile data including account creation date:
+
+```
+GET /api/auth/profile
+Authorization: Bearer <token>
+```
+
+Response:
+```json
+{
+    "id": "user-uuid",
+    "email": "user@example.com",
+    "display_name": "John",
+    "avatar_url": "https://...",
+    "auth_provider": "google",
+    "created_at": "2026-06-27T12:00:00",
+    "updated_at": "2026-06-27T12:00:00"
+}
+```
 
 ### Auth Endpoints
 
@@ -131,6 +153,8 @@ Content-Type: application/json
 | POST | `/api/auth/register` | None | 3/min | Legacy email/password registration |
 | POST | `/api/auth/login` | None | 10/min | Legacy email/password login |
 | GET | `/api/auth/me` | Bearer | None | Get current user profile |
+| GET | `/api/auth/profile` | Bearer | None | Get enriched profile with created_at |
+| POST | `/api/auth/refresh` | Bearer | None | Rotate legacy access token |
 | PATCH | `/api/auth/profile` | Bearer | None | Update display_name/avatar_url |
 
 ### Response Models
@@ -141,6 +165,20 @@ class UserResponse(BaseModel):
     email: str
     display_name: str | None = None
     avatar_url: str | None = None
+    auth_provider: str | None = None
+
+class ProfileResponse(BaseModel):
+    id: str
+    email: str
+    display_name: str | None = None
+    avatar_url: str | None = None
+    auth_provider: str | None = None
+    created_at: str
+    updated_at: str
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 class TokenResponse(BaseModel):
     access_token: str

@@ -7,6 +7,7 @@
 - **V2 expansion:** Workspaces, folders, multi-source import (YouTube launched), workspace-scoped chat sessions with SSE streaming.
 - **V4 expansion:** GitHub Import with language-aware code chunking, API/clone modes, file tree browser, smart file selection, import progress tracking.
 - **V7 (planned):** Standalone Chat (own data per session, guest-friendly) plus Workspace Restructure (sessions auto-share all workspace sources).
+- **Auth (completed):** Supabase JWT + OAuth (Google/GitHub), legacy bcrypt fallback, account linking, rate limiting, ES256/H256 JWKS verification, profile page, session refresh.
 
 ## Tech Stack
 - Frontend: React 18, TypeScript, Vite, TailwindCSS, Zustand, TanStack Query
@@ -38,7 +39,7 @@
   - `components/layout/` — MainPanel, Sidebar
 - `frontend/src/hooks/` frontend behavior for transcript load, chat, export, and restore
 - `frontend/src/store/` Zustand stores
-  - `useAuthStore.ts` — auth state (Supabase JWT + legacy fallback, OAuth, password reset, profile)
+  - `useAuthStore.ts` — auth state (Supabase JWT + legacy fallback, OAuth, password reset, profile, refresh-attempt 401 handler)
   - `useVideoStore.ts` — per-video UI/chat state (legacy video list, current video)
   - `useWorkspaceStore.ts` — workspaces list, current workspace, folder tree, sources, load/create/rename/delete operations
   - `useChatSessionStore.ts` — chat sessions list, current session, messages, streaming state, session CRUD
@@ -58,7 +59,7 @@
   - `routes/workspace/` — workspaces, folders, sessions, sources (under workspace), search
   - `routes/sources/` — youtube, github, pdf, website, docx, pptx, markdown, text, upload imports
   - `routes/ai/` — chat, summary, actions, notes, flashcards, quiz, learning-path, daily-revision, progress, mentor
-  - `routes/auth.py` — register/login, auto-creates default "My Workspace"
+  - `routes/auth.py` — register/login, profile, refresh, auto-creates default "My Workspace"
   - `routes/chat.py` — legacy single-video chat (keep for backward compat)
   - `routes/transcript.py` — legacy transcript load
   - `routes/videos.py` — legacy video CRUD
@@ -252,7 +253,8 @@
 36. `17c10de9` — Phase 4: Session management (global 401 handler, auth loading/session recovery, resolveAuthOnMount)
 37. `1e642bce` — Phase 5: Account linking & profile sync (PATCH /auth/profile, inline name editor, OAUTH_ACCOUNT error, profile fields in all responses)
 38. `f09672e9` — Phase 6: Auth hardening (rate limiting on login/register, security headers, body size limit, email validation)
-39. `pending` — Auth documentation cleanup (mvp.md rewrite, docs/auth-flows.md, CLAUDE.md update)
+39. `b4f45c44` — Auth documentation cleanup (mvp.md rewrite, docs/auth-flows.md, CLAUDE.md update)
+40. `d6920664` — Fix Supabase JWT verification: base64 secret decoding, frontend .env cleanup
 
 ### Key Files Created (Supabase Auth)
 - `backend/app/services/supabase_auth_service.py` — JWT verification, local user upsert with account linking by email
@@ -268,7 +270,7 @@
 - `backend/app/services/auth_service.py` — get_current_user/get_optional_user try Supabase first, fall back to legacy
 - `backend/app/routes/auth.py` — Profile fields in all responses, PATCH /auth/profile, OAUTH_ACCOUNT error, rate limiting
 - `backend/app/models.py` — UserResponse with display_name/avatar_url, ProfileUpdate, email validation
-- `backend/app/main.py` — Security headers middleware, body size limit, rate limiter wiring
+- `backend/app/main.py` — Security headers middleware, body size limit, rate limiter wiring, request logging middleware
 - `backend/.env.example` — Supabase config vars
 - `frontend/src/store/useAuthStore.ts` — setSupabaseAuth, initAuthListener, resolveAuthOnMount, isAuthLoading, updateProfile
 - `frontend/src/components/auth/AuthModal.tsx` — Google/GitHub OAuth, password reset, OAUTH_ACCOUNT handling
@@ -277,36 +279,33 @@
 - `frontend/src/App.tsx` — resolveAuthOnMount, loading spinner, initAuthListener
 - `frontend/.env.example` — VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 
-## Anchored Summary
+### Ninth Session (Jun 27) — ES256 JWT verification fix
+41. `7d4a195f` — Add ES256 JWT verification via JWKS endpoint (modern Supabase GoTrue)
 
-### Goal
-- Supabase Auth Phases 1-6 complete — JWT verification, Google/GitHub OAuth, password reset, session management, account linking, profile sync, rate limiting, auth hardening
-- V4 Developer Mode / GitHub Import — all features complete (phases 1a-1g)
-- V7 (pending): Standalone Chat & Workspace Restructure
-23. `a0374735` — Phase 1a: Language-aware code chunking (13 languages, function/class boundaries)
-24. `729a751e` — Phase 1b: Clone mode for large repos (gitpython shallow clone, auto-detection)
-25. `14f8be69` — Phase 1c: File tree endpoint + sidebar browser (API and clone modes)
-26. `b3076f4c` — Phase 1d: Robust duplicate detection (OR-based index_key + owner/repo/branch)
-27. `603c8341` — Phase 1f+1g: Smart file selection + import progress (preview endpoint, file_paths filter, progress bars, two-step flow)
-28. `1cbc54a3` — Fix: Show GitHub preview errors instead of silent failure
-29. `dd8eadf7` — Docs: V7 roadmap (Standalone Chat & Workspace Restructure)
+**Root cause:** Modern Supabase GoTrue signs access tokens with ES256 (asymmetric, P-256 ECDSA). Backend only supported HS256 → `InvalidAlgorithmError` → 401.
 
-### Key Files Created (V4)
-- `backend/app/services/code_chunker.py` — Function/class boundary code chunking for 13 languages
-- `backend/app/services/github_service.py` — Repo fetching (API + clone modes), file tree building, should_include_file filter
-- `backend/app/services/task_service.py` — Background task management with progress tracking
-- `frontend/src/components/workspace/GitHubFileTree.tsx` — Collapsible file tree browser
-- `frontend/src/utils/languageUtils.ts` — Extension-to-language mapping
-- `docs/roadmap-v7.md` — V7 roadmap
+**Fix:** Three-path fallback in `verify_supabase_token`: HS256 raw UTF-8 → HS256 base64-decoded → ES256 JWKS. Added `_decode_hs256`, `_decode_es256`, `_get_jwks_client` helpers. Removed audience verification.
 
-### Key Files Modified (V4)
-- `backend/app/routes/sources/github.py` — Added preview endpoint, file_paths filter, progress wiring
-- `backend/app/services/embedding_service.py` — Added index_code_chunks() for code files
-- `backend/app/routes/sources/*.py` (youtube, website, pdf, docx, pptx, markdown, text, upload) — Updated to new create_task signature
-- `frontend/src/components/workspace/WorkspaceSidebar.tsx` — Two-step GitHub import flow + error display
-- `frontend/src/components/workspace/ImportNotifications.tsx` — Progress bars for import jobs
-- `frontend/src/api/workspace.ts` — previewGitHubRepo, file_paths support, pollImportTask progress callback
-- `frontend/src/store/useImportStore.ts` — JobProgress type
+### Tenth Session (Jun 27) — Profile page + Session management
+42. `59908bf3` — Profile page modal, session management, auth_provider field
+
+**Profile page:** New ProfilePanel modal (avatar, editable display name, email, auth provider badge with Google/GitHub/Email icons, join date, sign out). Auth provider detected from Supabase JWT `user_metadata.provider` for exact granularity (`google`, `github`, `supabase_email`, `legacy`). Sidebar inline editor replaced with "View Profile" button.
+
+**Session management:** `POST /api/auth/refresh` endpoint for legacy token rotation. 401 handler attempts `supabase.auth.refreshSession()` before clearing auth. `verify_supabase_token` returns `{"expired": True}` for expired tokens.
+
+### Key Files Created (Auth V2 — Profile + Sessions)
+- `frontend/src/components/auth/ProfilePanel.tsx` — Profile modal with avatar, name editor, provider badge, sign out
+- `backend/alembic/versions/e08fe825261f_add_auth_provider_to_users.py` — Migration adding auth_provider column
+
+### Key Files Modified (Auth V2)
+- `backend/app/db_models.py` — User: added auth_provider column
+- `backend/app/models.py` — UserResponse.auth_provider, ProfileResponse, RefreshTokenResponse
+- `backend/app/routes/auth.py` — GET /auth/profile, POST /auth/refresh, auth_provider set on register/login
+- `backend/app/services/supabase_auth_service.py` — upsert_local_user sets auth_provider from JWT metadata; expired token returns {"expired": True}
+- `backend/tests/test_supabase_auth.py` — 12 tests (3 added for auth_provider + expired flag)
+- `frontend/src/store/useAuthStore.ts` — AuthUser.auth_provider; 401 handler refreshes before clearing
+- `frontend/src/components/layout/Sidebar.tsx` — Replaced inline name editor with ProfilePanel button
+- `frontend/src/api/client.ts` — fetchProfile(), refreshAuthToken(), AuthUserData types
 
 ## Anchored Summary
 
@@ -341,13 +340,13 @@
 - Daily revision streak computed checking both flashcard `last_reviewed_at` and quiz `completed_at`
 
 ### DB Models (16 tables)
-- V0: User, Video, ChatMessage
+- V0: User (auth_provider, supabase_user_id, display_name, avatar_url), Video, ChatMessage
 - V1+: Workspace, Folder, Source, SourceChunk, ChatSession, ChatMessageNew, Note, Summary, WorkspaceMember
 - V3: Flashcard, Quiz, LearningPath, LearningPathTopic, MentorSession
 - V7 (standalone): StandaloneChatSession, StandaloneChatMessage, StandaloneChatSource
 
-### Migrations (head: currently at 12+ revisions)
-Chain: `6c24d2dbf94d` → `e251248d244c` → `12225ad9fa3d` → `6a1135035b8e` → `dd143cf55702` → `87e0037f166b` → `a5795540fa44` → `01f44cb84f03` + Supabase auth fields migration
+### Migrations (head: e08fe825261f)
+Chain: `6c24d2dbf94d` → `e251248d244c` → `12225ad9fa3d` → `6a1135035b8e` → `dd143cf55702` → `87e0037f166b` → `a5795540fa44` → `01f44cb84f03` → `b9d4d8e6a1f2` → `9d51c7b57cce` → `e08fe825261f`
 
 ## Change Guidance
 - Before editing chat behavior, inspect both single-video and multi-video paths AND workspace chat (`routes/ai/chat.py`). The workspace chat resolves sources via `video_id` (YouTube) or `index_key` (website/PDF) in `metadata_json`.
