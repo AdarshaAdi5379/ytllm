@@ -19,6 +19,6 @@
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src", "../shared"],
+  "include": ["src", "../shared", "src/vite-env.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

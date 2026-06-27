@@ -49,7 +49,7 @@ async def login(req: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(req.password, user.password_hash):
+    if not user or not user.password_hash or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail={"error": "INVALID_CREDENTIALS", "message": "Invalid email or password"})
 
     token = create_token(user.id)

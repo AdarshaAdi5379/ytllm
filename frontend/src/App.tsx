@@ -22,12 +22,16 @@ export default function App() {
   const setPinned = useVideoStore((s) => s.setPinned);
   const setSavedVideoId = useVideoStore((s) => s.setSavedVideoId);
 
-  // Track previous auth state to detect actual logout (not initial mount)
   const prevAuthRef = useRef(isAuthenticated);
 
   useEffect(() => {
     setAuthToken(token);
   }, [token]);
+
+  useEffect(() => {
+    const unsubscribe = useAuthStore.getState().initAuthListener();
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     // Clear videos only on actual logout (transition true→false), never on initial mount

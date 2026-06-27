@@ -65,6 +65,7 @@ alembic>=1.13.0
 # Auth
 pyjwt>=2.9.0
 bcrypt>=4.0.0
+supabase>=2.0.0
 
 # Git clone for large repos
 gitpython>=3.1.0

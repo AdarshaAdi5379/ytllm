@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.config import config
 from app.database import get_db
 from app.db_models import User, WorkspaceMember, Workspace
+from app.services.supabase_auth_service import get_local_user_from_supabase_token
 
 security = HTTPBearer(auto_error=False)
 
@@ -40,7 +41,15 @@ async def get_optional_user(
 ) -> User | None:
     if credentials is None:
         return None
-    payload = decode_token(credentials.credentials)
+
+    token = credentials.credentials
+
+    if config.get("supabase_url"):
+        user = await get_local_user_from_supabase_token(token, db)
+        if user:
+            return user
+
+    payload = decode_token(token)
     if payload is None:
         return None
     user_id = payload.get("sub")
@@ -56,7 +65,15 @@ async def get_current_user(
 ) -> User:
     if credentials is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    payload = decode_token(credentials.credentials)
+
+    token = credentials.credentials
+
+    if config.get("supabase_url"):
+        user = await get_local_user_from_supabase_token(token, db)
+        if user:
+            return user
+
+    payload = decode_token(token)
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     user_id = payload.get("sub")

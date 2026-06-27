@@ -24,9 +24,13 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=_uuid)
+    supabase_user_id = Column(String, unique=True, nullable=True, index=True)
     email = Column(String, unique=True, nullable=False, index=True)
-    password_hash = Column(String, nullable=False)
+    password_hash = Column(String, nullable=True)
+    display_name = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
 
     videos = relationship("Video", back_populates="user", cascade="all, delete-orphan")
     workspaces = relationship("Workspace", back_populates="owner", cascade="all, delete-orphan")

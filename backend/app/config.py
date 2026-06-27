@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = Field(default=10080, alias="JWT_EXPIRE_MINUTES")  # 7 days
     database_url: str = Field(default="sqlite+aiosqlite:///./knowledgeos.db", alias="DATABASE_URL")
 
+    # Supabase Auth settings
+    supabase_url: str = Field(default="", alias="SUPABASE_URL")
+    supabase_service_role_key: str = Field(default="", alias="SUPABASE_SERVICE_ROLE_KEY")
+    supabase_jwt_secret: str = Field(default="", alias="SUPABASE_JWT_SECRET")
+
     # Rate limits
     requests_per_minute: int = 30
 
@@ -83,6 +88,22 @@ if settings.node_env == "production":
         if not getattr(settings, val, None):
             logger.error("{} is required in production mode", name)
             import sys
+
+            sys.exit(1)
+
+# If supabase_url is set, require the other supabase fields
+if settings.supabase_url:
+    _required_supabase = [
+        ("supabase_jwt_secret", "SUPABASE_JWT_SECRET"),
+        ("supabase_service_role_key", "SUPABASE_SERVICE_ROLE_KEY"),
+    ]
+    for val, name in _required_supabase:
+        if not getattr(settings, val, None):
+            logger.error(
+                "{} is required when SUPABASE_URL is configured", name
+            )
+            import sys
+
             sys.exit(1)
 
 config = {
@@ -118,4 +139,7 @@ config = {
     "jwt_expire_minutes": settings.jwt_expire_minutes,
     "database_url": settings.database_url,
     "requests_per_minute": settings.requests_per_minute,
+    "supabase_url": settings.supabase_url,
+    "supabase_service_role_key": settings.supabase_service_role_key,
+    "supabase_jwt_secret": settings.supabase_jwt_secret,
 }

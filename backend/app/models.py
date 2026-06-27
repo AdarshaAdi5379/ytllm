@@ -61,6 +61,8 @@ class UserLogin(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
+    display_name: str | None = None
+    avatar_url: str | None = None
 
 
 class TokenResponse(BaseModel):
