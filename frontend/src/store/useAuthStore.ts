@@ -15,13 +15,14 @@ interface AuthStore {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
-  authModalMode: 'login' | 'register' | null;
+  authModalMode: 'login' | 'register' | 'forgotPassword' | 'setPassword' | null;
 
   setAuth: (user: AuthUser, token: string) => void;
   setSupabaseAuth: (accessToken: string) => Promise<void>;
   clearAuth: () => void;
-  setAuthModalMode: (mode: 'login' | 'register' | null) => void;
+  setAuthModalMode: (mode: 'login' | 'register' | 'forgotPassword' | 'setPassword' | null) => void;
   initAuthListener: () => () => void;
+  clearPasswordRecovery: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -78,11 +79,15 @@ export const useAuthStore = create<AuthStore>()(
 
       setAuthModalMode: (mode) => set({ authModalMode: mode }),
 
+      clearPasswordRecovery: () => set({ authModalMode: null }),
+
       initAuthListener: () => {
         if (!supabase) return () => {};
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (event === 'PASSWORD_RECOVERY') {
+              set({ authModalMode: 'setPassword' });
+            } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
               if (session?.access_token) {
                 useAuthStore.getState().setSupabaseAuth(session.access_token);
               }

@@ -1,31 +1,90 @@
 import { useState, FormEvent } from 'react';
-import { X, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { X, Mail, Lock, LogIn, UserPlus, ArrowLeft, KeyRound, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { loginUser, registerUser } from '../../api/client';
 import { supabase } from '../../lib/supabase';
-import { signInWithGoogle, signInWithGitHub, signInWithEmail, signUpWithEmail } from '../../lib/auth';
+import {
+  signInWithGoogle,
+  signInWithGitHub,
+  signInWithEmail,
+  signUpWithEmail,
+  resetPasswordForEmail,
+  updatePassword,
+} from '../../lib/auth';
 
 interface Props {
   onClose: () => void;
-  initialTab?: 'login' | 'register';
+  initialTab?: 'login' | 'register' | 'forgotPassword' | 'setPassword';
 }
 
 export function AuthModal({ onClose, initialTab }: Props) {
-  const [tab, setTab] = useState<'login' | 'register'>(initialTab || 'login');
+  const [tab, setTab] = useState<'login' | 'register' | 'forgotPassword' | 'setPassword'>(initialTab || 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
   const setSupabaseAuth = useAuthStore((s) => s.setSupabaseAuth);
+  const clearPasswordRecovery = useAuthStore((s) => s.clearPasswordRecovery);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
     const trimmedEmail = email.trim().toLowerCase();
+
+    if (tab === 'forgotPassword') {
+      if (!trimmedEmail) {
+        setError('Please enter your email address.');
+        return;
+      }
+      setLoading(true);
+      try {
+        await resetPasswordForEmail(trimmedEmail);
+        setResetSent(true);
+      } catch (err) {
+        setError((err as Error).message || 'Failed to send reset email.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (tab === 'setPassword') {
+      if (!password) {
+        setError('Please enter a new password.');
+        return;
+      }
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
+      setLoading(true);
+      try {
+        await updatePassword(password);
+        // After successful update, the user is now signed in — resolve from session
+        const { getSupabaseSession } = await import('../../lib/auth');
+        const session = await getSupabaseSession();
+        if (session?.access_token) {
+          await setSupabaseAuth(session.access_token);
+        }
+        clearPasswordRecovery();
+        onClose();
+      } catch (err) {
+        setError((err as Error).message || 'Failed to reset password.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!trimmedEmail || !password) {
       setError('Email and password are required.');
       return;
@@ -59,7 +118,7 @@ export function AuthModal({ onClose, initialTab }: Props) {
           if (data.session?.access_token) {
             await setSupabaseAuth(data.session.access_token);
           } else {
-            setError('Account created. Check your email for verification link.');
+            setError('Account created! Check your email for a verification link to sign in.');
             return;
           }
         }
@@ -93,16 +152,123 @@ export function AuthModal({ onClose, initialTab }: Props) {
     }
   };
 
+  const showHeader = tab === 'login' || tab === 'register';
+  const showTabs = tab === 'login' || tab === 'register';
+  const showOAuth = supabase && tab === 'login' || supabase && tab === 'register';
+
+  // Set password view
+  if (tab === 'setPassword') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+          <div className="flex items-center justify-between p-5 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <KeyRound size={20} className="text-brand-500" />
+              <h2 className="text-base font-semibold text-gray-900">Set New Password</h2>
+            </div>
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400" aria-label="Close">
+              <X size={18} />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <p className="text-sm text-gray-600">Enter your new password below.</p>
+            <div>
+              <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                New Password
+              </label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="new-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                  placeholder="At least 6 characters"
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="confirm-new-password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="confirm-new-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                  placeholder="Re-enter your new password"
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+            {error && <p className="text-xs text-red-500" role="alert">{error}</p>}
+            {loading && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+                <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-brand-500">Resetting password...</p>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loading || !password || !confirmPassword}
+              className="w-full py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Reset Password
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Forgot password — reset sent success view
+  if (tab === 'forgotPassword' && resetSent) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={24} className="text-emerald-600" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Check Your Email</h2>
+          <p className="text-sm text-gray-600 mb-6">
+            We've sent a password reset link to <strong>{email}</strong>. Click the link to reset your password.
+          </p>
+          <button
+            onClick={() => { setTab('login'); setResetSent(false); setEmail(''); setError(''); }}
+            className="text-sm text-brand-500 hover:text-brand-600 font-medium"
+          >
+            Back to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            {tab === 'login' ? <LogIn size={20} className="text-brand-500" /> : <UserPlus size={20} className="text-brand-500" />}
-            <h2 className="text-base font-semibold text-gray-900">
-              {tab === 'login' ? 'Sign In' : 'Create Account'}
-            </h2>
+            {tab === 'forgotPassword' ? (
+              <>
+                <Lock size={20} className="text-brand-500" />
+                <h2 className="text-base font-semibold text-gray-900">Reset Password</h2>
+              </>
+            ) : showHeader ? (
+              <>
+                {tab === 'login' ? <LogIn size={20} className="text-brand-500" /> : <UserPlus size={20} className="text-brand-500" />}
+                <h2 className="text-base font-semibold text-gray-900">
+                  {tab === 'login' ? 'Sign In' : 'Create Account'}
+                </h2>
+              </>
+            ) : null}
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400" aria-label="Close">
             <X size={18} />
@@ -110,27 +276,76 @@ export function AuthModal({ onClose, initialTab }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => { setTab('login'); setError(''); setConfirmPassword(''); setOauthLoading(null); }}
-            className={`flex-1 py-3 text-sm font-semibold text-center transition-colors ${
-              tab === 'login' ? 'text-brand-500 border-b-2 border-brand-500' : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => { setTab('register'); setError(''); setConfirmPassword(''); setOauthLoading(null); }}
-            className={`flex-1 py-3 text-sm font-semibold text-center transition-colors ${
-              tab === 'register' ? 'text-brand-500 border-b-2 border-brand-500' : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            Sign Up
-          </button>
-        </div>
+        {showTabs && (
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => { setTab('login'); setError(''); setConfirmPassword(''); setOauthLoading(null); }}
+              className={`flex-1 py-3 text-sm font-semibold text-center transition-colors ${
+                tab === 'login' ? 'text-brand-500 border-b-2 border-brand-500' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => { setTab('register'); setError(''); setConfirmPassword(''); setOauthLoading(null); }}
+              className={`flex-1 py-3 text-sm font-semibold text-center transition-colors ${
+                tab === 'register' ? 'text-brand-500 border-b-2 border-brand-500' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+        )}
 
-        {/* OAuth buttons section (only shown when supabase is configured) */}
-        {supabase && (
+        {/* Forgot password — email input view */}
+        {tab === 'forgotPassword' && !resetSent && (
+          <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <p className="text-sm text-gray-600">Enter your email and we'll send you a reset link.</p>
+            <div>
+              <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email
+              </label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="reset-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                  placeholder="you@example.com"
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+            </div>
+            {error && <p className="text-xs text-red-500" role="alert">{error}</p>}
+            {loading && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+                <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-brand-500">Sending reset link...</p>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loading || !email.trim()}
+              className="w-full py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Send Reset Link
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTab('login'); setError(''); }}
+              className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <ArrowLeft size={14} />
+              Back to Sign In
+            </button>
+          </form>
+        )}
+
+        {/* OAuth buttons */}
+        {showOAuth && (
           <div className="px-5 pt-5 space-y-2">
             <button
               type="button"
@@ -179,84 +394,97 @@ export function AuthModal({ onClose, initialTab }: Props) {
           </div>
         )}
 
-        {/* Email/Password Form */}
-        <form onSubmit={handleSubmit} className={`${supabase ? 'px-5 pb-5' : 'p-5'} space-y-4`}>
-          <div>
-            <label htmlFor="auth-email" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email
-            </label>
-            <div className="relative">
-              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                id="auth-email"
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                placeholder="you@example.com"
-                className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                disabled={loading || oauthLoading !== null}
-                autoFocus
-              />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="auth-password" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Password
-            </label>
-            <div className="relative">
-              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                id="auth-password"
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                placeholder="At least 6 characters"
-                className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                disabled={loading || oauthLoading !== null}
-              />
-            </div>
-          </div>
-          {tab === 'register' && (
+        {/* Email/Password Form (login/register only) */}
+        {(tab === 'login' || tab === 'register') && (
+          <form onSubmit={handleSubmit} className={`${showOAuth ? 'px-5 pb-5' : 'p-5'} space-y-4`}>
             <div>
-              <label htmlFor="auth-confirm-password" className="block text-sm font-medium text-gray-700 mb-1.5">
-                Confirm Password
+              <label htmlFor="auth-email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email
+              </label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="auth-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                  placeholder="you@example.com"
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={loading || oauthLoading !== null}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="auth-password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Password
               </label>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
-                  id="auth-confirm-password"
+                  id="auth-password"
                   type="password"
-                  value={confirmPassword}
-                  onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
-                  placeholder="Re-enter your password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                  placeholder="At least 6 characters"
                   className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                   disabled={loading || oauthLoading !== null}
                 />
               </div>
             </div>
-          )}
+            {tab === 'register' && (
+              <div>
+                <label htmlFor="auth-confirm-password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    id="auth-confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                    placeholder="Re-enter your password"
+                    className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                    disabled={loading || oauthLoading !== null}
+                  />
+                </div>
+              </div>
+            )}
 
-          {error && (
-            <p className="text-xs text-red-500" role="alert">
-              {error}
-            </p>
-          )}
+            {/* Forgot password link */}
+            {tab === 'login' && supabase && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => { setTab('forgotPassword'); setError(''); setPassword(''); }}
+                  className="text-xs text-brand-500 hover:text-brand-600 font-medium"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
-          {loading && (
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-              <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-brand-500">{tab === 'login' ? 'Signing in...' : 'Creating account...'}</p>
-            </div>
-          )}
+            {error && (
+              <p className="text-xs text-red-500" role="alert">{error}</p>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading || oauthLoading !== null || !email.trim() || !password}
-            className="w-full py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {tab === 'login' ? 'Sign In' : 'Create Account'}
-          </button>
-        </form>
+            {loading && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+                <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-brand-500">{tab === 'login' ? 'Signing in...' : 'Creating account...'}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || oauthLoading !== null || !email.trim() || !password}
+              className="w-full py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {tab === 'login' ? 'Sign In' : 'Create Account'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

@@ -44,9 +44,29 @@ export async function signInWithEmail(email: string, password: string) {
 
 export async function signUpWithEmail(email: string, password: string) {
   if (!supabase) throw new Error('Supabase not configured');
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${getRedirectUrl()}/auth/callback`,
+    },
+  });
   if (error) throw error;
   return data;
+}
+
+export async function resetPasswordForEmail(email: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${getRedirectUrl()}/auth/callback`,
+  });
+  if (error) throw error;
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
 }
 
 export async function signOut(): Promise<void> {
