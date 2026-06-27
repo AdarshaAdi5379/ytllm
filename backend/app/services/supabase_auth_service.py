@@ -1,3 +1,4 @@
+import base64
 import jwt as pyjwt
 from datetime import datetime
 from loguru import logger
@@ -11,16 +12,29 @@ SUPABASE_JWT_ALGORITHM = "HS256"
 SUPABASE_JWT_AUDIENCE = "authenticated"
 
 
+def _resolve_secret(raw: str) -> bytes:
+    """Decode the JWT secret, trying base64 first, falling back to raw UTF-8.
+
+    Supabase displays the JWT secret as base64 in the dashboard, but users
+    may paste it raw. Try base64 decode first; if it fails, use UTF-8 bytes.
+    """
+    try:
+        return base64.b64decode(raw)
+    except Exception:
+        return raw.encode("utf-8")
+
+
 def verify_supabase_token(token: str) -> dict | None:
     """Verify a Supabase JWT locally using the SUPABASE_JWT_SECRET.
 
     Returns the decoded payload dict (with sub, email, user_metadata, etc.)
     or None if the token is invalid, expired, or misconfigured.
     """
-    secret = config.get("supabase_jwt_secret")
-    if not secret:
+    raw_secret = config.get("supabase_jwt_secret")
+    if not raw_secret:
         return None
     try:
+        secret = _resolve_secret(raw_secret)
         payload = pyjwt.decode(
             token,
             secret,
