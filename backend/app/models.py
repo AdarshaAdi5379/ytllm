@@ -1,5 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Literal
+import re
+
+EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 class Message(BaseModel):
@@ -52,10 +55,24 @@ class UserCreate(BaseModel):
     password: str
     confirm_password: str = ""
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not EMAIL_PATTERN.match(v.strip()):
+            raise ValueError("Invalid email format")
+        return v
+
 
 class UserLogin(BaseModel):
     email: str
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not EMAIL_PATTERN.match(v.strip()):
+            raise ValueError("Invalid email format")
+        return v
 
 
 class ProfileUpdate(BaseModel):

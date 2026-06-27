@@ -6,18 +6,19 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.config import config
 from app.database import init_db
 from app.middleware.error_handler import register_error_handlers
+from app.middleware.rate_limit import limiter
 from app.routes import health, transcript, chat, export, auth, videos
 from app.routes import workspace_router, sources_router, ai_router, tasks_router, standalone_router
 from app.services import embedding_service
 from app.utils import session_cache
 from app.utils.logging import setup_logging
+
+MAX_BODY_SIZE = 10 * 1024 * 1024  # 10 MB
 
 # Initialize Sentry (only if DSN is configured)
 if config.get("sentry_dsn"):
@@ -75,8 +76,27 @@ app.add_middleware(
 )
 
 # Rate limiting
-limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
+
+# Security headers
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
+
+# Request body size limit
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    content_length = request.headers.get("Content-Length")
+    if content_length and int(content_length) > MAX_BODY_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"error": "PAYLOAD_TOO_LARGE", "message": "Request body too large."},
+        )
+    return await call_next(request)
 
 
 @app.exception_handler(RateLimitExceeded)

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
 from app.db_models import User, Workspace
+from app.middleware.rate_limit import limiter
 from app.models import UserCreate, UserLogin, UserResponse, TokenResponse, ProfileUpdate
 from app.services.auth_service import hash_password, verify_password, create_token, get_current_user, get_optional_user
 
@@ -21,7 +22,8 @@ def _user_response(user: User) -> UserResponse:
 
 
 @router.post("/register", response_model=TokenResponse)
-async def register(req: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def register(request: Request, req: UserCreate, db: AsyncSession = Depends(get_db)):
     email = req.email.strip().lower()
     if not email or not req.password:
         raise HTTPException(status_code=422, detail={"error": "VALIDATION", "message": "Email and password are required."})
@@ -53,7 +55,8 @@ async def register(req: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(req: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, req: UserLogin, db: AsyncSession = Depends(get_db)):
     email = req.email.strip().lower()
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
