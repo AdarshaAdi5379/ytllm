@@ -12,7 +12,7 @@ import { StandaloneSidebarSection } from '../standalone/StandaloneSidebarSection
 
 export function Sidebar() {
   const { videos, openAddVideoModal, clearVideos } = useVideoStore();
-  const { user, isAuthenticated, clearAuth, setAuthModalMode } = useAuthStore();
+  const { user, isAuthenticated, isAuthLoading, clearAuth, setAuthModalMode } = useAuthStore();
   const { appMode, setAppMode } = useAppStore();
   const videoIds = Object.keys(videos);
   const [connected, setConnected] = useState<boolean | null>(null);
@@ -131,7 +131,7 @@ export function Sidebar() {
       )}
 
       {/* Guest auth section */}
-      {!isAuthenticated && (
+      {!isAuthenticated && !isAuthLoading && (
         <div className="px-3 py-2 border-t border-slate-800/50">
           <div className="space-y-1">
             <button

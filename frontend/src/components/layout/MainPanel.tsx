@@ -17,7 +17,7 @@ export function MainPanel() {
   const { videos, activeVideoId } = useVideoStore();
   const video = activeVideoId ? videos[activeVideoId] : null;
   const { sendMessage } = useChat(activeVideoId);
-  const { isAuthenticated, setAuthModalMode } = useAuthStore();
+  const { isAuthenticated, isAuthLoading, setAuthModalMode } = useAuthStore();
   const { appMode } = useAppStore();
 
   if (!video) {

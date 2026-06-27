@@ -43,9 +43,14 @@ function parseApiError(errorData: FastApiError, status: number): { code: string;
 }
 
 let _authToken: string | null = null;
+let _onUnauthorized: (() => void) | null = null;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
+}
+
+export function setOnUnauthorized(cb: () => void) {
+  _onUnauthorized = cb;
 }
 
 export function getAuthToken(): string | null {
@@ -67,6 +72,9 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
   });
 
   if (!response.ok) {
+    if (response.status === 401 && _onUnauthorized) {
+      _onUnauthorized();
+    }
     let errorData: FastApiError;
     try {
       errorData = await response.json();
@@ -120,6 +128,9 @@ export async function exportChat(data: ExportRequest): Promise<Blob> {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && _onUnauthorized) {
+      _onUnauthorized();
+    }
     let errorData: FastApiError;
     try {
       errorData = await response.json();

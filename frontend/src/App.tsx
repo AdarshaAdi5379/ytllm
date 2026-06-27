@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Sidebar } from './components/layout/Sidebar';
 import { MainPanel } from './components/layout/MainPanel';
 import { URLInputModal } from './components/modals/URLInputModal';
@@ -12,6 +13,7 @@ import { fetchSavedVideos, fetchSavedVideoDetail, setAuthToken } from './api/cli
 export default function App() {
   const isAddVideoModalOpen = useVideoStore((s) => s.isAddVideoModalOpen);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthLoading = useAuthStore((s) => s.isAuthLoading);
   const token = useAuthStore((s) => s.token);
   const authModalMode = useAuthStore((s) => s.authModalMode);
   const setAuthModalMode = useAuthStore((s) => s.setAuthModalMode);
@@ -28,16 +30,9 @@ export default function App() {
     setAuthToken(token);
   }, [token]);
 
-  // Recover from OAuth redirect callback + set up auth state listener
+  // Resolve auth on mount + set up auth state listener
   useEffect(() => {
-    const init = async () => {
-      const { getSupabaseSession } = await import('./lib/auth');
-      const session = await getSupabaseSession();
-      if (session?.access_token) {
-        useAuthStore.getState().setSupabaseAuth(session.access_token);
-      }
-    };
-    init();
+    useAuthStore.getState().resolveAuthOnMount();
     const unsubscribe = useAuthStore.getState().initAuthListener();
     return () => unsubscribe();
   }, []);
@@ -128,6 +123,17 @@ export default function App() {
       cancelled = true;
     };
   }, [isAuthenticated]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-screen bg-slate-900 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={32} className="text-indigo-400 animate-spin" />
+          <p className="text-sm font-medium text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">

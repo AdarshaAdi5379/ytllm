@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { setAuthToken } from '../api/client';
+import { setAuthToken, setOnUnauthorized } from '../api/client';
 import { getGuestToken, claimGuestSessions } from '../api/standalone';
 import { supabase } from '../lib/supabase';
 
@@ -15,6 +15,7 @@ interface AuthStore {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   authModalMode: 'login' | 'register' | 'forgotPassword' | 'setPassword' | null;
 
   setAuth: (user: AuthUser, token: string) => void;
@@ -23,6 +24,7 @@ interface AuthStore {
   setAuthModalMode: (mode: 'login' | 'register' | 'forgotPassword' | 'setPassword' | null) => void;
   initAuthListener: () => () => void;
   clearPasswordRecovery: () => void;
+  resolveAuthOnMount: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -31,8 +33,55 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      isAuthLoading: true,
 
       authModalMode: null,
+
+      resolveAuthOnMount: async () => {
+        // Register global 401 handler
+        setOnUnauthorized(() => {
+          setAuthToken(null);
+          set({ user: null, token: null, isAuthenticated: false });
+          if (supabase) {
+            supabase.auth.signOut().catch(() => {});
+          }
+        });
+
+        // Try Supabase session first
+        if (supabase) {
+          const { getSupabaseSession } = await import('../lib/auth');
+          const session = await getSupabaseSession();
+          if (session?.access_token) {
+            setAuthToken(session.access_token);
+            try {
+              const { getMe } = await import('../api/client');
+              const userData = await getMe();
+              set({ user: userData, token: session.access_token, isAuthenticated: true, isAuthLoading: false });
+              return;
+            } catch {
+              // session invalid — clear and fall through
+              setAuthToken(null);
+            }
+          }
+        }
+
+        // Fall back to stored token
+        const storedToken = useAuthStore.getState().token;
+        if (storedToken) {
+          setAuthToken(storedToken);
+          try {
+            const { getMe } = await import('../api/client');
+            const userData = await getMe();
+            set({ user: userData, token: storedToken, isAuthenticated: true, isAuthLoading: false });
+            return;
+          } catch {
+            setAuthToken(null);
+            set({ user: null, token: null, isAuthenticated: false });
+          }
+        }
+
+        set({ isAuthLoading: false });
+      },
 
       setAuth: async (user, token) => {
         setAuthToken(token);
