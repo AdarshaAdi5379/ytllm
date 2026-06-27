@@ -187,6 +187,43 @@ class TestGetLocalUserFromSupabaseToken(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(user)
 
 
+    async def test_links_legacy_user_by_email(self):
+        legacy_user = User(
+            supabase_user_id=None,
+            email="legacy@example.com",
+            password_hash="existing_hash",
+            display_name=None,
+            avatar_url=None,
+        )
+
+        mock_db = AsyncMock()
+        exec_result1 = MagicMock()
+        exec_result1.scalar_one_or_none.return_value = None  # No match by supabase_user_id
+        exec_result2 = MagicMock()
+        exec_result2.scalar_one_or_none.return_value = legacy_user  # Found by email
+
+        # Return different results for first and second execute call
+        mock_db.execute.side_effect = [exec_result1, exec_result2]
+
+        supabase_payload = {
+            "sub": "new-google-id",
+            "email": "legacy@example.com",
+            "user_metadata": {
+                "full_name": "Legacy User Now Linked",
+                "avatar_url": "https://example.com/avatar.png",
+            },
+        }
+
+        user = await upsert_local_user(mock_db, supabase_payload)
+
+        # Should return the linked legacy user, not create a new one
+        self.assertEqual(user, legacy_user)
+        self.assertEqual(user.supabase_user_id, "new-google-id")
+        self.assertEqual(user.display_name, "Legacy User Now Linked")
+        self.assertEqual(user.avatar_url, "https://example.com/avatar.png")
+        self.assertEqual(user.password_hash, "existing_hash")  # Preserved
+
+
 class TestGetCurrentUserFallback(unittest.TestCase):
 
     def test_missing_credentials_raises(self):

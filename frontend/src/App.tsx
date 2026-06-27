@@ -28,7 +28,16 @@ export default function App() {
     setAuthToken(token);
   }, [token]);
 
+  // Recover from OAuth redirect callback + set up auth state listener
   useEffect(() => {
+    const init = async () => {
+      const { getSupabaseSession } = await import('./lib/auth');
+      const session = await getSupabaseSession();
+      if (session?.access_token) {
+        useAuthStore.getState().setSupabaseAuth(session.access_token);
+      }
+    };
+    init();
     const unsubscribe = useAuthStore.getState().initAuthListener();
     return () => unsubscribe();
   }, []);

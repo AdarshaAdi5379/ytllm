@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase';
 interface AuthUser {
   id: string;
   email: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 interface AuthStore {

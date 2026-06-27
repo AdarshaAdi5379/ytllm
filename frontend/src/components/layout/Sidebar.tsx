@@ -172,10 +172,18 @@ export function Sidebar() {
             )}
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                  <User size={12} className="text-white" />
-                </div>
-                <span className="text-xs text-slate-400 truncate">{user.email}</span>
+                {user.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt=""
+                    className="w-6 h-6 rounded-full flex-shrink-0 object-cover"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+                    <User size={12} className="text-white" />
+                  </div>
+                )}
+                <span className="text-xs text-slate-400 truncate">{user.display_name || user.email}</span>
               </div>
               <button
                 onClick={() => { clearAuth(); clearVideos(); }}

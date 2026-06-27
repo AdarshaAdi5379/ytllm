@@ -141,7 +141,7 @@ export async function exportChat(data: ExportRequest): Promise<Blob> {
 interface AuthResponse {
   access_token: string;
   token_type: string;
-  user: { id: string; email: string };
+  user: { id: string; email: string; display_name: string | null; avatar_url: string | null };
 }
 
 export async function registerUser(email: string, password: string, confirmPassword?: string): Promise<AuthResponse> {
@@ -158,7 +158,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
   });
 }
 
-export async function getMe(): Promise<{ id: string; email: string }> {
+export async function getMe(): Promise<{ id: string; email: string; display_name: string | null; avatar_url: string | null }> {
   return apiFetch('/auth/me');
 }
 

@@ -39,7 +39,9 @@ def verify_supabase_token(token: str) -> dict | None:
 async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
     """Create or update a local User record from a verified Supabase token payload.
 
-    Matches on supabase_user_id.  Creates a default 'My Workspace' for new users.
+    Matches on supabase_user_id first, then falls back to email for legacy account
+    linking (users who registered with email/password before Supabase was configured).
+    Creates a default 'My Workspace' for new users.
     Returns the local User record.
     """
     supabase_user_id = supabase_payload.get("sub", "")
@@ -60,6 +62,22 @@ async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
         if avatar_url:
             user.avatar_url = avatar_url
     else:
+        # Try linking to a legacy user by email (no supabase_user_id)
+        result = await db.execute(
+            select(User).where(User.email == email, User.supabase_user_id.is_(None))
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.supabase_user_id = supabase_user_id
+            if display_name:
+                existing.display_name = display_name
+            if avatar_url:
+                existing.avatar_url = avatar_url
+            await db.commit()
+            await db.refresh(existing)
+            return existing
+
         user = User(
             supabase_user_id=supabase_user_id,
             email=email,
