@@ -94,12 +94,13 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 **Status: ACTIVE 🚧** — 30 features completed.
 
 ### Authentication
-- [ ] **Google OAuth login** — FastAPI + google-auth library + frontend Google Identity Services
-- [ ] **GitHub OAuth login** — FastAPI + httpx OAuth flow with GitHub API
+- [x] **Google OAuth login** — Supabase Google provider with full redirect flow, account linking, avatar, display_name
+- [x] **GitHub OAuth login** — Supabase GitHub provider with full redirect flow, account linking
 - [x] **[REUSE]** Email/password login with bcrypt
 - [x] **Persistent auth UX** — Home back button to leave legacy video view and find sign-in buttons
 - [x] **Sidebar guest sign-in** — Sign In / Sign Up always visible in sidebar for guest users
 - [x] **Global auth modal** — `authModalMode` in `useAuthStore`, `AuthModal` rendered from `App.tsx`
+- [x] **Show user avatar + name** in sidebar for Google/GitHub users
 - [ ] **Profile page**: avatar, display name, email, auth provider badge
 - [ ] **Session management**: refresh tokens, token rotation, expiry handling
 - [ ] **Password reset flow** (for email auth users)
