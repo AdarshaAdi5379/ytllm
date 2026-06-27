@@ -173,6 +173,13 @@ export async function getMe(): Promise<{ id: string; email: string; display_name
   return apiFetch('/auth/me');
 }
 
+export async function updateProfile(data: { display_name?: string | null; avatar_url?: string | null }): Promise<{ id: string; email: string; display_name: string | null; avatar_url: string | null }> {
+  return apiFetch('/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 // --- Saved Videos API ---
 
 export interface SavedVideoItem {

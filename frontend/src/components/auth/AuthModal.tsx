@@ -130,7 +130,16 @@ export function AuthModal({ onClose, initialTab }: Props) {
       }
       onClose();
     } catch (err) {
-      setError((err as Error).message || 'Authentication failed.');
+      const apiErr = err as Error & { code?: string };
+      if (apiErr.code === 'OAUTH_ACCOUNT') {
+        if (supabase) {
+          setError('This account uses Google/GitHub sign-in. Please use the OAuth buttons below.');
+        } else {
+          setError('This account uses Google/GitHub sign-in, which is not available right now.');
+        }
+      } else {
+        setError((err as Error).message || 'Authentication failed.');
+      }
     } finally {
       setLoading(false);
     }

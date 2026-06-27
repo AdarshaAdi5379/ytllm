@@ -25,6 +25,7 @@ interface AuthStore {
   initAuthListener: () => () => void;
   clearPasswordRecovery: () => void;
   resolveAuthOnMount: () => Promise<void>;
+  updateProfile: (data: { display_name?: string | null; avatar_url?: string | null }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -129,6 +130,17 @@ export const useAuthStore = create<AuthStore>()(
       setAuthModalMode: (mode) => set({ authModalMode: mode }),
 
       clearPasswordRecovery: () => set({ authModalMode: null }),
+
+      updateProfile: async (data) => {
+        try {
+          const { updateProfile: apiUpdate } = await import('../api/client');
+          const updated = await apiUpdate(data);
+          set({ user: { ...useAuthStore.getState().user!, ...updated } });
+        } catch (err) {
+          console.error('Failed to update profile:', err);
+          throw err;
+        }
+      },
 
       initAuthListener: () => {
         if (!supabase) return () => {};

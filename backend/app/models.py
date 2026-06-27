@@ -58,6 +58,11 @@ class UserLogin(BaseModel):
     password: str
 
 
+class ProfileUpdate(BaseModel):
+    display_name: str | None = None
+    avatar_url: str | None = None
+
+
 class UserResponse(BaseModel):
     id: str
     email: str
