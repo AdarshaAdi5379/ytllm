@@ -76,14 +76,8 @@ export function StandaloneSidebarSection() {
 
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
-      <div className="px-3 mb-2 flex items-center justify-between">
+      <div className="px-3 mb-2">
         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Standalone Chats</p>
-        <button
-          onClick={() => setShowAddSource(false)}
-          className="p-1 rounded hover:bg-slate-800/50 text-slate-400 hover:text-white transition-colors"
-        >
-          <Plus size={14} />
-        </button>
       </div>
 
       {/* Create new chat */}
@@ -181,120 +175,130 @@ export function StandaloneSidebarSection() {
         ))
       )}
 
-      {/* Active session sources */}
-      {activeSessionId && (
-        <div className="border-t border-slate-800/50 pt-3 mt-3">
-          <div className="px-3 mb-2 flex items-center justify-between">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sources</p>
-            <button
-              onClick={() => setShowAddSource(!showAddSource)}
-              className="p-1 rounded hover:bg-slate-800/50 text-slate-400 hover:text-white transition-colors"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-
-          {showAddSource && (
-            <div className="px-3 mb-3 space-y-2">
-              <div className="flex items-center gap-1">
-                {(['text', 'url', 'file'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setSourceType(t)}
-                    className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded-lg transition-colors ${
-                      sourceType === t
-                        ? 'bg-indigo-600/20 text-indigo-400'
-                        : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                    }`}
-                  >
-                    {t === 'text' ? 'Text' : t === 'url' ? 'URL' : 'File'}
-                  </button>
-                ))}
-              </div>
-
-              {sourceType === 'text' && (
-                <div className="space-y-1">
-                  <textarea
-                    value={sourceText}
-                    onChange={(e) => setSourceText(e.target.value)}
-                    placeholder="Paste text content..."
-                    rows={3}
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
-                  />
-                  <button
-                    onClick={handleAddSource}
-                    disabled={addingSource || !sourceText.trim()}
-                    className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-colors"
-                  >
-                    {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add Text'}
-                  </button>
-                </div>
-              )}
-
-              {sourceType === 'url' && (
-                <div className="space-y-1">
-                  <input
-                    type="url"
-                    value={sourceUrl}
-                    onChange={(e) => setSourceUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                  />
-                  <button
-                    onClick={handleAddSource}
-                    disabled={addingSource || !sourceUrl.trim()}
-                    className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-colors"
-                  >
-                    {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Fetch URL'}
-                  </button>
-                </div>
-              )}
-
-              {sourceType === 'file' && (
-                <div className="space-y-1">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.docx,.pptx,.txt,.md"
-                    onChange={handleFileUpload}
-                    className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600/20 file:text-indigo-400 hover:file:bg-indigo-600/30"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {sources.length === 0 ? (
-            <div className="px-3 py-3 text-center">
-              <p className="text-[10px] text-slate-600">No sources added</p>
-            </div>
-          ) : (
-            sources.map((src) => (
-              <div
-                key={src.id}
-                className="flex items-center justify-between px-3 py-1.5 group/source rounded-lg hover:bg-slate-800/30"
-              >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  {src.source_type === 'url' ? (
-                    <Globe size={12} className="text-sky-400 flex-shrink-0" />
-                  ) : src.source_type === 'file' ? (
-                    <Upload size={12} className="text-amber-400 flex-shrink-0" />
-                  ) : (
-                    <FileText size={12} className="text-emerald-400 flex-shrink-0" />
-                  )}
-                  <span className="text-[11px] text-slate-400 truncate">{src.title}</span>
-                </div>
-                <button
-                  onClick={() => removeSource(activeSessionId, src.id)}
-                  className="p-0.5 opacity-0 group-hover/source:opacity-100 hover:text-rose-400 text-slate-600 transition-all"
-                >
-                  <X size={10} />
-                </button>
-              </div>
-            ))
-          )}
+      {/* Sources section — always visible */}
+      <div className="border-t border-slate-800/50 pt-3 mt-3">
+        <div className="px-3 mb-2 flex items-center justify-between">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sources</p>
+          <button
+            onClick={() => {
+              if (!activeSessionId) return;
+              setShowAddSource(!showAddSource);
+            }}
+            disabled={!activeSessionId}
+            className="p-1 rounded hover:bg-slate-800/50 text-slate-400 hover:text-white disabled:text-slate-700 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+          >
+            <Plus size={14} />
+          </button>
         </div>
-      )}
+
+        {!activeSessionId ? (
+          <div className="px-3 py-3 text-center">
+            <p className="text-[10px] text-slate-600">Select or create a session to add sources</p>
+          </div>
+        ) : (
+          <>
+            {showAddSource && (
+              <div className="px-3 mb-3 space-y-2">
+                <div className="flex items-center gap-1">
+                  {(['text', 'url', 'file'] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setSourceType(t)}
+                      className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded-lg transition-colors ${
+                        sourceType === t
+                          ? 'bg-indigo-600/20 text-indigo-400'
+                          : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                      }`}
+                    >
+                      {t === 'text' ? 'Text' : t === 'url' ? 'URL' : 'File'}
+                    </button>
+                  ))}
+                </div>
+
+                {sourceType === 'text' && (
+                  <div className="space-y-1">
+                    <textarea
+                      value={sourceText}
+                      onChange={(e) => setSourceText(e.target.value)}
+                      placeholder="Paste text content..."
+                      rows={3}
+                      className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+                    />
+                    <button
+                      onClick={handleAddSource}
+                      disabled={addingSource || !sourceText.trim()}
+                      className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-colors"
+                    >
+                      {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add Text'}
+                    </button>
+                  </div>
+                )}
+
+                {sourceType === 'url' && (
+                  <div className="space-y-1">
+                    <input
+                      type="url"
+                      value={sourceUrl}
+                      onChange={(e) => setSourceUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    />
+                    <button
+                      onClick={handleAddSource}
+                      disabled={addingSource || !sourceUrl.trim()}
+                      className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-colors"
+                    >
+                      {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Fetch URL'}
+                    </button>
+                  </div>
+                )}
+
+                {sourceType === 'file' && (
+                  <div className="space-y-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.pptx,.txt,.md"
+                      onChange={handleFileUpload}
+                      className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600/20 file:text-indigo-400 hover:file:bg-indigo-600/30"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {sources.length === 0 ? (
+              <div className="px-3 py-3 text-center">
+                <p className="text-[10px] text-slate-600">No sources added</p>
+              </div>
+            ) : (
+              sources.map((src) => (
+                <div
+                  key={src.id}
+                  className="flex items-center justify-between px-3 py-1.5 group/source rounded-lg hover:bg-slate-800/30"
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {src.source_type === 'url' ? (
+                      <Globe size={12} className="text-sky-400 flex-shrink-0" />
+                    ) : src.source_type === 'file' ? (
+                      <Upload size={12} className="text-amber-400 flex-shrink-0" />
+                    ) : (
+                      <FileText size={12} className="text-emerald-400 flex-shrink-0" />
+                    )}
+                    <span className="text-[11px] text-slate-400 truncate">{src.title}</span>
+                  </div>
+                  <button
+                    onClick={() => removeSource(activeSessionId, src.id)}
+                    className="p-0.5 opacity-0 group-hover/source:opacity-100 hover:text-rose-400 text-slate-600 transition-all"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))
+            )}
+          </>
+        )}
+      </div>
 
       {/* Error display */}
       {error && (

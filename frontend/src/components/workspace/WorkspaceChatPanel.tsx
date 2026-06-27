@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Brain, BookOpen, Zap, BarChart3, GraduationCap } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Brain, BookOpen, Zap, BarChart3, GraduationCap, Paperclip, Globe, FileText, Upload } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
-import { streamWorkspaceChat, type ChatSessionItem } from '../../api/workspace';
+import { streamWorkspaceChat, type ChatSessionItem, importTextSource, importWebsiteSource, uploadDocument } from '../../api/workspace';
 import { useAuthStore } from '../../store/useAuthStore';
 import { NotesPanel } from './NotesPanel';
 import { SearchPanel } from './SearchPanel';
@@ -32,6 +32,15 @@ export function WorkspaceChatPanel() {
   const [selectedTemperature, setSelectedTemperature] = useState(0.2);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [attachType, setAttachType] = useState<'text' | 'url' | 'file'>('text');
+  const [attachText, setAttachText] = useState('');
+  const [attachUrl, setAttachUrl] = useState('');
+  const [addingSource, setAddingSource] = useState(false);
+  const [recentSources, setRecentSources] = useState<{id: string; title: string; type: string}[]>([]);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
+  const attachFileRef = useRef<HTMLInputElement>(null);
+
   const AVAILABLE_MODELS = [
     'gpt-4o-mini',
     'gpt-4o',
@@ -50,6 +59,56 @@ export function WorkspaceChatPanel() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (!showAttachMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+        setShowAttachMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAttachMenu]);
+
+  const handleAttachSource = async () => {
+    if (!activeWorkspaceId) return;
+    setAddingSource(true);
+    try {
+      let result: {id: string; title: string} | null = null;
+      if (attachType === 'text' && attachText.trim()) {
+        result = await importTextSource(activeWorkspaceId, attachText, attachText.slice(0, 50));
+        setAttachText('');
+      } else if (attachType === 'url' && attachUrl.trim()) {
+        result = await importWebsiteSource(activeWorkspaceId, attachUrl);
+        setAttachUrl('');
+      }
+      if (result) {
+        setRecentSources((prev) => [...prev.slice(-2), { id: result.id, title: result.title, type: attachType === 'url' ? 'url' : 'text' }]);
+      }
+      setShowAttachMenu(false);
+    } catch {
+      // error handled by workspace store
+    } finally {
+      setAddingSource(false);
+    }
+  };
+
+  const handleAttachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeWorkspaceId) return;
+    setAddingSource(true);
+    try {
+      const result = await uploadDocument(activeWorkspaceId, file, file.name);
+      setRecentSources((prev) => [...prev.slice(-2), { id: result.id, title: result.title, type: 'file' }]);
+      setShowAttachMenu(false);
+    } catch {
+      // error handled by workspace store
+    } finally {
+      setAddingSource(false);
+      if (attachFileRef.current) attachFileRef.current.value = '';
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim() || !activeWorkspaceId || streaming) return;
@@ -407,28 +466,147 @@ export function WorkspaceChatPanel() {
           </div>
 
           {/* Input */}
-          <div className="p-4 bg-gradient-to-t from-white via-white to-transparent">
-            <div className="flex items-center gap-2 max-w-4xl mx-auto">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                placeholder="Ask about your sources..."
-                disabled={streaming}
-                className="flex-1 px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 disabled:opacity-50"
-              />
-              <button
-                onClick={handleSend}
-                disabled={streaming || !input.trim()}
-                className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {streaming ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              </button>
+          <div className="border-t border-gray-200 p-4 bg-white relative">
+            <div className="max-w-4xl mx-auto">
+              {/* Source chips */}
+              {recentSources.length > 0 && (
+                <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                  {recentSources.map((src) => (
+                    <span
+                      key={src.id}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100"
+                    >
+                      {src.type === 'url' ? <Globe size={10} /> : src.type === 'file' ? <Upload size={10} /> : <FileText size={10} />}
+                      <span className="max-w-[100px] truncate">{src.title}</span>
+                      <button
+                        onClick={() => setRecentSources((prev) => prev.filter((s) => s.id !== src.id))}
+                        className="p-0.5 text-indigo-400 hover:text-indigo-600"
+                      >
+                        <X size={8} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                {/* Attach button */}
+                <div className="relative flex-shrink-0">
+                  <button
+                    onClick={() => setShowAttachMenu(!showAttachMenu)}
+                    disabled={streaming}
+                    className={`p-2 rounded-xl transition-all ${
+                      showAttachMenu
+                        ? 'bg-indigo-100 text-indigo-600'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
+                    } disabled:opacity-30`}
+                    title="Attach source"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+
+                  {showAttachMenu && (
+                    <div
+                      ref={attachMenuRef}
+                      className="absolute bottom-full left-0 mb-2 w-72 bg-white rounded-xl border border-gray-200 shadow-xl z-50 p-3"
+                    >
+                      <div className="flex items-center gap-1 mb-3">
+                        {(['text', 'url', 'file'] as const).map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setAttachType(t)}
+                            className={`flex-1 py-1.5 text-[11px] font-bold uppercase rounded-lg transition-colors ${
+                              attachType === t
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            {t === 'text' ? 'Text' : t === 'url' ? 'URL' : 'File'}
+                          </button>
+                        ))}
+                      </div>
+
+                      {attachType === 'text' && (
+                        <div className="space-y-2">
+                          <textarea
+                            value={attachText}
+                            onChange={(e) => setAttachText(e.target.value)}
+                            placeholder="Paste text content..."
+                            rows={3}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-400 resize-none"
+                          />
+                          <button
+                            onClick={handleAttachSource}
+                            disabled={addingSource || !attachText.trim()}
+                            className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-300 text-xs font-bold text-white transition-colors"
+                          >
+                            {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add Text'}
+                          </button>
+                        </div>
+                      )}
+
+                      {attachType === 'url' && (
+                        <div className="space-y-2">
+                          <input
+                            type="url"
+                            value={attachUrl}
+                            onChange={(e) => setAttachUrl(e.target.value)}
+                            placeholder="https://..."
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-400"
+                          />
+                          <button
+                            onClick={handleAttachSource}
+                            disabled={addingSource || !attachUrl.trim()}
+                            className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-300 text-xs font-bold text-white transition-colors"
+                          >
+                            {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Fetch URL'}
+                          </button>
+                        </div>
+                      )}
+
+                      {attachType === 'file' && (
+                        <div className="space-y-2">
+                          <input
+                            ref={attachFileRef}
+                            type="file"
+                            accept=".pdf,.docx,.pptx,.txt,.md"
+                            onChange={handleAttachFile}
+                            disabled={addingSource}
+                            className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
+                          />
+                          {addingSource && (
+                            <div className="flex items-center justify-center py-1">
+                              <Loader2 size={14} className="animate-spin text-indigo-600" />
+                              <span className="text-xs text-gray-500 ml-2">Uploading...</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  placeholder="Ask about your sources..."
+                  disabled={streaming}
+                  className="flex-1 px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 disabled:opacity-50"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={streaming || !input.trim()}
+                  className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {streaming ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
