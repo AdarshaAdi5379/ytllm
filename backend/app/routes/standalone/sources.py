@@ -1,6 +1,6 @@
-import hashlib
 import os
 import tempfile
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -120,18 +120,20 @@ async def upload_source_text(
     if not actual_content.strip():
         raise HTTPException(status_code=422, detail={"error": "NO_CONTENT", "message": "No content could be extracted."})
 
+    source_id = str(uuid.uuid4())
+    index_key = _make_index_key(session_id, source_id)
+
     source = StandaloneSource(
+        id=source_id,
         session_id=session_id,
         source_type=actual_type,
         title=actual_title,
         content=actual_content,
+        index_key=index_key,
         file_name=file_name,
     )
     db.add(source)
     await db.flush()
-
-    index_key = _make_index_key(session_id, source.id)
-    source.index_key = index_key
 
     chunks = chunk_text(actual_content, 500, 50)
     await embedding_service.index_transcript(index_key, actual_content)

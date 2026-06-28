@@ -77,7 +77,7 @@ async def list_sessions(
     else:
         return []
 
-    query = query.order_by(StandaloneSession.updated_at.desc())
+    query = query.order_by(StandaloneSession.created_at.desc())
     result = await db.execute(query)
     sessions = result.scalars().all()
 
@@ -88,6 +88,8 @@ async def list_sessions(
             select(func.count(StandaloneMessage.id)).where(StandaloneMessage.session_id == s.id)
         )
         resp.message_count = int(msg_count.scalar() or 0)
+        if resp.message_count == 0:
+            continue
         src_count = await db.execute(
             select(func.count(StandaloneSource.id)).where(StandaloneSource.session_id == s.id)
         )
