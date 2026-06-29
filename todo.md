@@ -43,7 +43,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
   - `backend/app/routes/ai/` — chat single/multi/workspace (all real), summary/actions/notes (stubs)
 - [ ] **[REFACTOR]** Replace `config` dict with proper dependency injection container
 - [x] **[REFACTOR]** Replace `print()` with structured logging (loguru)
-- [ ] **Replace SQLite with PostgreSQL** via SQLAlchemy async + asyncpg
+- [x] **Replace SQLite with PostgreSQL** via SQLAlchemy async + asyncpg
 - [x] **Make ChromaDB persistent** (from `/tmp` to `./data/vectors/`)
 - [x] **Add Alembic** for database migration management (removed the hacky `run_migrations()`)
 - [ ] **[REFACTOR]** Extract shared Python types into `backend/shared/` (Pydantic models)

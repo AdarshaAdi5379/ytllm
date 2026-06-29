@@ -1,3 +1,4 @@
+import asyncio
 import os
 from alembic.config import Config as AlembicConfig
 from alembic import command as alembic_cmd
@@ -17,8 +18,8 @@ async def get_db():
             await session.close()
 
 
-def _run_alembic_migrations():
-    """Run Alembic migrations synchronously (handles SQLite sync path internally)."""
+async def _run_alembic_migrations():
+    """Run Alembic migrations in a thread to avoid nested event loop issues."""
     backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ini_path = os.path.join(backend_dir, "alembic.ini")
 
@@ -27,11 +28,14 @@ def _run_alembic_migrations():
         logging.warning("alembic.ini not found at %s — skipping migrations", ini_path)
         return
 
-    alembic_cfg = AlembicConfig(ini_path)
-    alembic_cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
-    alembic_cmd.upgrade(alembic_cfg, "head")
+    def _run():
+        alembic_cfg = AlembicConfig(ini_path)
+        alembic_cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+        alembic_cmd.upgrade(alembic_cfg, "head")
+
+    await asyncio.to_thread(_run)
 
 
 async def init_db():
     """Run Alembic migrations on startup."""
-    _run_alembic_migrations()
+    await _run_alembic_migrations()

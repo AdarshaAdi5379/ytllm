@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="", alias="JWT_SECRET")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_expire_minutes: int = Field(default=10080, alias="JWT_EXPIRE_MINUTES")  # 7 days
-    database_url: str = Field(default="sqlite+aiosqlite:///./knowledgeos.db", alias="DATABASE_URL")
+    database_url: str = Field(default="postgresql+asyncpg://postgres:postgres@localhost:5432/knowledgeos", alias="DATABASE_URL")
 
     # Supabase Auth settings
     supabase_url: str = Field(default="", alias="SUPABASE_URL")

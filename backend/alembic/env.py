@@ -37,19 +37,6 @@ def do_run_migrations(connection):
 
 def run_migrations_online() -> None:
     section = config.get_section(config.config_ini_section, {})
-    url = section.get("sqlalchemy.url", "")
-
-    # SQLite: use sync engine to avoid nested event-loop issues
-    if url.startswith("sqlite"):
-        sync_url = url.replace("+aiosqlite", "")
-        from sqlalchemy import create_engine
-        engine = create_engine(sync_url, poolclass=pool.NullPool)
-        with engine.connect() as connection:
-            do_run_migrations(connection)
-        engine.dispose()
-        return
-
-    # Async path for PostgreSQL etc.
     connectable = async_engine_from_config(
         section,
         prefix="sqlalchemy.",
@@ -65,8 +52,9 @@ def run_migrations_online() -> None:
     try:
         asyncio.run(run())
     except RuntimeError:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(run())
+        loop.close()
 
 
 if context.is_offline_mode():
