@@ -193,7 +193,7 @@ export function WorkspaceChatPanel() {
     <main className="flex-1 flex flex-col bg-white overflow-hidden">
       {/* Top bar with session selector + settings */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setShowSessions(!showSessions)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
