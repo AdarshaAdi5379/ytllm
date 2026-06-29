@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Send, Loader2, MessageSquare, Trash2, Plus,
-  User, Bot, Sparkles, AlertCircle,
+  User, Bot, Sparkles, AlertCircle, Paperclip, X,
 } from 'lucide-react';
 import { useStandaloneChatStore } from '../../store/useStandaloneChatStore';
 import { streamStandaloneChat } from '../../api/standalone';
@@ -10,6 +10,7 @@ export function StandaloneChatPanel() {
   const {
     activeSessionId, messages, streaming, loading, error,
     setActiveSession, createSession, addMessage, setStreaming, clearMessage,
+    addSource,
   } = useStandaloneChatStore();
 
   const [input, setInput] = useState('');
@@ -17,6 +18,14 @@ export function StandaloneChatPanel() {
   const streamTextRef = useRef('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [attachType, setAttachType] = useState<'text' | 'url' | 'file'>('text');
+  const [attachText, setAttachText] = useState('');
+  const [attachUrl, setAttachUrl] = useState('');
+  const [addingSource, setAddingSource] = useState(false);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
+  const attachFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -28,6 +37,17 @@ export function StandaloneChatPanel() {
       createSession('New Chat').then((s) => setActiveSession(s.id)).catch(() => {});
     }
   }, []);
+
+  useEffect(() => {
+    if (!showAttachMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+        setShowAttachMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAttachMenu]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || streaming || !activeSessionId) return;
@@ -86,6 +106,41 @@ export function StandaloneChatPanel() {
   const handleClear = () => {
     if (streaming) handleStop();
     clearMessage();
+  };
+
+  const handleAttachSource = async () => {
+    if (!activeSessionId) return;
+    setAddingSource(true);
+    try {
+      if (attachType === 'text' && attachText.trim()) {
+        await addSource(activeSessionId, 'text', { title: 'Attached Text', content: attachText.trim() });
+        setAttachText('');
+      } else if (attachType === 'url' && attachUrl.trim()) {
+        await addSource(activeSessionId, 'url', { url: attachUrl.trim() });
+        setAttachUrl('');
+      }
+      setShowAttachMenu(false);
+    } catch {
+      // handled by store
+    } finally {
+      setAddingSource(false);
+    }
+  };
+
+  const handleAttachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!activeSessionId) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAddingSource(true);
+    try {
+      await addSource(activeSessionId, 'file', { file, title: file.name });
+      setShowAttachMenu(false);
+    } catch {
+      // handled by store
+    } finally {
+      setAddingSource(false);
+      if (attachFileRef.current) attachFileRef.current.value = '';
+    }
   };
 
   if (!activeSessionId) {
@@ -196,6 +251,102 @@ export function StandaloneChatPanel() {
       <div className="border-t border-gray-200 p-4 bg-white relative">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-end gap-2 bg-gray-50 rounded-2xl border border-gray-200 p-2 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+            {/* Attach button */}
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowAttachMenu(!showAttachMenu)}
+                disabled={streaming}
+                className={`p-2 rounded-xl transition-all ${
+                  showAttachMenu
+                    ? 'bg-indigo-100 text-indigo-600'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
+                } disabled:opacity-30`}
+                title="Attach source"
+              >
+                <Paperclip size={18} />
+              </button>
+
+              {showAttachMenu && (
+                <div
+                  ref={attachMenuRef}
+                  className="absolute bottom-full left-0 mb-2 w-72 bg-white rounded-xl border border-gray-200 shadow-xl z-50 p-3"
+                >
+                  <div className="flex items-center gap-1 mb-3">
+                    {(['text', 'url', 'file'] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setAttachType(t)}
+                        className={`flex-1 py-1.5 text-[11px] font-bold uppercase rounded-lg transition-colors ${
+                          attachType === t
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {t === 'text' ? 'Text' : t === 'url' ? 'URL' : 'File'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {attachType === 'text' && (
+                    <div className="space-y-2">
+                      <textarea
+                        value={attachText}
+                        onChange={(e) => setAttachText(e.target.value)}
+                        placeholder="Paste text content..."
+                        rows={3}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-400 resize-none"
+                      />
+                      <button
+                        onClick={handleAttachSource}
+                        disabled={addingSource || !attachText.trim()}
+                        className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-300 text-xs font-bold text-white transition-colors"
+                      >
+                        {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add Text'}
+                      </button>
+                    </div>
+                  )}
+
+                  {attachType === 'url' && (
+                    <div className="space-y-2">
+                      <input
+                        type="url"
+                        value={attachUrl}
+                        onChange={(e) => setAttachUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-400"
+                      />
+                      <button
+                        onClick={handleAttachSource}
+                        disabled={addingSource || !attachUrl.trim()}
+                        className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-300 text-xs font-bold text-white transition-colors"
+                      >
+                        {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Fetch URL'}
+                      </button>
+                    </div>
+                  )}
+
+                  {attachType === 'file' && (
+                    <div className="space-y-2">
+                      <input
+                        ref={attachFileRef}
+                        type="file"
+                        accept=".pdf,.docx,.pptx,.txt,.md"
+                        onChange={handleAttachFile}
+                        disabled={addingSource}
+                        className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
+                      />
+                      {addingSource && (
+                        <div className="flex items-center justify-center py-1">
+                          <Loader2 size={14} className="animate-spin text-indigo-600" />
+                          <span className="text-xs text-gray-500 ml-2">Uploading...</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
