@@ -190,7 +190,7 @@ export function WorkspaceChatPanel() {
   if (!isAuthenticated || !activeWorkspaceId) return null;
 
   return (
-    <main className="flex-1 flex flex-col bg-white overflow-hidden">
+    <main className="flex-1 flex flex-col bg-white">
       {/* Top bar with session selector + settings */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
         <div className="flex items-center gap-2 flex-wrap">
