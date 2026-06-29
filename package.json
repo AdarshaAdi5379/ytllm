@@ -4,7 +4,7 @@
   "description": "KnowledgeOS — Your Personal AI Learning Operating System",
   "private": true,
   "scripts": {
-    "dev:server": "cd backend && python3 -m uvicorn app.main:app --reload --port 3001",
+    "dev:server": "cd backend && venv/bin/python -m uvicorn app.main:app --reload --port 3001",
     "dev:client": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build:client": "npm run build --prefix frontend",
