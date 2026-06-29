@@ -11,7 +11,7 @@
 
 ## Tech Stack
 - Frontend: React 18, TypeScript, Vite, TailwindCSS, Zustand, TanStack Query
-- Backend: Python 3.11+, FastAPI, SQLAlchemy async, SQLite, ChromaDB, OpenAI-compatible APIs
+- Backend: Python 3.11+, FastAPI, SQLAlchemy async, PostgreSQL, ChromaDB, OpenAI-compatible APIs
 - Auth: Supabase (JWT + OAuth via Google/GitHub) with legacy bcrypt/pyjwt fallback
 - Export: `fpdf2` and `python-docx`
 
@@ -30,7 +30,7 @@
 - Backend only: `npm run dev:server`
 - Frontend build: `npm run build:client`
 - Frontend lint: `npm run lint --prefix frontend`
-- Backend tests: `cd backend && python -m unittest`
+- Backend tests: `cd backend && source venv/bin/activate && python -m unittest`
 
 ## Project Structure
 - `frontend/src/components/` UI components grouped by domain
@@ -307,12 +307,63 @@
 - `frontend/src/components/layout/Sidebar.tsx` — Replaced inline name editor with ProfilePanel button
 - `frontend/src/api/client.ts` — fetchProfile(), refreshAuthToken(), AuthUserData types
 
+### Eleventh Session (Jun 29) — PostgreSQL Migration + V3/V7 UI fixes + Security sweep
+43. `dab9796c` — Replace SQLite with PostgreSQL (asyncpg) — config, deps, alembic env, database.py
+44. `5ac70f62` — Update .env.example with DATABASE_URL docs
+45. `e4e1c175` — Fix Supabase refresh loop: add refresh guard flag + 30s cooldown
+46. `ceb77512` — Add cryptography dep for ES256 JWT verification; add to requirements.txt & pyproject.toml
+47. `abe7722b` — Fix workspace toolbar overflow: add flex-wrap to button container
+48. `bb7513d7` — Fix V3 toolbar buttons clipped by overflow-hidden on <main> container
+49. `4ccfa7dc` — Add inline attach button to standalone chat panel (Paperclip + Text/URL/File popover)
+50. `7243f1bd` — Security sweep: npm audit (0 vulns), no secrets, no XSS, SSRF validated, all 36 backend tests pass
+
+**PostgreSQL migration:** Switched from SQLite to asyncpg-backed PostgreSQL. Updated `config.py` default
+DATABASE_URL, `requirements.txt`/`pyproject.toml`, `alembic/env.py` (removed SQLite sync path, async
+loop fallback), `database.py` (async migration runner via asyncio.to_thread). All 13 existing migrations
+ran cleanly against local PostgreSQL (port 5433). No squash needed.
+
+**V3 workspace toolbar fix:** Two-part CSS fix: (1) added `flex-wrap` to the button container so buttons
+wrap to multiple rows, (2) removed `overflow-hidden` from `<main>` container which was clipping the
+wrapped button row. The inner content wrapper already has its own `overflow-hidden`.
+
+**Standalone chat attach button:** Added inline Paperclip button + popover with Text/URL/File source
+tabs to `StandaloneChatPanel.tsx`, matching the workspace chat pattern. No backend changes needed —
+`POST /api/standalone/sessions/{id}/sources` already supports all three types.
+
+**Security sweep results:**
+  - npm audit: 0 vulnerabilities
+  - No hardcoded secrets, API keys, or passwords found in codebase
+  - No innerHTML/dangerouslySetInnerHTML/eval() in frontend code
+  - SSRF protection active via `validate_final_url()` in `backend/app/utils/ssrf.py`
+  - File uploads restricted by extension (.pdf, .docx, .pptx, .txt, .md)
+  - CORS, rate limiting, and security headers middleware configured in main.py
+  - .env files properly gitignored
+  - Frontend build: successful (715KB)
+  - Backend tests: 36/36 passing
+
+### Key Files Modified (Session 11 — PostgreSQL migration)
+- `backend/app/config.py` — Default DATABASE_URL changed to postgresql+asyncpg://
+- `backend/requirements.txt` — aiosqlite → asyncpg, added cryptography>=43.0.0
+- `backend/pyproject.toml` — Same dep swaps
+- `backend/.env.example` — PostgreSQL DATABASE_URL docs + Supabase connection string
+- `backend/.env` — Local PostgreSQL connection string
+- `backend/alembic/env.py` — Removed SQLite sync-target branch, async loop fallback
+- `backend/app/database.py` — _run_alembic_migrations() now async with asyncio.to_thread()
+- `frontend/src/store/useAuthStore.ts` — Refresh guard flag + 30s cooldown (prevent 429 loop)
+- `package.json` — dev:server uses venv/bin/python instead of system python3
+
+### Key Files Modified (Session 11 — UI fixes)
+- `frontend/src/components/workspace/WorkspaceChatPanel.tsx:196` — Added `flex-wrap` to button container
+- `frontend/src/components/workspace/WorkspaceChatPanel.tsx:193` — Removed `overflow-hidden` from `<main>` container
+- `frontend/src/components/standalone/StandaloneChatPanel.tsx` — Added inline attach button (Paperclip + Text/URL/File popover), 152 lines added
+
 ## Anchored Summary
 
 ### Goal
-- Supabase Auth Phases 1-6 complete — JWT verification, Google/GitHub OAuth, password reset, session management, account linking, profile sync, rate limiting, auth hardening
-- V4 Developer Mode / GitHub Import — all features complete (phases 1a-1g)
-- V7 (pending): Standalone Chat & Workspace Restructure
+- PostgreSQL migration complete — all migrations run cleanly, all 36 tests pass
+- V3 AI Tutor features now fully visible in workspace toolbar (flex-wrap fix + overflow-hidden removal)
+- Standalone chat now has inline source attachment (Paperclip button) matching workspace chat
+- Security review clean — no vulnerabilities, no hardcoded secrets, SSRF/XSS/file-upload protections in place
 
 ### Constraints & Preferences
 - All workspace-scoped features use `verify_workspace_access()` auth guard
@@ -322,12 +373,16 @@
 - New features get a nav button in the toolbar inside `WorkspaceChatPanel`
 - Each feature gets Alembic migration, backend tests, TypeScript check, build verification, and commit per CLAUDE.md
 - `backend/` is active; `server/` is stale
+- **PostgreSQL (port 5433)** for local dev; Supabase production connection string in `.env.example`
+- Backend must be run from `venv/bin/python` (not system python3)
+- Backend tests must source `venv/bin/activate` before running
 
 ### Next Steps
-1. V7 — Standalone Chat & Workspace Restructure (see `docs/roadmap-v7.md`)
-2. Standalone chat: own data per session, guest-friendly, SSE streaming
-3. Workspace restructure: sessions auto-share all workspace sources, remove source checkboxes
-4. Move standalone session to workspace
+1. V7 — Standalone Chat polish (continue improvements)
+2. Workspace restructure: sessions auto-share all workspace sources, remove source checkboxes
+3. Move standalone session to workspace
+4. Standalone chat UI improvements (session management, source display in-panel)
+5. Deploy to cloud server (IPv6 needed for Supabase PostgreSQL host)
 
 ### Critical Context
 - `generate_text()` available on `llm_service` for all AI generation
@@ -335,9 +390,12 @@
 - View navigation uses `viewMode` state union (`'chat' | 'notes' | 'search' | 'summary' | 'flashcard' | 'quiz' | 'path' | 'revision' | 'progress' | 'mentor'`) inside `WorkspaceChatPanel`
 - SM-2 rating scale: 0=again, 1=hard, 2=good, 3=easy
 - Quiz submission stores only total score/max_score; individual question results not persisted
-- Learning path topics use `completed: int` (0/1) flag for SQLite compatibility
 - Mentor sessions persist messages as JSON text, gap_report as JSON text
 - Daily revision streak computed checking both flashcard `last_reviewed_at` and quiz `completed_at`
+- **V3 toolbar buttons only wrap to 2nd row if `overflow-hidden` is NOT on `<main>` (WorkspaceChatPanel.tsx:193)**
+- **Standalone chat attach button shares `addSource` store method with sidebar — both work via `POST /api/standalone/sessions/{id}/sources`**
+- **Backend must use `venv/bin/python`** — `package.json` dev:server uses it; running with system python3 will fail on asyncpg/cryptography import
+- **Local PostgreSQL on port 5433** — `DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5433/knowledgeos`
 
 ### DB Models (16 tables)
 - V0: User (auth_provider, supabase_user_id, display_name, avatar_url), Video, ChatMessage
@@ -347,6 +405,15 @@
 
 ### Migrations (head: e08fe825261f)
 Chain: `6c24d2dbf94d` → `e251248d244c` → `12225ad9fa3d` → `6a1135035b8e` → `dd143cf55702` → `87e0037f166b` → `a5795540fa44` → `01f44cb84f03` → `b9d4d8e6a1f2` → `9d51c7b57cce` → `e08fe825261f`
+
+### Architecture Notes (Session 11)
+- The `<main>` in `WorkspaceChatPanel` must NOT have `overflow-hidden` — it clips the toolbar's wrapped rows.
+  The inner content `<div>` (line 353) already has its own `overflow-hidden` for content scrolling.
+- `StandaloneChatPanel` has a 3-tab attach popover identical to `WorkspaceChatPanel`'s. Uses `addSource`
+  from `useStandaloneChatStore` which dispatches to `uploadStandaloneText`/`uploadStandaloneUrl`/`uploadStandaloneFile`.
+- The `dev:server` script uses `venv/bin/python -m uvicorn` to ensure the venv's deps (asyncpg, cryptography) are available.
+- If `cryptography` is missing from the venv, ES256 JWKS verification will fail. Run `pip install cryptography>=43.0.0`.
+- The refresh loop guard in `useAuthStore.ts` prevents 429 rate-limit loops: sets a refreshAttempted flag + 30s cooldown.
 
 ## Change Guidance
 - Before editing chat behavior, inspect both single-video and multi-video paths AND workspace chat (`routes/ai/chat.py`). The workspace chat resolves sources via `video_id` (YouTube) or `index_key` (website/PDF) in `metadata_json`.
