@@ -41,23 +41,34 @@ export const useAuthStore = create<AuthStore>()(
 
       resolveAuthOnMount: async () => {
         // Register global 401 handler — attempt refresh before clearing
+        let _isRefreshing = false;
+        let _lastRefreshAttempt = 0;
         setOnUnauthorized(async () => {
-          if (supabase) {
-            try {
-              const { data } = await supabase.auth.refreshSession();
-              if (data?.session?.access_token) {
-                setAuthToken(data.session.access_token);
-                set({ token: data.session.access_token });
-                return;
+          if (_isRefreshing) return;
+          const now = Date.now();
+          if (now - _lastRefreshAttempt < 30000) return;
+          _isRefreshing = true;
+          _lastRefreshAttempt = now;
+          try {
+            if (supabase) {
+              try {
+                const { data } = await supabase.auth.refreshSession();
+                if (data?.session?.access_token) {
+                  setAuthToken(data.session.access_token);
+                  set({ token: data.session.access_token });
+                  return;
+                }
+              } catch {
+                // refresh failed — fall through to clear
               }
-            } catch {
-              // refresh failed — fall through to clear
             }
-          }
-          setAuthToken(null);
-          set({ user: null, token: null, isAuthenticated: false });
-          if (supabase) {
-            supabase.auth.signOut().catch(() => {});
+            setAuthToken(null);
+            set({ user: null, token: null, isAuthenticated: false });
+            if (supabase) {
+              supabase.auth.signOut().catch(() => {});
+            }
+          } finally {
+            _isRefreshing = false;
           }
         });
 
