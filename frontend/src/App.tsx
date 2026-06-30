@@ -6,6 +6,7 @@ import { URLInputModal } from './components/modals/URLInputModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { HeroSection } from './components/landing/HeroSection';
 import { HowItWorksSection } from './components/landing/HowItWorksSection';
+import { ComparisonSection } from './components/landing/ComparisonSection';
 import { useVideoStore } from './store/useVideoStore';
 import { useAuthStore } from './store/useAuthStore';
 import { useWorkspaceStore } from './store/useWorkspaceStore';
@@ -155,6 +156,7 @@ export default function App() {
             setShowLanding(false);
           }}
         />
+        <ComparisonSection />
         {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
       </>
     );
