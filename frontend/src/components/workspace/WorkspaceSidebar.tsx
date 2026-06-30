@@ -32,6 +32,8 @@ export function WorkspaceSidebarContent() {
   const openAddVideoModal = useVideoStore((s) => s.openAddVideoModal);
 
   const [newFolderName, setNewFolderName] = useState('');
+  const [isCreatingWs, setIsCreatingWs] = useState(false);
+  const [newWsName, setNewWsName] = useState('New Workspace');
   const [addingFolder, setAddingFolder] = useState(false);
   const [showWebsiteImport, setShowWebsiteImport] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -272,16 +274,57 @@ export function WorkspaceSidebarContent() {
                 </div>
               )}
               <div className="border-t border-slate-700">
-                <button
-                  onClick={() => {
-                    createWorkspace('New Workspace');
-                    setShowWsSwitcher(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all"
-                >
-                  <Plus size={11} />
-                  New Workspace
-                </button>
+                {isCreatingWs ? (
+                  <div className="flex items-center gap-1 px-3 py-1.5">
+                    <input
+                      autoFocus
+                      value={newWsName}
+                      onChange={(e) => setNewWsName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          createWorkspace(newWsName.trim() || 'New Workspace');
+                          setShowWsSwitcher(false);
+                          setIsCreatingWs(false);
+                          setNewWsName('New Workspace');
+                        }
+                        if (e.key === 'Escape') {
+                          setIsCreatingWs(false);
+                          setNewWsName('New Workspace');
+                        }
+                      }}
+                      placeholder="Workspace name"
+                      className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-indigo-500"
+                    />
+                    <button
+                      onClick={() => {
+                        createWorkspace(newWsName.trim() || 'New Workspace');
+                        setShowWsSwitcher(false);
+                        setIsCreatingWs(false);
+                        setNewWsName('New Workspace');
+                      }}
+                      className="p-0.5 text-emerald-400 hover:text-emerald-300"
+                    >
+                      <Check size={10} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsCreatingWs(false);
+                        setNewWsName('New Workspace');
+                      }}
+                      className="p-0.5 text-slate-500 hover:text-slate-300"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsCreatingWs(true)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all"
+                  >
+                    <Plus size={11} />
+                    New Workspace
+                  </button>
+                )}
                 {activeWorkspaceId && (
                   <button
                     onClick={() => {

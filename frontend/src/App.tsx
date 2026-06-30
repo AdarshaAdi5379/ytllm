@@ -1,16 +1,20 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Sidebar } from './components/layout/Sidebar';
 import { MainPanel } from './components/layout/MainPanel';
 import { URLInputModal } from './components/modals/URLInputModal';
 import { AuthModal } from './components/auth/AuthModal';
+import { HeroSection } from './components/landing/HeroSection';
+import { HowItWorksSection } from './components/landing/HowItWorksSection';
 import { useVideoStore } from './store/useVideoStore';
 import { useAuthStore } from './store/useAuthStore';
 import { useWorkspaceStore } from './store/useWorkspaceStore';
 import { useChatSessionStore } from './store/useChatSessionStore';
+import { useAppStore } from './store/useAppStore';
 import { fetchSavedVideos, fetchSavedVideoDetail, setAuthToken } from './api/client';
 
 export default function App() {
+  const [showLanding, setShowLanding] = useState(true);
   const isAddVideoModalOpen = useVideoStore((s) => s.isAddVideoModalOpen);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isAuthLoading = useAuthStore((s) => s.isAuthLoading);
@@ -132,6 +136,27 @@ export default function App() {
           <p className="text-sm font-medium text-slate-400">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  if (!isAuthenticated && showLanding) {
+    return (
+      <>
+        <HeroSection
+          onStartLearning={() => {
+            useAppStore.getState().setAppMode('standalone');
+            setShowLanding(false);
+          }}
+          onSignIn={() => setAuthModalMode('login')}
+        />
+        <HowItWorksSection
+          onStartLearning={() => {
+            useAppStore.getState().setAppMode('standalone');
+            setShowLanding(false);
+          }}
+        />
+        {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
+      </>
     );
   }
 

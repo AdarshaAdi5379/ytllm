@@ -16,10 +16,10 @@ import { ProgressDashboardPanel } from './ProgressDashboard';
 import { MentorPanel } from './MentorPanel';
 
 export function WorkspaceChatPanel() {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { activeWorkspaceId, renameWorkspace } = useWorkspaceStore();
   const {
     sessions, activeSessionId, messages, streaming,
-    loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming,
+    loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming, clearMessages,
   } = useChatSessionStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
@@ -52,6 +52,7 @@ export function WorkspaceChatPanel() {
 
   useEffect(() => {
     if (activeWorkspaceId && isAuthenticated) {
+      clearMessages();
       loadSessions(activeWorkspaceId);
     }
   }, [activeWorkspaceId, isAuthenticated]);
@@ -166,6 +167,9 @@ export function WorkspaceChatPanel() {
         const { messages: msgs } = useChatSessionStore.getState();
         const assistantIdx = msgs.length - 1;
         setCitationsMap((prev) => ({ ...prev, [assistantIdx]: citations }));
+      },
+      (name) => {
+        renameWorkspace(activeWorkspaceId, name);
       },
     );
   };

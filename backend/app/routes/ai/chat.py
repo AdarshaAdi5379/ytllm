@@ -420,11 +420,6 @@ async def chat_workspace(
                 )
             sources = src_result.scalars().all()
 
-            if not sources:
-                error_json = json.dumps({"type": "error", "message": "No ready sources found in workspace."})
-                yield f"data: {error_json}\n\n"
-                return
-
             # Retrieve chunks from each source with numbered source index
             retrieval_started = time.perf_counter()
             all_chunks: list[str] = []
@@ -476,17 +471,38 @@ async def chat_workspace(
             memory_ms = int((time.perf_counter() - memory_started) * 1000)
 
             # Build system prompt
-            # Build source index header
-            source_index_lines = ["Available sources:"]
-            for num, info in source_index.items():
-                source_index_lines.append(f"[{num}] \"{info['title']}\" ({info['source_type']})")
-            source_index_ctx = "\n".join(source_index_lines)
+            if source_infos:
+                source_index_lines = ["Available sources:"]
+                for num, info in source_index.items():
+                    source_index_lines.append(f"[{num}] \"{info['title']}\" ({info['source_type']})")
+                source_index_ctx = "\n".join(source_index_lines)
+                source_list_str = "\n".join(
+                    f"[{num}] \"{info['title']}\" ({info['source_type']})"
+                    for num, info in source_index.items()
+                )
+                system_prompt = f"""You are an AI assistant helping a user understand their learning materials.
 
-            system_prompt = llm_service.build_multi_system_prompt(source_infos)
+SOURCES:
+{source_list_str}
+
+CRITICAL CITATION RULE: When you reference information from a source, you MUST cite the source's number in square brackets, e.g. [1] or [2]. Place the citation at the end of the relevant sentence. Every factual claim must have a citation.
+
+RULES:
+1. Answer factual questions based on the provided context sections when possible.
+2. If the provided context doesn't contain the answer, you may use your general knowledge to help the user.
+3. Be concise and direct. Use bullet points for lists.
+4. If sources disagree, explicitly call out the disagreement and cite each source.
+5. Handle casual conversation naturally — greetings ("hi", "hello"), thanks, goodbyes, and simple social chat do NOT require citations. Respond warmly and keep the conversation going.
+6. TIMESTAMP CITATION: When transcript sections include timestamp ranges like [M:SS–M:SS], cite the starting timestamp in [MM:SS] format when referencing specific moments."""
+            else:
+                source_index_ctx = ""
+                system_prompt = """You are a helpful AI assistant. The user hasn't added any sources to this workspace yet, so answer using your general knowledge.
+
+At the end of each response, gently remind the user that they can add sources (text, URL, or file) to the workspace for more accurate, source-backed answers. Keep the reminder brief and natural."""
 
             context = llm_service.LLMContext(
                 system_prompt=system_prompt,
-                retrieved_chunks=[source_index_ctx] + all_chunks,
+                retrieved_chunks=[source_index_ctx] + all_chunks if source_infos else [],
                 chat_summary=chat_summary,
                 recent_messages=recent_messages,
                 question=req.question,
@@ -586,6 +602,30 @@ async def chat_workspace(
                     await db.commit()
             except Exception as save_err:
                 logger.warning("Failed to save workspace chat: {}", save_err)
+
+            # Auto-name workspace if still using default name
+            if workspace_id:
+                try:
+                    ws_result = await db.execute(
+                        select(Workspace).where(Workspace.id == workspace_id)
+                    )
+                    ws = ws_result.scalar_one_or_none()
+                    if ws and ws.name in ("New Workspace", "My Workspace"):
+                        name_prompt = (
+                            "Generate a very short name (max 5 words) for a study/learning workspace "
+                            "based on this first message. Return ONLY the name, no quotes, no punctuation.\n\n"
+                            f"Message: {req.question}"
+                        )
+                        new_name = await llm_service.generate_text(
+                            name_prompt, max_tokens=20, temperature=0.3,
+                        )
+                        new_name = new_name.strip().strip("\"'")
+                        if new_name and len(new_name) <= 60:
+                            ws.name = new_name
+                            await db.commit()
+                            yield f"data: {json.dumps({'type': 'workspace_meta', 'name': ws.name})}\n\n"
+                except Exception:
+                    pass
 
         except Exception as e:
             logger.exception("Workspace chat error: {}", str(e))
