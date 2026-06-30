@@ -7,6 +7,9 @@ import { AuthModal } from './components/auth/AuthModal';
 import { HeroSection } from './components/landing/HeroSection';
 import { HowItWorksSection } from './components/landing/HowItWorksSection';
 import { ComparisonSection } from './components/landing/ComparisonSection';
+import { WorkspaceShowcaseSection } from './components/landing/WorkspaceShowcaseSection';
+import { CTASection } from './components/landing/CTASection';
+import { FooterSection } from './components/landing/FooterSection';
 import { useVideoStore } from './store/useVideoStore';
 import { useAuthStore } from './store/useAuthStore';
 import { useWorkspaceStore } from './store/useWorkspaceStore';
@@ -157,6 +160,14 @@ export default function App() {
           }}
         />
         <ComparisonSection />
+        <WorkspaceShowcaseSection />
+        <CTASection
+          onStartLearning={() => {
+            useAppStore.getState().setAppMode('standalone');
+            setShowLanding(false);
+          }}
+        />
+        <FooterSection />
         {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
       </>
     );
