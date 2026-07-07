@@ -11,14 +11,19 @@ import { ChatInput } from '../chat/ChatInput';
 import { LoadingSkeleton } from '../shared/LoadingSkeleton';
 import { WorkspaceChatPanel } from '../workspace/WorkspaceChatPanel';
 import { StandaloneChatPanel } from '../standalone/StandaloneChatPanel';
+import { OnboardingWizard } from '../onboarding/OnboardingWizard';
 import { useChat } from '../../hooks/useChat';
 
 export function MainPanel() {
   const { videos, activeVideoId } = useVideoStore();
   const video = activeVideoId ? videos[activeVideoId] : null;
   const { sendMessage } = useChat(activeVideoId);
-  const { isAuthenticated, isAuthLoading, setAuthModalMode } = useAuthStore();
+  const { isAuthenticated, isAuthLoading, showOnboarding, setAuthModalMode } = useAuthStore();
   const { appMode } = useAppStore();
+
+  if (showOnboarding && isAuthenticated && !video) {
+    return <OnboardingWizard />;
+  }
 
   if (!video) {
     // Show standalone vs workspace based on mode

@@ -18,6 +18,8 @@ interface AuthStore {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   authModalMode: 'login' | 'register' | 'forgotPassword' | 'setPassword' | null;
+  hasCompletedOnboarding: boolean;
+  showOnboarding: boolean;
 
   setAuth: (user: AuthUser, token: string) => void;
   setSupabaseAuth: (accessToken: string) => Promise<void>;
@@ -27,6 +29,8 @@ interface AuthStore {
   clearPasswordRecovery: () => void;
   resolveAuthOnMount: () => Promise<void>;
   updateProfile: (data: { display_name?: string | null; avatar_url?: string | null }) => Promise<void>;
+  completeOnboarding: () => void;
+  skipOnboarding: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -38,6 +42,9 @@ export const useAuthStore = create<AuthStore>()(
       isAuthLoading: true,
 
       authModalMode: null,
+
+      hasCompletedOnboarding: false,
+      showOnboarding: false,
 
       resolveAuthOnMount: async () => {
         // Register global 401 handler — attempt refresh before clearing
@@ -81,7 +88,8 @@ export const useAuthStore = create<AuthStore>()(
             try {
               const { getMe } = await import('../api/client');
               const userData = await getMe();
-              set({ user: userData, token: session.access_token, isAuthenticated: true, isAuthLoading: false });
+              const hc = useAuthStore.getState().hasCompletedOnboarding;
+              set({ user: userData, token: session.access_token, isAuthenticated: true, isAuthLoading: false, showOnboarding: !hc });
               return;
             } catch {
               // session invalid — clear and fall through
@@ -97,7 +105,8 @@ export const useAuthStore = create<AuthStore>()(
           try {
             const { getMe } = await import('../api/client');
             const userData = await getMe();
-            set({ user: userData, token: storedToken, isAuthenticated: true, isAuthLoading: false });
+            const hc = useAuthStore.getState().hasCompletedOnboarding;
+            set({ user: userData, token: storedToken, isAuthenticated: true, isAuthLoading: false, showOnboarding: !hc });
             return;
           } catch {
             setAuthToken(null);
@@ -110,7 +119,8 @@ export const useAuthStore = create<AuthStore>()(
 
       setAuth: async (user, token) => {
         setAuthToken(token);
-        set({ user, token, isAuthenticated: true });
+        const hasCompleted = useAuthStore.getState().hasCompletedOnboarding;
+        set({ user, token, isAuthenticated: true, showOnboarding: !hasCompleted });
         try {
           const guestToken = getGuestToken();
           const result = await claimGuestSessions(guestToken);
@@ -127,7 +137,8 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const { getMe } = await import('../api/client');
           const userData = await getMe();
-          set({ user: userData, token: accessToken, isAuthenticated: true });
+          const hasCompleted = useAuthStore.getState().hasCompletedOnboarding;
+          set({ user: userData, token: accessToken, isAuthenticated: true, showOnboarding: !hasCompleted });
           try {
             const guestToken = getGuestToken();
             const result = await claimGuestSessions(guestToken);
@@ -145,7 +156,7 @@ export const useAuthStore = create<AuthStore>()(
 
       clearAuth: () => {
         setAuthToken(null);
-        set({ user: null, token: null, isAuthenticated: false });
+        set({ user: null, token: null, isAuthenticated: false, showOnboarding: false });
         if (supabase) {
           supabase.auth.signOut().catch(() => {});
         }
@@ -154,6 +165,14 @@ export const useAuthStore = create<AuthStore>()(
       setAuthModalMode: (mode) => set({ authModalMode: mode }),
 
       clearPasswordRecovery: () => set({ authModalMode: null }),
+
+      completeOnboarding: () => {
+        set({ hasCompletedOnboarding: true, showOnboarding: false });
+      },
+
+      skipOnboarding: () => {
+        set({ hasCompletedOnboarding: true, showOnboarding: false });
+      },
 
       updateProfile: async (data) => {
         try {
@@ -187,7 +206,7 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'knowledgeos-auth',
-      partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
+      partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated, hasCompletedOnboarding: state.hasCompletedOnboarding }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           setAuthToken(state.token);
