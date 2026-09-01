@@ -2,6 +2,8 @@ import os
 import tempfile
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+
+from app.middleware.rate_limit import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -44,6 +46,7 @@ def _source_to_response(src: StandaloneSource) -> StandaloneSourceResponse:
 
 
 @router.post("/{session_id}/sources", response_model=StandaloneSourceResponse, status_code=201)
+@limiter.limit("10/minute")
 async def upload_source_text(
     session_id: str,
     request: Request,

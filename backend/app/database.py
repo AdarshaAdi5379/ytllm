@@ -6,7 +6,14 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from app.config import config as app_config
 
 
-engine = create_async_engine(app_config["database_url"], echo=False)
+engine = create_async_engine(
+    app_config["database_url"],
+    echo=False,
+    # Reconnect on stale/idle connections (managed Postgres / long-lived
+    # containers) and recycle connections so restarts never surface as 500s.
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

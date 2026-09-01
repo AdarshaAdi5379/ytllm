@@ -1,3 +1,17 @@
+"""In-memory background import-task registry.
+
+KNOWN PRODUCTION LIMITATION (intentionally deferred during the production
+readiness audit): task state lives only in this process's memory. If the
+backend restarts mid-import:
+  - in-flight imports are aborted (partially imported sources may exist
+    without embeddings — re-import the source),
+  - pollers receive status "unknown" and the frontend shows the import
+    as failed.
+This is acceptable for the public beta given single-replica deployment.
+If multi-replica or crash-resilient imports are needed, persist task state
+to Postgres instead.
+"""
+
 import asyncio
 import uuid
 import time

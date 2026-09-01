@@ -1,6 +1,8 @@
 import json
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
+from app.middleware.rate_limit import limiter
 from loguru import logger
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -231,7 +233,9 @@ async def flashcard_stats(
 
 
 @router.post("/generate", response_model=list[FlashcardResponse], status_code=201)
+@limiter.limit("10/minute")
 async def generate_flashcards(
+    request: Request,
     req: GenerateFlashcardsRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

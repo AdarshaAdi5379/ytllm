@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import config
 from app.database import init_db
@@ -77,6 +78,9 @@ app.add_middleware(
 
 # Rate limiting
 app.state.limiter = limiter
+# SlowAPIMiddleware enforces the limiter's default_limits on every route
+# (including guest-accessible endpoints) without needing per-route decorators.
+app.add_middleware(SlowAPIMiddleware)
 
 # Request logging
 @app.middleware("http")

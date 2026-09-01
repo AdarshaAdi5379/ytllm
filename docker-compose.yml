@@ -32,6 +32,9 @@ services:
 
   backend:
     build: ./backend
+    # Trust the nginx/compose proxy so get_remote_address() sees real client IPs
+    # (required for correct per-client rate limiting).
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3001", "--proxy-headers", "--forwarded-allow-ips", "*"]
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-knowledgeos}
       VECTOR_STORAGE_PATH: /app/data/vectors
@@ -59,7 +62,12 @@ services:
           memory: 1G
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # Public values only (anon key) — safe to bake into the static bundle.
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     environment:

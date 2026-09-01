@@ -1,6 +1,8 @@
 import asyncio
 import time
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+
+from app.middleware.rate_limit import limiter
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -26,7 +28,9 @@ class TranscriptRequest(BaseModel):
 
 
 @router.post("/")
+@limiter.limit("5/minute")
 async def load_transcript(
+    request: Request,
     req: TranscriptRequest,
     res: Response,
     user: User | None = Depends(get_optional_user),

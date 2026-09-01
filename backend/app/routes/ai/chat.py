@@ -1,7 +1,9 @@
 import json
 import re
 import time
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+
+from app.middleware.rate_limit import limiter
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import BaseModel
@@ -147,7 +149,8 @@ async def generate_stream(req: ChatRequest, current_user: User | None = None):
 
 
 @router.post("/single")
-async def chat_single(req: ChatRequest, user: User | None = Depends(get_optional_user)):
+@limiter.limit("10/minute")
+async def chat_single(request: Request, req: ChatRequest, user: User | None = Depends(get_optional_user)):
     """Stream a chat response against a single source (SSE)."""
     return StreamingResponse(
         generate_stream(req, current_user=user),
@@ -161,7 +164,8 @@ async def chat_single(req: ChatRequest, user: User | None = Depends(get_optional
 
 
 @router.post("/multi")
-async def chat_multi(req: MultiChatRequest):
+@limiter.limit("10/minute")
+async def chat_multi(request: Request, req: MultiChatRequest):
     """Stream a chat response across multiple sources (SSE)."""
     if not req.video_ids:
         raise HTTPException(
@@ -359,7 +363,9 @@ def _parse_duration_to_seconds(duration: str) -> int:
 # ---------------------------------------------------------------------------
 
 @router.post("/workspace/{workspace_id}")
+@limiter.limit("10/minute")
 async def chat_workspace(
+    request: Request,
     workspace_id: str,
     req: WorkspaceChatRequest,
     response: Response,

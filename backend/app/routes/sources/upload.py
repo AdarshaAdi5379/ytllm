@@ -1,5 +1,7 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
+
+from app.middleware.rate_limit import limiter
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,7 +67,9 @@ def _title_from_filename(filename: str) -> str:
 
 
 @router.post("/import")
+@limiter.limit("10/minute")
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     workspace_id: str = Form(...),
     folder_id: str | None = Form(None),

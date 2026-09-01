@@ -11,6 +11,7 @@ from app.services.auth_service import get_optional_user
 from app.db_models import User, StandaloneSession, StandaloneMessage, StandaloneSource
 from app.models import StandaloneChatRequest
 from app.services import embedding_service, llm_service, memory_service
+from app.middleware.rate_limit import limiter
 from app.config import config
 
 router = APIRouter()
@@ -223,6 +224,7 @@ At the end of each response, gently remind the user that they can add sources (t
 
 
 @router.post("/{session_id}/chat")
+@limiter.limit("10/minute")
 async def standalone_chat(
     session_id: str,
     req: StandaloneChatRequest,

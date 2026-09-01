@@ -1,6 +1,8 @@
 import json
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
+from app.middleware.rate_limit import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -57,7 +59,9 @@ async def start_mentor_session(
 
 
 @router.post("/respond")
+@limiter.limit("10/minute")
 async def respond_mentor(
+    request: Request,
     req: MentorRespondRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
