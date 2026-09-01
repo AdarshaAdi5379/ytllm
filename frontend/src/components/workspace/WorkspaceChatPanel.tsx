@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, Youtube, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Brain, BookOpen, Zap, BarChart3, GraduationCap, Paperclip, Globe, FileText, Upload } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Paperclip, Globe, FileText, Upload } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem, importTextSource, importWebsiteSource, uploadDocument } from '../../api/workspace';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useAppStore } from '../../store/useAppStore';
 import { HomeDashboard } from './HomeDashboard';
 import { NotesPanel } from './NotesPanel';
 import { SearchPanel } from './SearchPanel';
@@ -23,15 +24,20 @@ export function WorkspaceChatPanel() {
     loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming, clearMessages,
   } = useChatSessionStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const viewMode = useAppStore((s) => s.viewMode);
+  const setViewMode = useAppStore((s) => s.setViewMode);
 
   const [input, setInput] = useState('');
   const [showSessions, setShowSessions] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [citationsMap, setCitationsMap] = useState<Record<number, any[]>>({});
-  const [viewMode, setViewMode] = useState<'home' | 'chat' | 'notes' | 'search' | 'summary' | 'flashcard' | 'quiz' | 'path' | 'revision' | 'progress' | 'mentor'>('home');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedTemperature, setSelectedTemperature] = useState(0.2);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  // Track the previous workspace so we only reset the view on a real workspace
+  // switch — not on initial mount, which would clobber a user-selected viewMode.
+  const prevWorkspaceRef = useRef<string | null>(null);
 
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [attachType, setAttachType] = useState<'text' | 'url' | 'file'>('text');
@@ -52,8 +58,19 @@ export function WorkspaceChatPanel() {
   ];
 
   useEffect(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
     if (activeWorkspaceId && isAuthenticated) {
+      const isWorkspaceSwitch = prevWorkspaceRef.current !== null && prevWorkspaceRef.current !== activeWorkspaceId;
+      prevWorkspaceRef.current = activeWorkspaceId;
       clearMessages();
+      setCitationsMap({});
+      setRecentSources([]);
+      if (isWorkspaceSwitch) {
+        setViewMode('home');
+      }
       loadSessions(activeWorkspaceId);
     }
   }, [activeWorkspaceId, isAuthenticated]);
@@ -127,7 +144,7 @@ export function WorkspaceChatPanel() {
       timestamp: m.timestamp,
     }));
 
-    streamWorkspaceChat(
+    const controller = streamWorkspaceChat(
       activeWorkspaceId,
       {
         session_id: activeSessionId || undefined,
@@ -137,7 +154,6 @@ export function WorkspaceChatPanel() {
         temperature: selectedTemperature,
       },
       (token) => {
-        // Accumulate token into the last assistant message
         const { messages: msgs } = useChatSessionStore.getState();
         const last = msgs[msgs.length - 1];
         if (last && last.role === 'assistant') {
@@ -149,9 +165,9 @@ export function WorkspaceChatPanel() {
         }
       },
       (meta) => {
-        // Meta event — refresh sessions (new session_id may have been created)
-        if (activeWorkspaceId) {
-          loadSessions(activeWorkspaceId);
+        const wid = useWorkspaceStore.getState().activeWorkspaceId;
+        if (wid) {
+          loadSessions(wid);
         }
       },
       (error) => {
@@ -160,8 +176,9 @@ export function WorkspaceChatPanel() {
       },
       () => {
         setStreaming(false);
-        if (activeWorkspaceId) {
-          loadSessions(activeWorkspaceId);
+        const wid = useWorkspaceStore.getState().activeWorkspaceId;
+        if (wid) {
+          loadSessions(wid);
         }
       },
       (citations) => {
@@ -170,9 +187,13 @@ export function WorkspaceChatPanel() {
         setCitationsMap((prev) => ({ ...prev, [assistantIdx]: citations }));
       },
       (name) => {
-        renameWorkspace(activeWorkspaceId, name);
+        const wid = useWorkspaceStore.getState().activeWorkspaceId;
+        if (wid) {
+          renameWorkspace(wid, name);
+        }
       },
     );
+    abortRef.current = controller;
   };
 
   const handleNewChat = async () => {
@@ -228,96 +249,23 @@ export function WorkspaceChatPanel() {
             New Chat
           </button>
           <div className="w-px h-4 bg-gray-200" />
-          <button
-            onClick={() => setViewMode('chat')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'chat' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <MessageSquare size={12} />
-            Chat
-          </button>
-          <button
-            onClick={() => setViewMode('notes')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'notes' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Book size={12} />
-            Notes
-          </button>
-          <button
-            onClick={() => setViewMode('search')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'search' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Search size={12} />
-            Search
-          </button>
-          <button
-            onClick={() => setViewMode('summary')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'summary' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Sparkles size={12} />
-            Summaries
-          </button>
-          <button
-            onClick={() => setViewMode('flashcard')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'flashcard' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Brain size={12} />
-            Flashcards
-          </button>
-          <button
-            onClick={() => setViewMode('quiz')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'quiz' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Brain size={12} />
-            Quizzes
-          </button>
-          <button
-            onClick={() => setViewMode('path')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'path' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <BookOpen size={12} />
-            Learning Path
-          </button>
-          <button
-            onClick={() => setViewMode('revision')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'revision' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Zap size={12} />
-            Daily Revision
-          </button>
-          <button
-            onClick={() => setViewMode('mentor')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'mentor' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <GraduationCap size={12} />
-            Mentor
-          </button>
-          <button
-            onClick={() => setViewMode('progress')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              viewMode === 'progress' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <BarChart3 size={12} />
-            Progress
-          </button>
+          {[
+            { mode: 'chat' as const, icon: <MessageSquare size={12} />, label: 'Chat' },
+            { mode: 'notes' as const, icon: <Book size={12} />, label: 'Notes' },
+            { mode: 'search' as const, icon: <Search size={12} />, label: 'Search' },
+            { mode: 'summary' as const, icon: <Sparkles size={12} />, label: 'Summary' },
+          ].map((tab) => (
+            <button
+              key={tab.mode}
+              onClick={() => setViewMode(tab.mode)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                viewMode === tab.mode ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
         </div>
         <div className="flex items-center gap-2">
           <ActionsToolbar />
@@ -332,7 +280,7 @@ export function WorkspaceChatPanel() {
           {showSettings && (
             <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-50 space-y-3">
               <div>
-                <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1.5">Model</label>
+                <label className="block text-[10px] font-medium text-gray-500 mb-1.5">Model</label>
                 <select
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
@@ -345,7 +293,7 @@ export function WorkspaceChatPanel() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1.5">
+                <label className="block text-[10px] font-medium text-gray-500 mb-1.5">
                   Temperature: {selectedTemperature.toFixed(1)}
                 </label>
                 <input
@@ -543,7 +491,7 @@ export function WorkspaceChatPanel() {
                           <button
                             key={t}
                             onClick={() => setAttachType(t)}
-                            className={`flex-1 py-1.5 text-[11px] font-bold uppercase rounded-lg transition-colors ${
+                            className={`flex-1 py-1.5 text-[11px] font-medium rounded-lg transition-colors ${
                               attachType === t
                                 ? 'bg-indigo-600 text-white'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'

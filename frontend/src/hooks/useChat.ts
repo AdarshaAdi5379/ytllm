@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useVideoStore } from '../store/useVideoStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { seekPlayer } from '../components/video/VideoPlayer';
+import { API_BASE } from '../api/client';
 import type { Message } from '../../../shared/types';
 
 export function useChat(videoId: string | null) {
@@ -28,7 +29,7 @@ export function useChat(videoId: string | null) {
       setStreaming(videoId, true);
 
       try {
-        const endpoint = parsed.mode === 'multi' ? '/api/chat/multi/' : '/api/chat/';
+        const endpoint = parsed.mode === 'multi' ? `${API_BASE}/chat/multi/` : `${API_BASE}/chat/`;
         const body =
           parsed.mode === 'multi'
             ? {

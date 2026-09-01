@@ -2,7 +2,7 @@
 
 ## Overview
 
-KnowledgeOS uses **Supabase Auth** as its primary identity provider, with a legacy bcrypt/pyjwt fallback for backward compatibility. The backend (FastAPI) remains the source of truth for all application data — Supabase handles authentication only.
+Scritur uses **Supabase Auth** as its primary identity provider, with a legacy bcrypt/pyjwt fallback for backward compatibility. The backend (FastAPI) remains the source of truth for all application data — Supabase handles authentication only.
 
 **Key principles:**
 - Backend verifies Supabase JWTs locally using `pyjwt` (no HTTP round-trip to Supabase on every request)

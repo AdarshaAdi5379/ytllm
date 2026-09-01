@@ -1,0 +1,17 @@
+node_modules
+frontend/node_modules
+backend/venv
+__pycache__
+*.pyc
+.git
+.env
+.env.local
+frontend/.env
+frontend/.env.local
+backend/.env
+*.md
+!README.md
+.vscode
+.idea
+frontend/dist
+backend/data/vectors

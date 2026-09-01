@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     # Rate limits
     requests_per_minute: int = 30
 
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",")]
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -78,10 +82,15 @@ except Exception as e:
     sys.exit(1)
 
 
+def get_settings() -> Settings:
+    return settings
+
+
 # Validate required config
 _required_in_prod = {
     "openai_api_key": "OPENAI_API_KEY",
     "jwt_secret": "JWT_SECRET",
+    "database_url": "DATABASE_URL",
 }
 if settings.node_env == "production":
     for val, name in _required_in_prod.items():
@@ -114,7 +123,7 @@ config = {
     "enable_llm_enrichment": settings.enable_llm_enrichment,
     "port": settings.port,
     "node_env": settings.node_env,
-    "cors_origins": [origin.strip() for origin in settings.cors_origins.split(",")],
+    "cors_origins": settings.cors_origins_list,
     "sentry_dsn": settings.sentry_dsn,
     "log_level": settings.log_level,
     "json_logs": settings.json_logs,

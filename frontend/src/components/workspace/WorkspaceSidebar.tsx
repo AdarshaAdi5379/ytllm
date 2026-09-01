@@ -1,21 +1,24 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Plus, FolderPlus, FolderOpen, Folder, ChevronRight, ChevronDown,
-  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield, Upload, File, AlertCircle,
+  Loader2, MoreHorizontal, Pencil, Trash2, Check, X, Youtube, ExternalLink, MessageSquare, Globe, FileText, Code, Github, Shield, File, AlertCircle,
+  Zap, Brain, BookOpen, GraduationCap, BarChart3, Sparkles,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useVideoStore } from '../../store/useVideoStore';
+import { useAppStore } from '../../store/useAppStore';
 import { useImportStore } from '../../store/useImportStore';
 import { ImportNotifications } from './ImportNotifications';
 import { MembersPanel } from './MembersPanel';
+import { AddSourceMenu } from '../shared/AddSourceMenu';
 import {
   fetchSources, fetchUnfiledSources, deleteSource,
-  importYouTubeSource, importWebsiteSource, importMarkdownSource, importTextSource,
-  importYouTubeSourceBackground, importWebsiteSourceBackground,
+  importYouTubeSourceBackground,
+  importWebsiteSourceBackground,
   importMarkdownSourceBackground, importTextSourceBackground,
   importGitHubSourceBackground, previewGitHubRepo,
-  uploadDocumentBackground, uploadDocument,
+  uploadDocumentBackground,
   pollImportTask,
   type FolderTreeItem, type SourceItem,
 } from '../../api/workspace';
@@ -30,23 +33,13 @@ export function WorkspaceSidebarContent() {
   } = useWorkspaceStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const openAddVideoModal = useVideoStore((s) => s.openAddVideoModal);
+  const viewMode = useAppStore((s) => s.viewMode);
+  const setViewMode = useAppStore((s) => s.setViewMode);
 
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreatingWs, setIsCreatingWs] = useState(false);
   const [newWsName, setNewWsName] = useState('New Workspace');
   const [addingFolder, setAddingFolder] = useState(false);
-  const [showWebsiteImport, setShowWebsiteImport] = useState(false);
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [importingWebsite, setImportingWebsite] = useState(false);
-  const [showMarkdownImport, setShowMarkdownImport] = useState(false);
-  const [markdownContent, setMarkdownContent] = useState('');
-  const [markdownTitle, setMarkdownTitle] = useState('');
-  const [importingMarkdown, setImportingMarkdown] = useState(false);
-  const [showTextImport, setShowTextImport] = useState(false);
-  const [textContent, setTextContent] = useState('');
-  const [textTitle, setTextTitle] = useState('');
-  const [importingText, setImportingText] = useState(false);
-  const [importingUpload, setImportingUpload] = useState(false);
   const [showGitHubImport, setShowGitHubImport] = useState(false);
   const [gitHubUrl, setGitHubUrl] = useState('');
   const [importingGitHub, setImportingGitHub] = useState(false);
@@ -117,52 +110,6 @@ export function WorkspaceSidebarContent() {
       importYouTubeSourceBackground(activeWorkspaceId, url.trim(), folderId),
     );
   }, [activeWorkspaceId, loadFolderTree]);
-
-  const handleImportWebsite = async () => {
-    if (!activeWorkspaceId || !websiteUrl.trim()) return;
-    const jobId = addJob('website_page', websiteUrl.trim());
-    setImportingWebsite(true);
-    doBackgroundImport(
-      jobId,
-      importWebsiteSourceBackground(activeWorkspaceId, websiteUrl.trim()),
-      () => { setImportingWebsite(false); setWebsiteUrl(''); setShowWebsiteImport(false); },
-    );
-  };
-
-  const handleImportMarkdown = async () => {
-    if (!activeWorkspaceId || !markdownContent.trim()) return;
-    const title = markdownTitle.trim() || 'Markdown note';
-    const jobId = addJob('markdown_note', title);
-    setImportingMarkdown(true);
-    doBackgroundImport(
-      jobId,
-      importMarkdownSourceBackground(activeWorkspaceId, markdownContent.trim(), markdownTitle.trim()),
-      () => { setImportingMarkdown(false); setMarkdownContent(''); setMarkdownTitle(''); setShowMarkdownImport(false); },
-    );
-  };
-
-  const handleImportText = async () => {
-    if (!activeWorkspaceId || !textContent.trim()) return;
-    const title = textTitle.trim() || 'Text note';
-    const jobId = addJob('text_note', title);
-    setImportingText(true);
-    doBackgroundImport(
-      jobId,
-      importTextSourceBackground(activeWorkspaceId, textContent.trim(), textTitle.trim()),
-      () => { setImportingText(false); setTextContent(''); setTextTitle(''); setShowTextImport(false); },
-    );
-  };
-
-  const handleUploadDocument = async (file: File) => {
-    if (!activeWorkspaceId) return;
-    const jobId = addJob('document_upload', file.name);
-    setImportingUpload(true);
-    doBackgroundImport(
-      jobId,
-      uploadDocumentBackground(activeWorkspaceId, file, file.name),
-      () => { setImportingUpload(false); },
-    );
-  };
 
   const handleImportGitHub = async () => {
     if (!activeWorkspaceId || !gitHubUrl.trim()) return;
@@ -343,264 +290,41 @@ export function WorkspaceSidebarContent() {
         )}
       </div>
 
-      {/* Add source buttons (workspace-level) */}
-      <div className="px-3 mb-1 space-y-1">
-        <button
-          onClick={openAddVideoModal}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 transition-all"
-        >
-          <Youtube size={12} />
-          <span>Add YouTube Video</span>
-        </button>
-        <button
-          onClick={() => setShowWebsiteImport(!showWebsiteImport)}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 transition-all"
-        >
-          <Globe size={12} />
-          <span>Import Website</span>
-        </button>
-        {showWebsiteImport && (
-          <div className="flex items-center gap-1 pt-1">
-            <input
-              autoFocus
-              value={websiteUrl}
-              onChange={(e) => setWebsiteUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleImportWebsite();
-                if (e.key === 'Escape') { setShowWebsiteImport(false); setWebsiteUrl(''); }
-              }}
-              placeholder="https://..."
-              className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-emerald-500"
-            />
-            <button
-              onClick={handleImportWebsite}
-              disabled={importingWebsite}
-              className="p-0.5 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
-            >
-              {importingWebsite ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-            </button>
-            <button
-              onClick={() => { setShowWebsiteImport(false); setWebsiteUrl(''); }}
-              className="p-0.5 text-slate-500 hover:text-slate-300"
-            >
-              <X size={10} />
-            </button>
-          </div>
-        )}
-        <button
-          onClick={() => document.getElementById('document-upload-input')?.click()}
-          disabled={importingUpload}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/20 text-rose-300 hover:bg-rose-600/30 transition-all disabled:opacity-50"
-        >
-          <Upload size={12} />
-          <span>{importingUpload ? 'Uploading...' : 'Upload Document'}</span>
-        </button>
-        <input
-          id="document-upload-input"
-          type="file"
-          accept=".pdf,.docx,.pptx,.ppt,.txt,.md"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleUploadDocument(file);
-            e.target.value = '';
+      {/* Add source */}
+      <div className="px-3 mb-1">
+        <AddSourceMenu
+          onYouTubeImport={openAddVideoModal}
+          onWebsiteImport={async (url) => {
+            if (!activeWorkspaceId) return;
+            const jobId = addJob('website_page', url);
+            doBackgroundImport(jobId, importWebsiteSourceBackground(activeWorkspaceId, url));
           }}
+          onDocumentUpload={async (file) => {
+            if (!activeWorkspaceId) return;
+            const jobId = addJob('document_upload', file.name);
+            doBackgroundImport(jobId, uploadDocumentBackground(activeWorkspaceId, file, file.name));
+          }}
+          onMarkdownImport={async (title, content) => {
+            if (!activeWorkspaceId) return;
+            const jobId = addJob('markdown_note', title);
+            doBackgroundImport(jobId, importMarkdownSourceBackground(activeWorkspaceId, content, title));
+          }}
+          onTextImport={async (title, content) => {
+            if (!activeWorkspaceId) return;
+            const jobId = addJob('text_note', title);
+            doBackgroundImport(jobId, importTextSourceBackground(activeWorkspaceId, content, title));
+          }}
+          onGitHubImport={async (url) => {
+            setGitHubUrl(url);
+            setShowGitHubImport(true);
+          }}
+          disabled={!activeWorkspaceId}
         />
-        <div className="text-[10px] text-slate-600 px-1 pt-0.5">PDF, DOCX, PPTX, TXT, MD</div>
-        <button
-          onClick={() => setShowMarkdownImport(!showMarkdownImport)}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-600/20 text-amber-300 hover:bg-amber-600/30 transition-all"
-        >
-          <Code size={12} />
-          <span>Add Markdown</span>
-        </button>
-        {showMarkdownImport && (
-          <div className="pt-1 space-y-1">
-            <input
-              value={markdownTitle}
-              onChange={(e) => setMarkdownTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') { setShowMarkdownImport(false); setMarkdownContent(''); setMarkdownTitle(''); }
-              }}
-              placeholder="Title (optional)"
-              className="w-full bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-amber-500"
-            />
-            <textarea
-              autoFocus
-              value={markdownContent}
-              onChange={(e) => setMarkdownContent(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') { setShowMarkdownImport(false); setMarkdownContent(''); setMarkdownTitle(''); }
-              }}
-              placeholder="Paste your markdown content here..."
-              rows={4}
-              className="w-full bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-amber-500 resize-none"
-            />
-            <div className="flex items-center justify-end gap-1">
-              <button
-                onClick={() => { setShowMarkdownImport(false); setMarkdownContent(''); setMarkdownTitle(''); }}
-                className="px-2 py-0.5 text-xs text-slate-500 hover:text-slate-300"
-              >
-                <X size={10} className="inline mr-0.5" /> Cancel
-              </button>
-              <button
-                onClick={handleImportMarkdown}
-                disabled={importingMarkdown || !markdownContent.trim()}
-                className="px-2 py-0.5 text-xs text-amber-400 hover:text-amber-300 disabled:opacity-50 flex items-center gap-1"
-              >
-                {importingMarkdown ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-                {importingMarkdown ? 'Importing...' : 'Import'}
-              </button>
-            </div>
-          </div>
-        )}
-        <button
-          onClick={() => setShowTextImport(!showTextImport)}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-600/20 text-slate-300 hover:bg-slate-600/30 transition-all"
-        >
-          <FileText size={12} />
-          <span>Add Text</span>
-        </button>
-        {showTextImport && (
-          <div className="pt-1 space-y-1">
-            <input
-              value={textTitle}
-              onChange={(e) => setTextTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') { setShowTextImport(false); setTextContent(''); setTextTitle(''); }
-              }}
-              placeholder="Title (optional)"
-              className="w-full bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-slate-400"
-            />
-            <textarea
-              autoFocus
-              value={textContent}
-              onChange={(e) => setTextContent(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') { setShowTextImport(false); setTextContent(''); setTextTitle(''); }
-              }}
-              placeholder="Paste your text content here..."
-              rows={4}
-              className="w-full bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-slate-400 resize-none"
-            />
-            <div className="flex items-center justify-end gap-1">
-              <button
-                onClick={() => { setShowTextImport(false); setTextContent(''); setTextTitle(''); }}
-                className="px-2 py-0.5 text-xs text-slate-500 hover:text-slate-300"
-              >
-                <X size={10} className="inline mr-0.5" /> Cancel
-              </button>
-              <button
-                onClick={handleImportText}
-                disabled={importingText || !textContent.trim()}
-                className="px-2 py-0.5 text-xs text-slate-300 hover:text-white disabled:opacity-50 flex items-center gap-1"
-              >
-                {importingText ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-                {importingText ? 'Importing...' : 'Import'}
-              </button>
-            </div>
-          </div>
-        )}
-        <button
-          onClick={() => setShowGitHubImport(!showGitHubImport)}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-600/20 text-slate-300 hover:bg-slate-600/30 transition-all"
-        >
-          <Github size={12} />
-          <span>Import GitHub Repo</span>
-        </button>
-        {showGitHubImport && (
-          <div className="pt-1 space-y-1">
-            <div className="flex items-center gap-1">
-              <input
-                autoFocus
-                value={gitHubUrl}
-                onChange={(e) => { setGitHubUrl(e.target.value); setPreviewData(null); setGitHubPreviewError(''); setSelectedGitHubFiles(new Set()); }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !previewData) handleGitHubPreview();
-                  if (e.key === 'Escape') { setShowGitHubImport(false); setGitHubUrl(''); setPreviewData(null); }
-                }}
-                placeholder="https://github.com/owner/repo"
-                className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-slate-400"
-              />
-              {!previewData ? (
-                <button
-                  onClick={handleGitHubPreview}
-                  disabled={previewLoading || !gitHubUrl.trim()}
-                  className="px-1.5 py-0.5 text-[10px] bg-slate-700 rounded text-slate-300 hover:text-white disabled:opacity-50"
-                >
-                  {previewLoading ? <Loader2 size={10} className="animate-spin" /> : 'Preview'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleImportGitHub}
-                  disabled={importingGitHub}
-                  className="p-0.5 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
-                  title={selectedGitHubFiles.size > 0 ? `Import ${selectedGitHubFiles.size} files` : 'Import All'}
-                >
-                  {importingGitHub ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-                </button>
-              )}
-              <button
-                onClick={() => { setShowGitHubImport(false); setGitHubUrl(''); setPreviewData(null); setGitHubPreviewError(''); setSelectedGitHubFiles(new Set()); }}
-                className="p-0.5 text-slate-500 hover:text-slate-300"
-              >
-                <X size={10} />
-              </button>
-            </div>
-
-            {gitHubPreviewError && (
-              <div className="flex items-start gap-1 px-1 py-1 text-[10px] text-rose-400/90">
-                <AlertCircle size={10} className="mt-0.5 flex-shrink-0" />
-                <span>{gitHubPreviewError}</span>
-              </div>
-            )}
-
-            {previewData && (
-              <div className="bg-slate-800/50 rounded-lg border border-slate-700/50">
-                <div className="flex items-center justify-between px-2 py-1">
-                  <span className="text-[10px] text-slate-400">
-                    {selectedGitHubFiles.size}/{previewData.importable_files} files selected
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        setSelectedGitHubFiles(new Set(previewData.file_tree.filter((e) => e.type === 'blob').map((e) => e.path)));
-                      }}
-                      className="text-[10px] text-slate-500 hover:text-slate-300 px-1"
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setSelectedGitHubFiles(new Set())}
-                      className="text-[10px] text-slate-500 hover:text-slate-300 px-1"
-                    >
-                      None
-                    </button>
-                  </div>
-                </div>
-                <div className="max-h-40 overflow-y-auto border-t border-slate-700/50">
-                  <GitHubFilePreviewTree
-                    entries={previewData.file_tree}
-                    selectedFiles={selectedGitHubFiles}
-                    onToggle={(path) => {
-                      setSelectedGitHubFiles((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(path)) next.delete(path);
-                        else next.add(path);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Folders */}
       <div className="px-3 mb-2 flex items-center justify-between">
-        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Folders</span>
+        <span className="text-[10px] font-medium text-slate-500">Folders</span>
         <button
           onClick={() => setAddingFolder(true)}
           className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-all"
@@ -658,10 +382,10 @@ export function WorkspaceSidebarContent() {
       {/* Unfiled sources */}
       {activeWorkspaceId && (
         <div className="px-3 pt-3 pb-1">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-            Unfiled
+          <span className="text-[10px] font-medium text-slate-500">
+            Unfiled sources
             {unfiledSources.length > 0 && (
-              <span className="ml-1 text-[10px] text-slate-600 font-mono font-normal">{unfiledSources.length}</span>
+              <span className="ml-1 text-[10px] text-slate-600 font-mono">{unfiledSources.length}</span>
             )}
           </span>
         </div>
@@ -688,6 +412,34 @@ export function WorkspaceSidebarContent() {
           />
         </div>
       ))}
+
+      {/* Learning section */}
+      <div className="px-3 pt-3 pb-1">
+        <span className="text-[10px] font-medium text-slate-500">Learning</span>
+      </div>
+      <div className="px-3 pb-2 space-y-0.5">
+        {([
+          { mode: 'flashcard' as const, icon: <Zap size={12} />, label: 'Flashcards' },
+          { mode: 'quiz' as const, icon: <Brain size={12} />, label: 'Quiz' },
+          { mode: 'path' as const, icon: <BookOpen size={12} />, label: 'Learning Path' },
+          { mode: 'revision' as const, icon: <GraduationCap size={12} />, label: 'Daily Revision' },
+          { mode: 'progress' as const, icon: <BarChart3 size={12} />, label: 'Progress' },
+          { mode: 'mentor' as const, icon: <Sparkles size={12} />, label: 'Mentor' },
+        ]).map((item) => (
+          <button
+            key={item.mode}
+            onClick={() => setViewMode(item.mode)}
+            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+              viewMode === item.mode
+                ? 'bg-indigo-500/20 text-indigo-300 font-medium'
+                : 'text-slate-400 hover:bg-slate-800/30 hover:text-slate-300'
+            }`}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
 
       <ImportNotifications />
       {showMembers && <MembersPanel onClose={() => setShowMembers(false)} />}
@@ -954,23 +706,23 @@ function SourceItemRow({
 }) {
   let meta: Record<string, any> = {};
   try { meta = JSON.parse(source.metadata_json); } catch {}
-  let icon = <ExternalLink size={10} className="text-slate-500 flex-shrink-0" />;
+  let icon = <ExternalLink size={10} className="text-slate-400 flex-shrink-0" />;
   if (source.source_type === 'youtube_video') {
-    icon = <Youtube size={10} className="text-red-400 flex-shrink-0" />;
+    icon = <Youtube size={10} className="text-slate-400 flex-shrink-0" />;
   } else if (source.source_type === 'pdf_document') {
-    icon = <FileText size={10} className="text-rose-400 flex-shrink-0" />;
+    icon = <FileText size={10} className="text-slate-400 flex-shrink-0" />;
   } else if (source.source_type === 'website_page') {
-    icon = <Globe size={10} className="text-emerald-400 flex-shrink-0" />;
+    icon = <Globe size={10} className="text-slate-400 flex-shrink-0" />;
   } else if (source.source_type === 'markdown_note') {
-    icon = <Code size={10} className="text-amber-400 flex-shrink-0" />;
+    icon = <Code size={10} className="text-slate-400 flex-shrink-0" />;
   } else if (source.source_type === 'text_note') {
     icon = <FileText size={10} className="text-slate-400 flex-shrink-0" />;
   } else if (source.source_type === 'docx_document') {
-    icon = <FileText size={10} className="text-blue-400 flex-shrink-0" />;
+    icon = <FileText size={10} className="text-slate-400 flex-shrink-0" />;
   } else if (source.source_type === 'pptx_document') {
-    icon = <FileText size={10} className="text-orange-400 flex-shrink-0" />;
+    icon = <FileText size={10} className="text-slate-400 flex-shrink-0" />;
   } else if (source.source_type === 'github_repo') {
-    icon = <Github size={10} className="text-slate-300 flex-shrink-0" />;
+    icon = <Github size={10} className="text-slate-400 flex-shrink-0" />;
   }
   const { activeSourceId, setActiveSource } = useWorkspaceStore();
   const isFocused = activeSourceId === source.id;

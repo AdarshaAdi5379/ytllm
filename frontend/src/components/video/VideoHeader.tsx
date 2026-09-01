@@ -23,57 +23,54 @@ export function VideoHeader({ videoId }: Props) {
         <div className="flex-1 min-w-0 flex items-center gap-4">
           <button
             onClick={() => setActiveVideo(null)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all flex-shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all flex-shrink-0"
             title="Back to home"
           >
             <ArrowLeft size={14} />
             Home
           </button>
-          <div className="flex-shrink-0 flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"></div>
-            Live Chatting
-          </div>
           <div className="flex flex-col min-w-0">
-            <h2 className="font-bold text-slate-800 truncate text-base leading-tight tracking-tight">
+            <h2 className="font-bold text-slate-800 truncate text-base leading-tight">
               {video.title}
             </h2>
             <div className="flex items-center gap-2 mt-1">
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-                <Youtube size={10} className="text-rose-500" />
+              <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                <Youtube size={10} className="text-slate-400" />
                 {video.channelName}
               </div>
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{video.duration}</span>
+              <span className="text-[11px] text-slate-400">·</span>
+              <span className="text-[11px] text-slate-400">{video.duration}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setPlayerOpen(videoId, !isPlayerOpen)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               isPlayerOpen
-                ? 'bg-indigo-100 text-indigo-600 border border-indigo-200 shadow-sm'
-                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200'
+                ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200'
             }`}
             title={isPlayerOpen ? 'Hide video player' : 'Show video player'}
           >
-            {isPlayerOpen ? <MonitorOff size={14} /> : <Monitor size={14} />}
-            {isPlayerOpen ? 'Hide Player' : 'Watch'}
+            {isPlayerOpen ? <MonitorOff size={13} /> : <Monitor size={13} />}
+            {isPlayerOpen ? 'Hide' : 'Watch'}
           </button>
           <a
             href={getYouTubeUrl(videoId)}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2 py-2 rounded-xl text-slate-300 hover:text-slate-500 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
             title="Open in YouTube"
           >
             <ExternalLink size={14} />
           </a>
           <button
             onClick={() => setShowExportModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs font-bold uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors"
           >
-            <Download size={14} />
+            <Download size={13} />
             Export
           </button>
         </div>

@@ -67,7 +67,7 @@ export function FooterSection() {
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-sm">
                 <span className="text-white font-bold text-xs">K</span>
               </div>
-              <span className="font-bold text-sm text-gray-900">KnowledgeOS</span>
+              <span className="font-bold text-sm text-gray-900">Scritur</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed mb-5 max-w-xs">
               An AI powered learning workspace that helps you understand, practice, and remember everything you learn.
@@ -129,7 +129,7 @@ export function FooterSection() {
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-gray-400 text-center sm:text-left">
-            &copy; 2026 KnowledgeOS. Built for people who want to learn deeply.
+            &copy; 2026 Scritur. Built for people who want to learn deeply.
           </p>
           <p className="text-xs text-gray-400 font-mono">v0.1.0</p>
         </div>

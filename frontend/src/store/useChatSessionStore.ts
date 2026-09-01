@@ -19,6 +19,7 @@ interface ChatSessionStore {
   createSession: (workspaceId: string, title?: string, sourceIds?: string[], model?: string, temperature?: number) => Promise<ChatSessionItem>;
   setActiveSession: (workspaceId: string, sessionId: string | null) => Promise<void>;
   deleteSessionFromStore: (workspaceId: string, sessionId: string) => Promise<void>;
+  addSession: (session: ChatSessionItem) => void;
   addMessage: (msg: ChatMessage) => void;
   setStreaming: (v: boolean) => void;
   clearMessages: () => void;
@@ -77,6 +78,12 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
       activeSessionId: activeSessionId === sessionId ? null : activeSessionId,
       messages: activeSessionId === sessionId ? [] : get().messages,
     });
+  },
+
+  addSession: (session) => {
+    set((state) => ({
+      sessions: [session, ...state.sessions.filter((s) => s.id !== session.id)],
+    }));
   },
 
   addMessage: (msg) => {

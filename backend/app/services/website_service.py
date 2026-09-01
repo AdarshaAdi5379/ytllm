@@ -38,7 +38,7 @@ async def fetch_webpage(url: str) -> WebPageResult:
         resp = await client.get(
             url,
             headers={
-                "User-Agent": "Mozilla/5.0 (compatible; KnowledgeOS/1.0; +https://knowledgeos.app)",
+                "User-Agent": "Mozilla/5.0 (compatible; Scritur/1.0)",
             },
         )
         resp.raise_for_status()

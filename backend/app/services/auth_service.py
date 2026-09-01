@@ -44,11 +44,13 @@ async def get_optional_user(
 
     token = credentials.credentials
 
+    # Try Supabase token verification first
     if config.get("supabase_url"):
         user = await get_local_user_from_supabase_token(token, db)
         if user:
             return user
 
+    # Fall back to legacy JWT
     payload = decode_token(token)
     if payload is None:
         return None
@@ -64,25 +66,39 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     if credentials is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "NOT_AUTHENTICATED", "message": "Authentication required. Please sign in."},
+        )
 
     token = credentials.credentials
 
+    # Try Supabase token verification first
     if config.get("supabase_url"):
         user = await get_local_user_from_supabase_token(token, db)
         if user:
             return user
 
+    # Fall back to legacy JWT
     payload = decode_token(token)
     if payload is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "INVALID_TOKEN", "message": "Your session has expired. Please sign in again."},
+        )
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "INVALID_TOKEN", "message": "Invalid authentication token."},
+        )
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "USER_NOT_FOUND", "message": "User account not found. Please sign in again."},
+        )
     return user
 
 

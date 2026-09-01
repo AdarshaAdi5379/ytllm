@@ -1,8 +1,8 @@
-# KnowledgeOS — V3: AI Tutor
+# Scritur — V3: AI Tutor
 
 **Goal:** Increase retention through active learning. Flashcards, spaced repetition, quizzes, learning paths, and an AI mentor that quizzes YOU.
 
-**Why this matters:** Passive consumption (chatting about a video) has low engagement. Active recall (flashcards, quizzes, AI asking YOU questions) is proven to increase retention 2-3x. This phase transforms KnowledgeOS from a reference tool into a real learning platform.
+**Why this matters:** Passive consumption (chatting about a video) has low engagement. Active recall (flashcards, quizzes, AI asking YOU questions) is proven to increase retention 2-3x. This phase transforms Scritur from a reference tool into a real learning platform.
 
 ---
 

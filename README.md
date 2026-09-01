@@ -1,4 +1,4 @@
-# KnowledgeOS
+# Scritur
 
 Your Personal AI Learning Operating System. Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one searchable AI tutor that remembers everything.
 

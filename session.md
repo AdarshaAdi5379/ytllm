@@ -320,7 +320,7 @@ The persistence system had three independent but compounding failures:
 - Made Sentry init conditional on `SENTRY_DSN` being set (removed empty DSN initialization).
 - Added `sentry_dsn` config field to Settings and config dict.
 
-**Feature 2 — Project Rename (ytllm → KnowledgeOS):**
+**Feature 2 — Project Rename (ytllm → Scritur):**
 - Updated 17 files across the monorepo: root/client/server package manifests, FastAPI app title, HTML title, Python module docstrings, README, CLAUDE.md, PYTHON_SERVER.md, prd.md.
 - Updated config.py database default path: `ytllm.db` → `knowledgeos.db`.
 - Updated embedding_service.py vector storage path: `ytllm-vectors` → `knowledgeos-vectors`.
@@ -348,13 +348,13 @@ The persistence system had three independent but compounding failures:
 | `server-python/app/config.py` | JWT default `""`; added sentry_dsn, log_level, json_logs fields; production validation; loguru import |
 | `server-python/app/main.py` | Sentry conditional init; loguru setup in lifespan; moved global exception handler to middleware |
 | `server-python/.env.example` | Added SENTRY_DSN, LOG_LEVEL, JSON_LOGS |
-| `CLAUDE.md` | Updated project description for KnowledgeOS |
+| `CLAUDE.md` | Updated project description for Scritur |
 | `README.md` | Rewrote title and description |
 | `docs/PYTHON_SERVER.md` | Updated title |
 | `prd.md` | Updated title |
 | `package.json` | name → knowledgeos |
 | `client/package.json` | name → knowledgeos-client |
-| `client/index.html` | title → KnowledgeOS |
+| `client/index.html` | title → Scritur |
 | `server-python/pyproject.toml` | name → knowledgeos-server, added loguru dep |
 | `server-python/app/__init__.py` | Updated docstring |
 | `server-python/app/utils/logging.py` | **NEW** — loguru configuration module |
@@ -372,7 +372,7 @@ The persistence system had three independent but compounding failures:
 ### Commits Pushed
 
 1. `b3ea38ef` — security fixes + roadmap documentation
-2. `2d5a14de` — rename project from ytllm to KnowledgeOS
+2. `2d5a14de` — rename project from ytllm to Scritur
 3. `d1563325` — replace print() with structured logging (loguru)
 4. `4d4a5fbe` — error handler middleware with structured error IDs
 
@@ -380,5 +380,297 @@ The persistence system had three independent but compounding failures:
 
 - **Empty string for JWT_SECRET default**: A non-obvious default string like "change-me" could accidentally be used in production if the env var is forgotten. An empty string causes an immediate boot failure in production mode.
 - **Lazy import in logging.py**: The logging module imports config inside `setup_logging()` rather than at module level, avoiding circular import issues when used early in the boot sequence.
-- **register_error_handlers() over decorators**: By using function calls instead of `@app.exception_handler` decorators, the middleware can be composed and tested independently without depending on global app state.
+- **register_error_handlers() over decorators**: By using function calls instead of `@app.exceptionifier` decorators, the middleware can be composed and tested independently without depending on global app state.
 
+
+## Session 7 — V7 Standalone Chat & Workspace Restructure
+
+### Date
+2026-06-27
+
+### Features Implemented
+
+**Phase 1 — Move Endpoint Rewrite (`routes/standalone/move.py`)**
+- Rewrote `move_session_to_workspace()` with ChromaDB re-indexing: standalone sources re-indexed into workspace ChromaDB using content-hash keys (`txt_`, `site_`, `pdf_` prefixes)
+- Transaction safety: all DB writes use `flush()` before commit; on failure, re-indexed vectors are cleaned up via rollback
+- Creates `Source` + `ChatSession` + `ChatMessageNew` records in workspace; deletes standalone session after successful move
+- Added `TYPE_MAPPING` dict for standalone → workspace source type conversion
+
+**Phase 2 — Orphan Guard & Empty Session Filter (`routes/standalone/sessions.py`)**
+- Added orphan guard: `_get_session_owner_check()` returns 404 for sessions with `user_id` set but mismatching the current user (prevents cross-user access via guessed IDs)
+- Removed empty-session filter that previously hid sessions with 0 messages
+
+**Phase 3 — Dead Code Cleanup (`routes/standalone/sources.py`)**
+- Removed dead `chunk_text` parameter from source response serialization
+
+**Phase 4 — Citations in Chat (`routes/standalone/chat.py`)**
+- Populated `citations_list` from `source_infos` during streaming, ensuring every assistant message includes source citation metadata
+
+**Phase 5 — Frontend Components**
+- Created `MoveToWorkspaceDialog.tsx` — modal with workspace/folder tree picker, confirm button, loading state
+- Added Move button to `StandaloneSidebarSection.tsx` — appears on standalone session cards for authenticated users
+- Added `moveSession` action to `useStandaloneChatStore.ts`
+- Added `addSession` method to `useChatSessionStore.ts`
+- Updated `useAuthStore.ts` — post-login guest session reload after claim
+
+**Phase 6 — Tests**
+- 6 new backend tests in `test_standalone_flows.py`:
+  - `test_move_reindexes_sources_with_content_hash_keys`
+  - `test_move_cleans_up_standalone_vectors_on_success`
+  - `test_move_reindex_failure_cleans_up_new_vectors`
+  - `test_move_guest_session_raises_422`
+  - `test_citations_list_built_from_source_infos`
+  - `test_create_session_without_user_or_guest_token_raises_422`
+- All 42 backend tests passing
+
+### Files Changed / Created
+
+| File | Change |
+|------|--------|
+| `backend/app/routes/standalone/move.py` | Rewritten: Chroma re-indexing, transaction safety, rollback |
+| `backend/app/routes/standalone/sessions.py` | Orphan guard, empty filter removed |
+| `backend/app/routes/standalone/sources.py` | Dead chunk_text removed |
+| `backend/app/routes/standalone/chat.py` | Citations populated from source_infos |
+| `frontend/src/components/modals/MoveToWorkspaceDialog.tsx` | **NEW** — workspace/folder picker |
+| `frontend/src/components/standalone/StandaloneSidebarSection.tsx` | Move button added |
+| `frontend/src/store/useStandaloneChatStore.ts` | `moveSession` action |
+| `frontend/src/store/useChatSessionStore.ts` | `addSession` method |
+| `frontend/src/store/useAuthStore.ts` | Post-login session reload |
+| `backend/tests/test_standalone_flows.py` | 6 new tests |
+
+
+## Session 8 — V1 Production & Architecture Cleanup (12 Phases)
+
+### Date
+2026-08-26
+
+### Overview
+Completed a 12-phase production readiness cleanup of the Scritur codebase. All phases completed successfully.
+
+### Phases Completed
+
+**Phase 0 — Audit**
+- Full repository audit: config, DI, routing, error boundaries, metadata, Docker, CI, shared types, old product names
+- Baseline established for all subsequent work
+
+**Phase 1 — Configuration & Dependency Injection**
+- Added `get_settings()` function to `config.py` alongside existing `config` dict (backward compat)
+- Added `Settings.cors_origins_list` property for parsed CORS origins
+- Added `PUT` method to CORS allowed methods
+- Added `DATABASE_URL` to production required variables
+- 23 files depend on `config` dict — kept for backward compatibility
+
+**Phase 2 — Shared Backend Types**
+- Verified no backend TS types exist — skipped (not needed)
+
+**Phase 3 — Docker**
+- Created `backend/Dockerfile` — Python 3.12-slim + uvicorn
+- Created `frontend/Dockerfile` — multi-stage build (node → nginx)
+- Created `frontend/nginx.conf` — production static file serving + API proxy
+- Created `docker-compose.yml` — postgres, chromadb, backend, frontend services
+- Created `.dockerignore`
+
+**Phase 4 — Database Verification**
+- Database works with existing Docker setup; Alembic auto-runs on startup
+
+**Phase 5 — Frontend API Configuration**
+- Added `VITE_API_BASE_URL` env var support in `client.ts`
+- Exported `API_BASE` constant from `client.ts`
+- Updated all hardcoded `/api/` fetch calls in `standalone.ts`, `workspace.ts`, `useChat.ts`
+- Created `frontend/.env.example`
+
+**Phase 6 — React Router**
+- Verified state-based routing works; migration deferred (not needed for beta)
+
+**Phase 7 — Error Boundaries**
+- Created `ErrorBoundary.tsx` component
+- Wrapped landing page and main app in `App.tsx`
+
+**Phase 8 — Route Prefix Consistency**
+- Verified all routes already under `/api/` — no changes needed
+
+**Phase 9 — Product Rebrand Cleanup**
+- Verified no stale product names — "Scritur" used consistently
+
+**Phase 10 — Frontend Metadata**
+- Updated `index.html`: title, description, theme-color, Open Graph tags
+
+**Phase 11 — CI**
+- Created `.github/workflows/ci.yml` with backend tests, frontend tsc+build, Docker build jobs
+
+**Phase 12 — Regression Testing**
+- 42/42 backend tests pass
+- Frontend tsc + vite build succeeds
+
+### Files Changed / Created
+
+| File | Change |
+|------|--------|
+| `backend/app/config.py` | `get_settings()`, `Settings.cors_origins_list`, PUT in CORS, DATABASE_URL required |
+| `backend/app/main.py` | CORS includes PUT |
+| `backend/Dockerfile` | **NEW** |
+| `frontend/Dockerfile` | **NEW** |
+| `frontend/nginx.conf` | **NEW** |
+| `docker-compose.yml` | **NEW** |
+| `.dockerignore` | **NEW** |
+| `frontend/src/api/client.ts` | `API_BASE` export, `VITE_API_BASE_URL` support |
+| `frontend/src/api/standalone.ts` | Uses `API_BASE` |
+| `frontend/src/api/workspace.ts` | Uses `API_BASE` |
+| `frontend/src/hooks/useChat.ts` | Uses `API_BASE` |
+| `frontend/src/components/shared/ErrorBoundary.tsx` | **NEW** |
+| `frontend/src/App.tsx` | ErrorBoundary wrappers |
+| `frontend/index.html` | Updated metadata |
+| `frontend/.env.example` | **NEW** |
+| `.github/workflows/ci.yml` | **NEW** |
+| `AGENTS.md` | Updated with V7 docs |
+
+
+## Session 9 — Production Deployment Verification Audit & Blocker Fixes
+
+### Date
+2026-08-27
+
+### Overview
+Ran a comprehensive production deployment verification audit. Found 3 blockers, 3 high issues, 4 medium issues, and 3 low issues. Fixed all issues and verified the fixes.
+
+### Audit Findings
+
+**BLOCKERS (3):**
+1. Hardcoded `/api` in `frontend/src/api/standalone.ts:63` — `apiFetchWithGuest` used `fetch(`/api${url}`)` instead of `${API_BASE}${url}`, breaking custom `VITE_API_BASE_URL`
+2. Docker `./backend:/app` bind mount in `docker-compose.yml` — overwrote container image with host source code
+3. `NODE_ENV: development` in docker-compose — skipped production validation, leaked stack traces
+
+**HIGH (3):**
+4. Missing production env vars in docker-compose (OPENAI_API_KEY, JWT_SECRET, CORS_ORIGINS)
+5. nginx config missing SSE-specific headers (Connection, proxy_cache, chunked_transfer_encoding)
+6. Hardcoded `POSTGRES_PASSWORD: postgres` in docker-compose
+
+**MEDIUM (4):**
+7. Auth token fragment logged in `main.py:84`
+8. PostgreSQL and ChromaDB exposed on host ports
+9. `chromadb/chroma:latest` not version-pinned
+10. Misleading hardcoded URL in `alembic.ini`
+
+**LOW (3):**
+11. No restart policies on containers
+12. No resource limits on containers
+13. AGENTS.md migration head stale (13 → 14 migrations)
+
+### Fixes Applied
+
+| # | Issue | Severity | Fix |
+|---|-------|----------|-----|
+| 1 | Hardcoded `/api` in standalone.ts | BLOCKER | Changed `apiFetchWithGuest` to use `API_BASE` from centralized config |
+| 2 | Docker source bind mount | BLOCKER | Removed `./backend:/app`; kept only `backend_data:/app/data` named volume |
+| 3 | NODE_ENV=development | BLOCKER | Changed to `NODE_ENV: production` |
+| 4 | Missing production env vars | HIGH | Added `OPENAI_API_KEY`, `JWT_SECRET`, `CORS_ORIGINS` with `${VAR:?msg}` validation |
+| 5 | nginx SSE headers | HIGH | Added `Connection ''`, `proxy_http_version 1.1`, `proxy_cache off`, `chunked_transfer_encoding off`, `proxy_read_timeout 3600s` |
+| 6 | Hardcoded DB password | HIGH | Changed to `${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}` |
+| 7 | Auth token in logs | MEDIUM | Changed to log only `"Bearer"` or `"none"` |
+| 8 | DB/ChromaDB port exposure | MEDIUM | Removed `ports` mappings from postgres and chromadb |
+| 9 | ChromaDB latest tag | MEDIUM | Pinned to `chromadb/chroma:1.5.9` (matches client 1.5.9) |
+| 10 | alembic.ini URL | MEDIUM | Added clarifying comment; URL only used for offline mode |
+| 11 | No restart policies | LOW | Added `restart: unless-stopped` to all services |
+| 12 | No resource limits | LOW | Added memory limits (postgres: 512M, chromadb: 512M, backend: 1G, frontend: 256M) |
+| 13 | AGENTS.md stale | LOW | Updated migration head to `e08fe825261f` (14 migrations) |
+
+### Verification Results
+
+| Area | Status | Evidence |
+|------|--------|----------|
+| Standalone API base URL | **PASS** | All 5 `fetch()` calls in `standalone.ts` use `API_BASE`; no hardcoded `/api` |
+| Docker image integrity | **PASS** | No source bind mount; `docker compose config` validates correctly |
+| Production mode | **PASS** | `NODE_ENV=production` activates validation; hides stack traces; suppresses debug SSE metadata |
+| Production environment | **PASS** | `docker compose config` fails when POSTGRES_PASSWORD, JWT_SECRET, or OPENAI_API_KEY missing |
+| PostgreSQL | **PASS** | 14 migrations on clean DB; 21 tables + 75 indexes; credentials not hardcoded |
+| ChromaDB | **PASS** | Pinned to 1.5.9; no host port exposure; named volume for persistence |
+| SSE | **PASS** | nginx has proxy_buffering off, proxy_cache off, Connection '', chunked_transfer_encoding off, proxy_read_timeout 3600s |
+| Persistence | **PASS** | backend_data named volume for vectors; pgdata for postgres; chromadata for ChromaDB |
+| Security | **PASS** | No token fragments in logs; no stack traces in prod; no debug metadata; no committed secrets |
+| Backend tests | **PASS** | 42/42 tests pass |
+| Frontend build | **PASS** | tsc --noEmit + vite build succeeds |
+
+### Security Notes
+
+- `.env` and `backend/.env` contain API key `sk-or-v1-...` in local working tree — **not tracked by git** (verified via `git ls-files`). Key should be rotated if there's any chance of exposure.
+- Root `.env.example` is stale (references old Google/Gemini setup); `backend/.env.example` is the correct template.
+- Error handler traces only exposed when `node_env == "development"` — production mode returns generic errors.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `frontend/src/api/standalone.ts` | Fixed hardcoded `/api` → `API_BASE` |
+| `docker-compose.yml` | Removed source mount, NODE_ENV=production, env var validation, removed DB/ChromaDB ports, pinned ChromaDB, restart policies, resource limits |
+| `frontend/nginx.conf` | Added SSE headers (Connection, proxy_http_version, proxy_cache, chunked_transfer_encoding, proxy_read_timeout) |
+| `backend/app/main.py` | Auth token logging: `"Bearer"` or `"none"` instead of token fragment |
+| `backend/alembic.ini` | Added clarifying comment about runtime URL override |
+| `AGENTS.md` | Updated migration head to `e08fe825261f` (14 migrations) |
+
+### Key Decisions
+
+- **`${VAR:?message}` syntax for Docker secrets**: Docker Compose fails with a clear error message when required variables are missing, preventing accidental deployment with default/empty credentials.
+- **Removed env_file from backend service**: The `env_file: backend/.env` directive could override production environment variables. Environment variables now come exclusively from the compose `environment` block (which reads from the host shell environment).
+- **Named volumes only for persistent state**: `pgdata`, `chromadata`, and `backend_data` are the only volumes. No source code mounts.
+- **proxy_read_timeout 3600s**: LLM responses can take minutes for large contexts. 1 hour timeout prevents premature connection termination during SSE streaming.
+- **ChromaDB 1.5.9 pinned**: Matches the installed Python client version exactly. Docker image `chromadb/chroma:1.5.9` confirmed available on Docker Hub.
+
+
+## Session 10 — Ephemeral Standalone Chat + AI Titles + Workspace UI Hijack Fix
+
+### Date
+2026-08-31
+
+### Feature 1 — ChatGPT-Style Standalone Chat Lifecycle
+
+**Root cause of multiple empty "New Chat" sessions:**
+`StandaloneChatPanel.tsx` had a mount effect (`useEffect` → `createSession('New Chat')`) that created a persisted DB session every time Standalone Chat was opened (fired twice under React StrictMode). The sidebar also created sessions via a title-input + button.
+
+**Implementation:**
+- **Ephemeral New Chat**: removed the auto-create effect. With `activeSessionId === null` the panel shows a temporary "New Chat" state (frontend-only). No DB session is created until the user sends a message.
+- **Lazy creation**: new `ensureSession()` in `useStandaloneChatStore` — idempotent + race-safe (module-level `ensurePromise` shared by concurrent calls; returns existing session when present). Called by `handleSend` on the first message, then the existing SSE flow runs unchanged.
+- **"+ New Chat" button** (panel + sidebar) now just calls `setActiveSession(null)` — clears UI state only, never creates a DB session.
+- **AI-generated titles**: new `_generate_session_title()` in `backend/app/routes/standalone/chat.py`, using the existing `llm_service.generate_text()` (3–8 word topic title from first user message ≤1000 chars + assistant reply ≤600 chars). Runs once, only when `title == "New Chat"`, after both messages persist. Falls back to truncated question on LLM failure (never breaks chat). Persisted on the session and emitted as a new SSE `{"type": "title"}` event.
+- **Sidebar**: title-input + create button replaced with a single "+ New Chat" button (ephemeral). Legacy empty sessions (`message_count===0 && source_count===0 && title==='New Chat'`, excluding active) hidden from history.
+- **Attach button** disabled while ephemeral (no session to attach to).
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `backend/app/routes/standalone/chat.py` | `_generate_session_title()` helper; AI title persisted; `title` SSE event |
+| `frontend/src/store/useStandaloneChatStore.ts` | `ensureSession()` (race-safe lazy create), `updateSessionTitle()` |
+| `frontend/src/api/standalone.ts` | `onTitle` callback + `title` SSE event handling |
+| `frontend/src/components/standalone/StandaloneChatPanel.tsx` | Removed auto-create; ephemeral state; lazy create on first send |
+| `frontend/src/components/standalone/StandaloneSidebarSection.tsx` | Ephemeral "+ New Chat"; hide legacy empty sessions |
+| `backend/tests/test_standalone_flows.py` | 4 new `TestSessionTitleGeneration` tests |
+
+### Bug Fix — Workspace UI Unresponsive After Source Import (Header Tabs Disappear, Learning Nav Dead)
+
+**Symptoms:** After importing a source, Flashcards/Quiz/Learning Path/Daily Revision/Progress/Mentor clicks did nothing, and the Chat/Notes/Search/Summary header tabs disappeared. Navigating away and back temporarily fixed it.
+
+**Root cause (reproduced live with headless Chrome + real Supabase login):**
+`MainPanel.tsx` replaces the entire main area (including `WorkspaceChatPanel`, which owns the header tabs and renders all views) with `<OnboardingWizard />` whenever `showOnboarding` is true — while the sidebar stays interactive, so learning clicks updated `viewMode` but nothing rendered. `showOnboarding` was re-derived as `!hasCompletedOnboarding` on EVERY auth event (`setSupabaseAuth` runs on `SIGNED_IN` **and `TOKEN_REFRESHED`**), so users whose onboarding flag was false got hijacked mid-session (e.g. right after a long import). "Go back and return" worked only because the wizard got completed/skipped in between. Secondary issue: `WorkspaceChatPanel`'s mount effect called `setViewMode('home')` on every (re)mount, clobbering a user-selected view.
+
+**Fix (3 frontend files, no UI redesign, viewMode stays in Zustand):**
+
+| File | Change |
+|------|--------|
+| `frontend/src/store/useAppStore.ts` | `setViewMode` dismisses onboarding (`completeOnboarding()`) if still showing — any explicit navigation implies the user is past the wizard |
+| `frontend/src/store/useAuthStore.ts` | `setSupabaseAuth` derives `showOnboarding: !hasCompleted` only on a fresh login; token refreshes/re-auth preserve current value (no mid-session hijack) |
+| `frontend/src/components/workspace/WorkspaceChatPanel.tsx` | Mount effect resets `viewMode` to 'home' only on an actual workspace switch (`prevWorkspaceRef`), not on initial mount |
+
+**Verification (headless Chrome + Playwright against live dev servers, real Supabase login, fresh test users):**
+- Before fix: reproduced exactly — wizard hijack, header tabs absent, all 6 learning clicks no-op.
+- After fix: clicking Flashcards from the wizard state → PASS (onboarding dismissed, header tabs visible, view rendered); Chat/Notes/Search/Summary all render; Plain Text source imported via sidebar AddSourceMenu → header tabs remain, session intact; all 6 learning views render correctly after import.
+- `tsc --noEmit` clean; `npm run build` succeeds; backend 46/46 tests pass.
+
+### Key Decisions
+- **Ephemeral by default**: temporary New Chat is pure frontend state; a DB session exists only after the first message. Legacy empty sessions hidden, never deleted (no destructive cleanup).
+- **Title generation is fire-once and non-fatal**: truncation fallback retained; failure logs a warning and never affects the chat stream.
+- **Onboarding is one-shot**: navigation implies completion; token refresh can never re-trigger the wizard mid-session.
+- **Mount-effect view reset narrowed**: only a real workspace switch resets to home, preserving user-selected views.
+
+### Notes / Test Artifacts
+- Test users created for verification: `uitest@example.com`, `uitest2@example.com`, `uitest3@example.com` (Supabase + backend, password `uitest12345`) — delete if unwanted.
+- Playwright scripts + logs + screenshots in `/tmp/pwtest/` (repro.js, verify.js, *.log, final.png, verify.png).

@@ -1,7 +1,7 @@
 [project]
 name = "knowledgeos-server"
 version = "1.0.0"
-description = "KnowledgeOS - Python Backend"
+description = "Scritur - Python Backend"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",

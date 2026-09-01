@@ -177,7 +177,7 @@ async def fetch_github_file_tree_api(url: str, token: str | None = None) -> tupl
 
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "KnowledgeOS/1.0",
+        "User-Agent": "Scritur/1.0",
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -215,7 +215,7 @@ async def fetch_github_repo(
 
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "KnowledgeOS/1.0",
+        "User-Agent": "Scritur/1.0",
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"

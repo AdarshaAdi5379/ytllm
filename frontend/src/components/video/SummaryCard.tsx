@@ -24,7 +24,7 @@ export function SummaryCard({ videoId, onQuestionClick }: Props) {
           <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
             <BookOpen size={14} />
           </div>
-          <span className="uppercase tracking-widest text-[11px] font-black">Video Summary</span>
+          <span className="text-[11px] font-semibold text-slate-700">Summary</span>
         </div>
         {expanded ? <ChevronDown size={16} className="text-slate-400" /> : <ChevronRight size={16} className="text-slate-400" />}
       </button>
@@ -35,15 +35,15 @@ export function SummaryCard({ videoId, onQuestionClick }: Props) {
 
           {video.suggestedQuestions.length > 0 && (
             <div className="space-y-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Suggested questions</p>
+              <p className="text-[10px] font-medium text-slate-400">Suggested questions</p>
               <div className="flex flex-col gap-2">
                 {video.suggestedQuestions.map((q, i) => (
                   <button
                     key={i}
                     onClick={() => onQuestionClick(q)}
-                    className="group text-left text-[12px] p-3 rounded-xl bg-slate-50 text-slate-600 hover:bg-indigo-600 hover:text-white border border-slate-100 hover:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-indigo-500/20"
+                    className="group text-left text-[12px] p-3 rounded-lg bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-100 hover:border-indigo-200 transition-colors"
                   >
-                    <span className="line-clamp-2 font-semibold">{q}</span>
+                    <span className="line-clamp-2">{q}</span>
                   </button>
                 ))}
               </div>

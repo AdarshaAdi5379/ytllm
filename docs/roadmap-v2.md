@@ -1,8 +1,8 @@
-# KnowledgeOS — V2: AI Learning Workspace (MVP)
+# Scritur — V2: AI Learning Workspace (MVP)
 
 **Goal:** Get first 1000 users. Auth, workspaces, multi-source import, AI chat with citations, smart search.
 
-**Why this is the MVP:** Single-source chat (YouTube) is a feature. Multi-source chat with workspaces, citations, notes, and smart search is a platform. This phase delivers the core user experience that differentiates KnowledgeOS from ChatGPT/NotebookLM.
+**Why this is the MVP:** Single-source chat (YouTube) is a feature. Multi-source chat with workspaces, citations, notes, and smart search is a platform. This phase delivers the core user experience that differentiates Scritur from ChatGPT/NotebookLM.
 
 ---
 

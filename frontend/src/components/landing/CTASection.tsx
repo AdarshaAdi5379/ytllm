@@ -45,7 +45,7 @@ export function CTASection({ onStartLearning }: CTASectionProps) {
           </h2>
 
           <p className="text-lg text-gray-500 max-w-xl mx-auto mt-6 leading-relaxed">
-            KnowledgeOS helps you organize everything you learn into one intelligent workspace
+            Scritur helps you organize everything you learn into one intelligent workspace
             where you can understand complex topics, practice consistently, and remember what matters.
           </p>
 

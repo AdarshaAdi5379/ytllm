@@ -4,6 +4,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { MainPanel } from './components/layout/MainPanel';
 import { URLInputModal } from './components/modals/URLInputModal';
 import { AuthModal } from './components/auth/AuthModal';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { HeroSection } from './components/landing/HeroSection';
 import { HowItWorksSection } from './components/landing/HowItWorksSection';
 import { ComparisonSection } from './components/landing/ComparisonSection';
@@ -38,10 +39,12 @@ export default function App() {
     setAuthToken(token);
   }, [token]);
 
-  // Resolve auth on mount + set up auth state listener
+  // Set up auth state listener FIRST, then resolve auth on mount.
+  // The listener must be registered before resolveAuthOnMount completes
+  // so that SIGNED_IN events from OAuth callbacks are not missed.
   useEffect(() => {
-    useAuthStore.getState().resolveAuthOnMount();
     const unsubscribe = useAuthStore.getState().initAuthListener();
+    useAuthStore.getState().resolveAuthOnMount();
     return () => unsubscribe();
   }, []);
 
@@ -145,7 +148,7 @@ export default function App() {
 
   if (!isAuthenticated && showLanding) {
     return (
-      <>
+      <ErrorBoundary section="landing">
         <HeroSection
           onStartLearning={() => {
             useAppStore.getState().setAppMode('standalone');
@@ -169,16 +172,18 @@ export default function App() {
         />
         <FooterSection />
         {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
-      </>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      <Sidebar />
-      <MainPanel />
-      {isAddVideoModalOpen && <URLInputModal />}
-      {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
-    </div>
+    <ErrorBoundary section="application">
+      <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <Sidebar />
+        <MainPanel />
+        {isAddVideoModalOpen && <URLInputModal />}
+        {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
+      </div>
+    </ErrorBoundary>
   );
 }

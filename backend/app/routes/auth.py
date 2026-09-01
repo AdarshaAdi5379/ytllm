@@ -90,7 +90,13 @@ async def login(request: Request, req: UserLogin, db: AsyncSession = Depends(get
 @router.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(get_optional_user)):
     if not user:
-        raise HTTPException(status_code=401, detail={"error": "NOT_AUTHENTICATED", "message": "Not authenticated"})
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "NOT_AUTHENTICATED",
+                "message": "Your session has expired. Please sign in again.",
+            },
+        )
     return _user_response(user)
 
 

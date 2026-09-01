@@ -112,11 +112,17 @@ export function AuthModal({ onClose, initialTab }: Props) {
           const data = await signInWithEmail(trimmedEmail, password);
           if (data.session?.access_token) {
             await setSupabaseAuth(data.session.access_token);
+          } else {
+            setError('Sign in succeeded but session could not be established. Please try again.');
+            return;
           }
         } else {
           const data = await signUpWithEmail(trimmedEmail, password);
           if (data.session?.access_token) {
             await setSupabaseAuth(data.session.access_token);
+          } else if (data.user && !data.session) {
+            setError('Account created! Check your email for a verification link to sign in.');
+            return;
           } else {
             setError('Account created! Check your email for a verification link to sign in.');
             return;
@@ -137,8 +143,16 @@ export function AuthModal({ onClose, initialTab }: Props) {
         } else {
           setError('This account uses Google/GitHub sign-in, which is not available right now.');
         }
+      } else if (apiErr.message?.includes('Supabase is not configured')) {
+        setError('Authentication service is not configured. Please contact support.');
+      } else if (apiErr.message?.includes('Invalid email or password')) {
+        setError('Invalid email or password.');
+      } else if (apiErr.message?.includes('verify your email')) {
+        setError('Please verify your email before signing in.');
+      } else if (apiErr.message?.includes('already exists')) {
+        setError('An account with this email already exists.');
       } else {
-        setError((err as Error).message || 'Authentication failed.');
+        setError(apiErr.message || 'Authentication failed. Please try again.');
       }
     } finally {
       setLoading(false);

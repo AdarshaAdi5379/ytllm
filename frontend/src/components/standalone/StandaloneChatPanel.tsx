@@ -9,8 +9,8 @@ import { streamStandaloneChat } from '../../api/standalone';
 export function StandaloneChatPanel() {
   const {
     activeSessionId, messages, streaming, loading, error,
-    setActiveSession, createSession, addMessage, setStreaming, clearMessage,
-    addSource,
+    setActiveSession, ensureSession, addMessage, setStreaming, clearMessage,
+    updateSessionTitle, addSource,
   } = useStandaloneChatStore();
 
   const [input, setInput] = useState('');
@@ -31,12 +31,8 @@ export function StandaloneChatPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamText]);
 
-  // Auto-create first session
-  useEffect(() => {
-    if (!activeSessionId && !loading) {
-      createSession('New Chat').then((s) => setActiveSession(s.id)).catch(() => {});
-    }
-  }, []);
+  // No auto-create: with no active session we show an ephemeral "New Chat" state.
+  // A real session is only created lazily on the first message (see handleSend).
 
   useEffect(() => {
     if (!showAttachMenu) return;
@@ -50,24 +46,41 @@ export function StandaloneChatPanel() {
   }, [showAttachMenu]);
 
   const handleSend = useCallback(async () => {
-    if (!input.trim() || streaming || !activeSessionId) return;
+    if (!input.trim() || streaming) return;
     const question = input.trim();
     setInput('');
     setStreamText('');
+
+    // Lazily create the real session on the first message of an ephemeral New Chat.
+    // ensureSession is idempotent and race-safe (shares a single creation promise).
+    let sessionId = activeSessionId;
+    if (!sessionId) {
+      try {
+        const session = await ensureSession();
+        sessionId = session.id;
+      } catch (err: any) {
+        addMessage({ role: 'assistant', content: `Error: ${err.message || 'Failed to create session'}`, timestamp: new Date().toISOString() });
+        return;
+      }
+    }
 
     const userMsg = { role: 'user' as const, content: question, timestamp: new Date().toISOString() };
     addMessage(userMsg);
     setStreaming(true);
 
     const history = [...messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp })), userMsg];
+    const createdSessionId = sessionId;
 
-    abortRef.current = streamStandaloneChat(activeSessionId, {
+    abortRef.current = streamStandaloneChat(createdSessionId, {
       question,
       chat_history: history,
     }, {
       onToken: (text) => {
         streamTextRef.current += text;
         setStreamText(streamTextRef.current);
+      },
+      onTitle: (title) => {
+        updateSessionTitle(createdSessionId, title);
       },
       onError: (msg) => {
         streamTextRef.current = '';
@@ -83,7 +96,7 @@ export function StandaloneChatPanel() {
         setStreaming(false);
       },
     });
-  }, [input, streaming, activeSessionId, messages, addMessage, setStreaming]);
+  }, [input, streaming, activeSessionId, messages, addMessage, setStreaming, ensureSession, updateSessionTitle]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -97,10 +110,10 @@ export function StandaloneChatPanel() {
     setStreaming(false);
   };
 
-  const handleNewChat = async () => {
+  const handleNewChat = () => {
     if (streaming) handleStop();
-    const session = await createSession('New Chat');
-    setActiveSession(session.id);
+    // Ephemeral New Chat: clear active UI state only — no database session is created.
+    setActiveSession(null);
   };
 
   const handleClear = () => {
@@ -143,24 +156,13 @@ export function StandaloneChatPanel() {
     }
   };
 
-  if (!activeSessionId) {
-    return (
-      <main className="flex-1 flex items-center justify-center bg-white">
-        <div className="text-center">
-          <Loader2 size={24} className="animate-spin text-slate-400 mx-auto" />
-          <p className="text-sm text-slate-500 mt-2">Creating session...</p>
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className="flex-1 flex flex-col bg-white overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-2">
           <Sparkles size={18} className="text-indigo-600" />
-          <span className="text-sm font-bold text-gray-800">Standalone Chat</span>
+          <span className="text-sm font-bold text-gray-800">{activeSessionId ? 'Standalone Chat' : 'New Chat'}</span>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -186,8 +188,8 @@ export function StandaloneChatPanel() {
         {messages.length === 0 && !streaming ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md px-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/20">
-                <MessageSquare size={22} className="text-white" />
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto mb-4">
+                <MessageSquare size={22} className="text-indigo-400" />
               </div>
               <h2 className="text-lg font-bold text-gray-800 mb-2">Ask anything</h2>
               <p className="text-sm text-gray-500 leading-relaxed">
@@ -200,8 +202,8 @@ export function StandaloneChatPanel() {
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                    <Bot size={16} className="text-white" />
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <Bot size={16} className="text-indigo-600" />
                   </div>
                 )}
                 <div
@@ -214,8 +216,8 @@ export function StandaloneChatPanel() {
                   {msg.content}
                 </div>
                 {msg.role === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
-                    <User size={16} className="text-white" />
+                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <User size={16} className="text-slate-600" />
                   </div>
                 )}
               </div>
@@ -223,8 +225,8 @@ export function StandaloneChatPanel() {
 
             {streaming && streamText && (
               <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                  <Bot size={16} className="text-white" />
+                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                  <Bot size={16} className="text-indigo-600" />
                 </div>
                 <div className="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed bg-gray-100 text-gray-800 rounded-tl-md">
                   {streamText}
@@ -255,7 +257,7 @@ export function StandaloneChatPanel() {
             <div className="relative flex-shrink-0">
               <button
                 onClick={() => setShowAttachMenu(!showAttachMenu)}
-                disabled={streaming}
+                disabled={streaming || !activeSessionId}
                 className={`p-2 rounded-xl transition-all ${
                   showAttachMenu
                     ? 'bg-indigo-100 text-indigo-600'

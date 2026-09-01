@@ -1,4 +1,4 @@
-# KnowledgeOS — Implementation Tracker
+# Scritur — Implementation Tracker
 **Your Personal AI Learning Operating System**
 
 Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one searchable AI tutor that remembers everything.
@@ -78,7 +78,7 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [x] **Add proper indexes** on all foreign keys, user_id, source_type, created_at
 
 ### Rename Tasks (Code Changes)
-- [x] Update `main.py` app title from "YouTube AI Chat Agent" to "KnowledgeOS"
+- [x] Update `main.py` app title from "YouTube AI Chat Agent" to "Scritur"
 - [ ] Update all route prefixes if needed
 - [ ] Update all docstrings and comments referencing old product name
 - [ ] Update client `index.html` title, meta tags
@@ -360,11 +360,11 @@ Turn YouTube videos, PDFs, Websites, GitHub repositories, and Notes into one sea
 - [ ] **Quick actions**:
   - Summarize current page
   - Explain this article / video
-  - Save to KnowledgeOS
+  - Save to Scritur
   - Highlight text → save as note
   - Generate notes from page content
 - [ ] **Extension auth** — logs in via OAuth (same session as web app)
-- [ ] **Context menu** — right-click any text → "Save to KnowledgeOS"
+- [ ] **Context menu** — right-click any text → "Save to Scritur"
 
 ### Mobile App
 - [ ] **React Native (or Flutter)** mobile application

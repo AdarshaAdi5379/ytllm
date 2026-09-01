@@ -63,12 +63,12 @@ export function MainPanel() {
         {/* Centered chat interface */}
         <div className="flex-1 flex flex-col items-center justify-center px-4">
           <div className="w-full max-w-lg text-center">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-6">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-6">
               <Youtube size={28} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to YT AI Chat</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Scritur</h1>
             <p className="text-sm text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">
-              Turn any YouTube video into an interactive AI knowledge base. Paste a URL, ask questions, get answers.
+              Turn any content into an interactive AI knowledge base. Paste a URL, upload a document, or start chatting.
             </p>
 
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">

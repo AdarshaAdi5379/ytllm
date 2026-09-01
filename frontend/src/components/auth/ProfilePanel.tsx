@@ -107,8 +107,8 @@ export function ProfilePanel({ onClose }: Props) {
                 className="w-20 h-20 rounded-full object-cover ring-2 ring-indigo-500/30"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center ring-2 ring-indigo-500/30">
-                <User size={32} className="text-white" />
+              <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center ring-2 ring-indigo-200">
+                <User size={32} className="text-indigo-600" />
               </div>
             )}
           </div>

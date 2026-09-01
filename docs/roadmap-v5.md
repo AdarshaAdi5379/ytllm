@@ -1,8 +1,8 @@
-# KnowledgeOS — V5: Team Workspace
+# Scritur — V5: Team Workspace
 
 **Goal:** Collaborative learning and knowledge sharing for teams.
 
-**Why this matters:** Individual learning tools have low switching costs. Team/collaboration tools have high switching costs — once a team's knowledge is in KnowledgeOS, they won't leave. This is the monetization inflection point: teams pay more and churn less than individuals.
+**Why this matters:** Individual learning tools have low switching costs. Team/collaboration tools have high switching costs — once a team's knowledge is in Scritur, they won't leave. This is the monetization inflection point: teams pay more and churn less than individuals.
 
 ---
 

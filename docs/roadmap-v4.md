@@ -1,8 +1,8 @@
-# KnowledgeOS — V4: Developer Mode
+# Scritur — V4: Developer Mode
 
 **Goal:** GitHub-aware AI that understands codebases and helps developers learn, document, and debug.
 
-**Why this matters:** Developers are the highest-value user segment. They have the most to learn, the most sources to process (code, docs, StackOverflow, YouTube tutorials), and the highest willingness to pay for tools that save them time. This phase turns KnowledgeOS into a coding companion.
+**Why this matters:** Developers are the highest-value user segment. They have the most to learn, the most sources to process (code, docs, StackOverflow, YouTube tutorials), and the highest willingness to pay for tools that save them time. This phase turns Scritur into a coding companion.
 
 ---
 
@@ -11,7 +11,7 @@
 ### Repository Import
 - [ ] `POST /api/sources/github` — accepts repo URL + optional branch/tag
 - [ ] Two modes:
-  - **API mode** (default for repos < 100MB): Use GitHub REST API to fetch file contents without cloning. Requires GitHub token (user's personal access token or KnowledgeOS app token).
+  - **API mode** (default for repos < 100MB): Use GitHub REST API to fetch file contents without cloning. Requires GitHub token (user's personal access token or Scritur app token).
   - **Clone mode** (for larger repos or full git history): Clone repo to temp directory via gitpython, process files, delete clone after indexing.
 - [ ] Store `metadata.repo_url`, `metadata.branch`, `metadata.default_branch`, `metadata.private` (boolean)
 - [ ] Store file tree as `metadata.file_tree: [{path, type, size, language}]`

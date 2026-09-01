@@ -44,10 +44,10 @@ export function ComparisonSection() {
       <div className="max-w-5xl mx-auto px-6 lg:px-12">
         <div className="text-center mb-16 lg:mb-20">
           <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight mb-4">
-            Why KnowledgeOS Feels Different
+            Why Scritur Feels Different
           </h2>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-            Most AI tools give you an answer. KnowledgeOS helps you understand it, practice it, and remember it.
+            Most AI tools give you an answer. Scritur helps you understand it, practice it, and remember it.
           </p>
         </div>
 
@@ -80,10 +80,10 @@ export function ComparisonSection() {
             </div>
           </div>
 
-          {/* ─── KnowledgeOS ─── */}
+          {/* ─── Scritur ─── */}
           <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-6 lg:p-8">
             <p className="text-sm font-semibold text-indigo-600 uppercase tracking-wider mb-8">
-              KnowledgeOS
+              Scritur
             </p>
             <div className="space-y-0">
               {knowledgeRows.map((row, rowIdx) => (

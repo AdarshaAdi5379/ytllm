@@ -1,6 +1,6 @@
-# KnowledgeOS — V6: Enterprise & Platform
+# Scritur — V6: Enterprise & Platform
 
-**Goal:** Revenue, scale, and ecosystem. This phase transforms KnowledgeOS from a learning tool into a platform with enterprise sales, integrations, mobile, browser extension, API, and a marketplace.
+**Goal:** Revenue, scale, and ecosystem. This phase transforms Scritur from a learning tool into a platform with enterprise sales, integrations, mobile, browser extension, API, and a marketplace.
 
 **Why this is last:** These features are capital-intensive (mobile dev, integrations, enterprise sales) and only make sense once you have strong product-market fit from V2-V5. Do not start V6 until you have 1000+ active users and evidence of willingness to pay.
 
@@ -22,7 +22,7 @@
 
 ### Slack Integration
 - [ ] Slack app installation with OAuth
-- [ ] **Slash command**: `/ask-knowledgeos <question>` → KnowledgeOS responds in thread
+- [ ] **Slash command**: `/ask-knowledgeos <question>` → Scritur responds in thread
 - [ ] **Channel import**: save public channel history as a source
 - [ ] **Thread import**: save specific thread as a source (for decision tracking)
 - [ ] **Notifications**: daily revision reminders, weekly team report posted to channel
@@ -104,8 +104,8 @@
 - [ ] Popup UI: simple search bar, recent sources, quick actions
 
 ### Supported Sites
-- [ ] **YouTube**: detect when user is on a video page → show "Summarize" and "Save to KnowledgeOS" buttons
-- [ ] **GitHub**: detect repo/file page → "Explain this repo" / "Save to KnowledgeOS"
+- [ ] **YouTube**: detect when user is on a video page → show "Summarize" and "Save to Scritur" buttons
+- [ ] **GitHub**: detect repo/file page → "Explain this repo" / "Save to Scritur"
 - [ ] **Documentation sites**: detect documentation pages (MDN, ReadTheDocs, etc.) → "Summarize" / "Save"
 - [ ] **Medium / Dev.to**: detect article pages → "Summarize" / "Save" / "Highlight"
 - [ ] **Wikipedia**: detect article pages → "Summarize" / "Save"
@@ -117,16 +117,16 @@
 - [ ] Auto-hides on scroll down, shows on scroll up
 
 ### Quick Actions
-- [ ] **Summarize current page** → sends page content to KnowledgeOS, returns summary in popup
+- [ ] **Summarize current page** → sends page content to Scritur, returns summary in popup
 - [ ] **Explain this** → sends selected text + page context, returns explanation
-- [ ] **Save to KnowledgeOS** → saves full page as source in user's workspace
+- [ ] **Save to Scritur** → saves full page as source in user's workspace
 - [ ] **Highlight text** → select text → floating "Save as Note" button → saves with page citation
 - [ ] **Generate notes** → creates structured notes from page content
 
 ### Context Menu
-- [ ] Right-click selected text → "Ask KnowledgeOS" → opens popup with answer
-- [ ] Right-click link → "Save to KnowledgeOS" → imports linked page as source
-- [ ] Right-click page → "Summarize with KnowledgeOS" → generates summary
+- [ ] Right-click selected text → "Ask Scritur" → opens popup with answer
+- [ ] Right-click link → "Save to Scritur" → imports linked page as source
+- [ ] Right-click page → "Summarize with Scritur" → generates summary
 
 ### Extension Auth
 - [ ] OAuth flow within extension: opens tab, logs in, returns token
@@ -305,7 +305,7 @@
 ### Leaderboard
 - [ ] **Personal**: show your rank among your team members
 - [ ] **Team**: aggregate scores per team (if multiple teams on enterprise)
-- [ ] **Global** (optional): all KnowledgeOS users (opt-in)
+- [ ] **Global** (optional): all Scritur users (opt-in)
 - [ ] Metrics: XP this week, XP all-time, longest streak, quiz accuracy
 - [ ] Leaderboard reset: weekly for "This Week" leaderboard, all-time for "Hall of Fame"
 - [ ] Privacy: opt out of leaderboard in settings
@@ -316,7 +316,7 @@
 
 - [ ] **Learning Packs**: user-created bundles (sources + notes + flashcards + quiz + summary)
   - Categories: Programming, Design, Data Science, Business, Language Learning
-  - Curated packs by KnowledgeOS team (official)
+  - Curated packs by Scritur team (official)
   - Community packs (user-submitted, reviewed)
 - [ ] **Interview Packs**: company-specific interview preparation
   - Example: "Google SWE Interview Pack" — 20 videos, 100 flashcards, 5 mock quizzes
@@ -355,11 +355,11 @@
 - [ ] `/ask-knowledgeos` slash command: ask question, get answer in channel
 - [ ] Digest posts: weekly learning digest posted to channel
 - [ ] Thread import: bot listens for "Save thread" emoji reaction → saves thread as source
-- [ ] Shortcuts: "Save to KnowledgeOS" message shortcut
+- [ ] Shortcuts: "Save to Scritur" message shortcut
 
 ### Discord
 - [ ] Discord bot: invite to server, slash commands
-- [ ] `/ask` — ask question from KnowledgeOS
+- [ ] `/ask` — ask question from Scritur
 - [ ] `/study` — start a study session (post daily review)
 - [ ] `/sources` — list server's shared sources
 - [ ] Bot posts flashcards, quizzes to channel for group study
@@ -373,8 +373,8 @@
 
 ### Obsidian
 - [ ] Export notes as markdown vault
-- [ ] Bidirectional sync: changes in Obsidian → update KnowledgeOS notes
-- [ ] Link format: `[[knowledgeos://source/abc123]]` opens in KnowledgeOS
+- [ ] Bidirectional sync: changes in Obsidian → update Scritur notes
+- [ ] Link format: `[[knowledgeos://source/abc123]]` opens in Scritur
 - [ ] Obsidian plugin (community or official)
 
 ### OneDrive / Dropbox / Confluence / Jira

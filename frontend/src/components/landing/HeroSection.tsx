@@ -38,7 +38,7 @@ export function HeroSection({ onStartLearning, onSignIn }: HeroSectionProps) {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-sm">
             <span className="text-white font-bold text-sm">K</span>
           </div>
-          <span className="font-bold text-lg text-gray-900 tracking-tight">KnowledgeOS</span>
+          <span className="font-bold text-lg text-gray-900 tracking-tight">Scritur</span>
         </div>
         <div className="flex items-center gap-2">
           <button

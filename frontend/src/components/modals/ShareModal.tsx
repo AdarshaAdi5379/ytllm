@@ -56,8 +56,8 @@ export function ShareModal({ videoId, onClose }: Props) {
 
           {/* YouTube link */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              YouTube Link
+            <p className="text-xs font-medium text-gray-500 mb-1.5">
+              YouTube link
             </p>
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 truncate">
@@ -84,8 +84,8 @@ export function ShareModal({ videoId, onClose }: Props) {
 
           {/* App link */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              App Link
+            <p className="text-xs font-medium text-gray-500 mb-1.5">
+              App link
             </p>
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 truncate">
@@ -100,7 +100,7 @@ export function ShareModal({ videoId, onClose }: Props) {
               </button>
             </div>
             <p className="text-[10px] text-gray-400 mt-1">
-              Opens this video directly in YT AI Chat
+              Open in Scritur
             </p>
           </div>
         </div>

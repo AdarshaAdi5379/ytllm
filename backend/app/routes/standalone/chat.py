@@ -27,6 +27,35 @@ async def _get_session_owner_check(
     return await check(db, session_id, user, guest_token)
 
 
+async def _generate_session_title(user_question: str, full_response: str) -> str:
+    """Generate a concise AI title for a new session.
+
+    Falls back to a safe truncated version of the user's question if the
+    LLM call fails — title generation must never break the chat.
+    """
+    question = user_question.strip()
+    fallback_title = (question[:80] + "...") if len(question) > 80 else question
+    try:
+        generated = await llm_service.generate_text(
+            prompt=(
+                "Generate a concise chat title (3-8 words) that represents the topic "
+                "of the conversation. Rules: no quotation marks, no trailing punctuation, "
+                "no prefixes like 'Title:'. Do not simply repeat the user's sentence — "
+                "capture the topic.\n\n"
+                f"User message: {question[:1000]}\n\n"
+                f"Assistant reply: {full_response.strip()[:600]}\n\n"
+                "Return ONLY the title."
+            ),
+            temperature=0.3,
+            max_tokens=24,
+        )
+        generated = generated.strip().strip('"').strip()
+        return (generated or fallback_title)[:80]
+    except Exception as e:
+        logger.warning("Standalone title generation failed: {}", e)
+        return fallback_title
+
+
 async def _generate_standalone_stream(
     session_id: str,
     req: StandaloneChatRequest,
@@ -114,7 +143,10 @@ At the end of each response, gently remind the user that they can add sources (t
 
         llm_started = time.perf_counter()
         first = True
-        citations_list = []
+        citations_list = [
+            {"source_id": si["id"], "title": si["title"], "source_type": si["source_type"]}
+            for si in source_infos
+        ]
         async for chunk in llm_service.stream_chat_response(
             context,
             model=req.model,
@@ -171,10 +203,14 @@ At the end of each response, gently remind the user that they can add sources (t
                 select(StandaloneSession).where(StandaloneSession.id == session_id)
             )
             db_session = sess_result.scalar_one_or_none()
+            new_title: str | None = None
             if db_session and db_session.title == "New Chat":
-                db_session.title = (user_question.strip()[:80] + "...") if len(user_question.strip()) > 80 else user_question.strip()
+                new_title = await _generate_session_title(user_question, full_response)
+                db_session.title = new_title
 
             await save_db.commit()
+            if new_title:
+                yield f"data: {json.dumps({'type': 'title', 'title': new_title})}\n\n"
 
     except Exception as e:
         logger.exception("Standalone chat error: {}", str(e))

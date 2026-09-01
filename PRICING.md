@@ -1,4 +1,4 @@
-# KnowledgeOS — Pricing Model
+# Scritur — Pricing Model
 
 **Draft — Subject to change based on user research and cost analysis.**
 
@@ -92,7 +92,7 @@
 
 ## Enterprise — Custom Pricing
 
-**Target:** Companies deploying KnowledgeOS as internal knowledge base
+**Target:** Companies deploying Scritur as internal knowledge base
 
 **Minimum:** 50 users
 
@@ -156,7 +156,7 @@
 
 ## Pricing Comparison
 
-| Feature | KnowledgeOS Free | KnowledgeOS Pro | ChatGPT Plus | NotebookLM | Obsidian |
+| Feature | Scritur Free | Scritur Pro | ChatGPT Plus | NotebookLM | Obsidian |
 |---------|:-:|:-:|:-:|:-:|:-:|
 | Multi-source import | ✅ | ✅ | ❌ | ✅ | ❌ |
 | AI Chat with citations | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -168,7 +168,7 @@
 | Self-hosted | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Price | $0 | $10/mo | $20/mo | $0 | Free |
 
-**Value proposition:** KnowledgeOS Pro combines functionality that would cost $30-40/mo across multiple tools (ChatGPT + quiz app + flashcard app + note app) into a single $10/mo product, with the added advantage of cross-source chat.
+**Value proposition:** Scritur Pro combines functionality that would cost $30-40/mo across multiple tools (ChatGPT + quiz app + flashcard app + note app) into a single $10/mo product, with the added advantage of cross-source chat.
 
 ---
 

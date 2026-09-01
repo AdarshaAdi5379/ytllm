@@ -12,7 +12,6 @@ from app.models import StandaloneSourceResponse
 from app.services import embedding_service
 from app.services.website_service import fetch_webpage
 from app.services.pdf_service import fetch_pdf
-from app.utils.chunk_text import chunk_text
 
 router = APIRouter()
 
@@ -135,7 +134,6 @@ async def upload_source_text(
     db.add(source)
     await db.flush()
 
-    chunks = chunk_text(actual_content, 500, 50)
     await embedding_service.index_transcript(index_key, actual_content)
 
     await db.commit()

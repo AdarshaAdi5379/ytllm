@@ -216,6 +216,10 @@ async def get_local_user_from_supabase_token(
     Returns None if the token is invalid or expired.
     """
     payload = verify_supabase_token(token)
-    if payload is None or payload.get("expired"):
+    if payload is None:
+        logger.debug("Supabase token verification returned None for token_prefix={}", token[:20])
+        return None
+    if payload.get("expired"):
+        logger.warning("Supabase token expired for token_prefix={}", token[:20])
         return None
     return await upsert_local_user(db, payload)

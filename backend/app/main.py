@@ -50,7 +50,7 @@ async def _cleanup_loop(stop_event: asyncio.Event) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
-    logger.info("Starting KnowledgeOS (env={})", config["node_env"])
+    logger.info("Starting Scritur (env={})", config["node_env"])
     await init_db()
     stop_event = asyncio.Event()
     task = asyncio.create_task(_cleanup_loop(stop_event))
@@ -64,14 +64,14 @@ async def lifespan(app: FastAPI):
             task.cancel()
 
 
-app = FastAPI(title="KnowledgeOS", lifespan=lifespan)
+app = FastAPI(title="Scritur", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config["cors_origins"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Guest-Token"],
 )
 
@@ -81,8 +81,9 @@ app.state.limiter = limiter
 # Request logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    auth = request.headers.get("Authorization", "none")[:30]
-    logger.info("REQUEST {} {} auth={}", request.method, request.url.path, auth)
+    auth_header = request.headers.get("Authorization", "")
+    auth_label = "Bearer" if auth_header.startswith("Bearer") else "none"
+    logger.info("REQUEST {} {} auth={}", request.method, request.url.path, auth_label)
     response = await call_next(request)
     logger.info("RESPONSE {} {} status={}", request.method, request.url.path, response.status_code)
     return response
@@ -143,7 +144,7 @@ if __name__ == "__main__":
     import uvicorn
 
     setup_logging()
-    logger.info("KnowledgeOS starting on port {} ({})", config["port"], config["node_env"])
+    logger.info("Scritur starting on port {} ({})", config["port"], config["node_env"])
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

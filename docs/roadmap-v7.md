@@ -1,8 +1,8 @@
-# KnowledgeOS — V7: Standalone Chat & Workspace Restructure
+# Scritur — V7: Standalone Chat & Workspace Restructure
 
 **Goal:** Separate standalone chat (own data, per-session, guest-friendly) from workspace chat (shared data across sessions, authenticated). Restructure sidebar and default app experience to put standalone chat first.
 
-**Why this matters:** The current design couples all chat to workspaces, requiring auth and a workspace to exist before any conversation can happen. V7 makes KnowledgeOS immediately useful: open the app → start chatting → upload files → optionally organize into workspaces later. This reduces friction to zero and matches the ChatGPT Projects mental model.
+**Why this matters:** The current design couples all chat to workspaces, requiring auth and a workspace to exist before any conversation can happen. V7 makes Scritur immediately useful: open the app → start chatting → upload files → optionally organize into workspaces later. This reduces friction to zero and matches the ChatGPT Projects mental model.
 
 ---
 

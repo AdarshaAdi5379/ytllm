@@ -1,4 +1,4 @@
-import { apiFetch, getAuthToken } from './client';
+import { apiFetch, getAuthToken, API_BASE } from './client';
 
 // --- Types (matching snake_case backend) ---
 
@@ -252,7 +252,7 @@ export async function uploadDocxSourceBackground(
   const token = getAuthToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch('/api/sources/docx/import?background=true', {
+  const response = await fetch(`${API_BASE}/sources/docx/import?background=true`, {
     method: 'POST',
     headers,
     body: formData,
@@ -286,7 +286,7 @@ export async function uploadPptxSourceBackground(
   const token = getAuthToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch('/api/sources/pptx/import?background=true', {
+  const response = await fetch(`${API_BASE}/sources/pptx/import?background=true`, {
     method: 'POST',
     headers,
     body: formData,
@@ -372,7 +372,7 @@ export async function uploadDocumentBackground(
   const token = getAuthToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch('/api/sources/upload/import?background=true', {
+  const response = await fetch(`${API_BASE}/sources/upload/import?background=true`, {
     method: 'POST',
     headers,
     body: formData,
@@ -406,7 +406,7 @@ export async function uploadDocument(
   const token = getAuthToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch('/api/sources/upload/import', {
+  const response = await fetch(`${API_BASE}/sources/upload/import`, {
     method: 'POST',
     headers,
     body: formData,
@@ -487,7 +487,7 @@ export async function uploadPptxSource(
   const token = getAuthToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch('/api/sources/pptx/import', {
+  const response = await fetch(`${API_BASE}/sources/pptx/import`, {
     method: 'POST',
     headers,
     body: formData,
@@ -521,7 +521,7 @@ export async function uploadDocxSource(
   const token = getAuthToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch('/api/sources/docx/import', {
+  const response = await fetch(`${API_BASE}/sources/docx/import`, {
     method: 'POST',
     headers,
     body: formData,
@@ -655,7 +655,7 @@ export function streamWorkspaceChat(
   const token = getAuthToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  fetch(`/api/ai/chat/workspace/${workspaceId}`, {
+  fetch(`${API_BASE}/ai/chat/workspace/${workspaceId}`, {
     method: 'POST',
     headers,
     body: JSON.stringify(req),

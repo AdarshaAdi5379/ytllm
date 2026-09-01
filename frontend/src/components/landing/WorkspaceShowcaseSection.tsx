@@ -115,7 +115,7 @@ export function WorkspaceShowcaseSection() {
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                     <LayoutDashboard size={15} className="text-white" />
                   </div>
-                  <span className="text-xs font-black text-white tracking-widest uppercase">KnowledgeOS</span>
+                  <span className="text-xs font-black text-white tracking-widest uppercase">Scritur</span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-tighter">
                   <Wifi size={8} />

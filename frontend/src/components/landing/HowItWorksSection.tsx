@@ -8,7 +8,7 @@ const steps = [
   {
     icon: Download,
     headline: 'Import anything',
-    body: 'Drop in a YouTube link, a PDF, or a GitHub repo. KnowledgeOS pulls out the key ideas and organizes them for you.',
+    body: 'Drop in a YouTube link, a PDF, or a GitHub repo. Scritur pulls out the key ideas and organizes them for you.',
   },
   {
     icon: Sparkles,

@@ -1,7 +1,7 @@
 {
   "name": "knowledgeos",
   "version": "1.0.0",
-  "description": "KnowledgeOS — Your Personal AI Learning Operating System",
+  "description": "Scritur — Your Personal AI Learning Operating System",
   "private": true,
   "scripts": {
     "dev:server": "cd backend && venv/bin/python -m uvicorn app.main:app --reload --port 3001",

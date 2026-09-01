@@ -32,8 +32,8 @@ export function ChatWindow({ videoId }: Props) {
           <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-6 shadow-sm">
             <MessageSquare size={32} className="text-slate-300" />
           </div>
-          <h3 className="text-lg font-bold text-slate-700 mb-2 uppercase tracking-tight">Ready to chat?</h3>
-          <p className="text-sm font-medium text-slate-400 max-w-xs">
+          <h3 className="text-lg font-semibold text-slate-700 mb-2">Ready to chat?</h3>
+          <p className="text-sm text-slate-400 max-w-xs">
             Ask anything about this video or use the suggested questions in the sidebar.
           </p>
         </div>

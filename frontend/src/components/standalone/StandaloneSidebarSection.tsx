@@ -1,41 +1,44 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Plus, MessageSquare, Trash2, Pencil, Check, X,
-  FileText, Globe, Upload, Loader2, ExternalLink, AlertCircle,
+  FileText, Globe, Upload, Loader2, AlertCircle, ArrowRight,
 } from 'lucide-react';
 import { useStandaloneChatStore } from '../../store/useStandaloneChatStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useWorkspaceStore } from '../../store/useWorkspaceStore';
+import { MoveToWorkspaceDialog } from '../modals/MoveToWorkspaceDialog';
+import { AddSourceMenu } from '../shared/AddSourceMenu';
 
 export function StandaloneSidebarSection() {
   const {
     sessions, activeSessionId, loading, error,
-    loadSessions, createSession, setActiveSession, renameSession, deleteSession,
+    loadSessions, setActiveSession, renameSession, deleteSession,
     addSource, removeSource, sources,
   } = useStandaloneChatStore();
 
-  const [newTitle, setNewTitle] = useState('');
-  const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [showAddSource, setShowAddSource] = useState(false);
-  const [sourceText, setSourceText] = useState('');
-  const [sourceUrl, setSourceUrl] = useState('');
-  const [sourceType, setSourceType] = useState<'text' | 'url' | 'file'>('text');
-  const [addingSource, setAddingSource] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [movingSessionId, setMovingSessionId] = useState<string | null>(null);
+
+  const user = useAuthStore((s) => s.user);
+  const workspaces = useWorkspaceStore((s) => s.workspaces);
+  const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
 
   useEffect(() => {
     loadSessions();
   }, []);
 
-  const handleCreate = async () => {
-    setCreating(true);
-    try {
-      const session = await createSession(newTitle || undefined);
-      setActiveSession(session.id);
-      setNewTitle('');
-    } finally {
-      setCreating(false);
-    }
+  // Hide legacy empty "New Chat" sessions (no messages, no sources) that were
+  // auto-created by the previous implementation — but never hide the active one.
+  const visibleSessions = sessions.filter(
+    (s) =>
+      s.id === activeSessionId ||
+      !(s.message_count === 0 && s.source_count === 0 && s.title === 'New Chat')
+  );
+
+  const handleNewChat = () => {
+    // Ephemeral New Chat: clear active UI state only — no database session is created.
+    setActiveSession(null);
   };
 
   const handleRename = async (id: string) => {
@@ -45,33 +48,34 @@ export function StandaloneSidebarSection() {
     setEditingId(null);
   };
 
-  const handleAddSource = async () => {
+  const handleYouTubeImport = () => {
     if (!activeSessionId) return;
-    setAddingSource(true);
-    try {
-      if (sourceType === 'text') {
-        await addSource(activeSessionId, 'text', { title: sourceText.slice(0, 50), content: sourceText });
-        setSourceText('');
-      } else if (sourceType === 'url') {
-        await addSource(activeSessionId, 'url', { url: sourceUrl });
-        setSourceUrl('');
-      }
-      setShowAddSource(false);
-    } finally {
-      setAddingSource(false);
-    }
+    window.dispatchEvent(new CustomEvent('open-add-video-modal'));
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeSessionId) return;
-    setAddingSource(true);
-    try {
-      await addSource(activeSessionId, 'file', { file, title: file.name });
-    } finally {
-      setAddingSource(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  const handleWebsiteImport = async (url: string) => {
+    if (!activeSessionId) return;
+    await addSource(activeSessionId, 'url', { url });
+  };
+
+  const handleDocumentUpload = async (file: File) => {
+    if (!activeSessionId) return;
+    await addSource(activeSessionId, 'file', { file, title: file.name });
+  };
+
+  const handleMarkdownImport = async (title: string, content: string) => {
+    if (!activeSessionId) return;
+    await addSource(activeSessionId, 'text', { title, content });
+  };
+
+  const handleTextImport = async (title: string, content: string) => {
+    if (!activeSessionId) return;
+    await addSource(activeSessionId, 'text', { title, content });
+  };
+
+  const handleGitHubImport = async (url: string) => {
+    if (!activeSessionId) return;
+    await addSource(activeSessionId, 'url', { url });
   };
 
   return (
@@ -79,42 +83,32 @@ export function StandaloneSidebarSection() {
       {/* Sessions list (scrollable) */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
         <div className="px-3 mb-2">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Standalone Chats</p>
+          <p className="text-[10px] font-medium text-slate-500">Chats</p>
         </div>
 
-        {/* Create new chat */}
+        {/* Create new chat (ephemeral — no DB session until first message) */}
         <div className="px-3">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              placeholder="New chat..."
-              className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-            />
-            <button
-              onClick={handleCreate}
-              disabled={creating || !newTitle.trim()}
-              className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white transition-colors"
-            >
-              {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            </button>
-          </div>
+          <button
+            onClick={handleNewChat}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+          >
+            <Plus size={14} />
+            <span className="text-xs font-medium">New Chat</span>
+          </button>
         </div>
 
-        {/* Session list */}
+        {/* Session list (persisted conversations only) */}
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 size={20} className="animate-spin text-slate-500" />
           </div>
-        ) : sessions.length === 0 ? (
+        ) : visibleSessions.length === 0 ? (
           <div className="px-3 py-6 text-center">
             <MessageSquare size={24} className="mx-auto mb-2 text-slate-600" />
             <p className="text-xs text-slate-500">No chats yet</p>
           </div>
         ) : (
-          sessions.map((s) => (
+          visibleSessions.map((s) => (
             <div key={s.id} className="group">
               <div
                 onClick={() => setActiveSession(s.id)}
@@ -159,12 +153,27 @@ export function StandaloneSidebarSection() {
                         <button
                           onClick={(e) => { e.stopPropagation(); setEditingId(s.id); setEditTitle(s.title); }}
                           className="p-1 hover:text-slate-300"
+                          title="Rename"
                         >
                           <Pencil size={12} />
                         </button>
+                        {user && workspaces.length > 0 && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (workspaces.length === 0) await loadWorkspaces();
+                              setMovingSessionId(s.id);
+                            }}
+                            className="p-1 hover:text-sky-400"
+                            title="Move to workspace"
+                          >
+                            <ArrowRight size={12} />
+                          </button>
+                        )}
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
                           className="p-1 hover:text-rose-400"
+                          title="Delete"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -190,18 +199,8 @@ export function StandaloneSidebarSection() {
 
       {/* Sources section — always visible at bottom */}
       <div className="flex-shrink-0 border-t border-slate-800/50 p-3 space-y-2">
-        <div className="px-3 flex items-center justify-between">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sources</p>
-          <button
-            onClick={() => {
-              if (!activeSessionId) return;
-              setShowAddSource(!showAddSource);
-            }}
-            disabled={!activeSessionId}
-            className="p-1 rounded hover:bg-slate-800/50 text-slate-400 hover:text-white disabled:text-slate-700 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
-          >
-            <Plus size={14} />
-          </button>
+        <div className="px-3">
+          <p className="text-[10px] font-medium text-slate-500">Sources</p>
         </div>
 
         {!activeSessionId ? (
@@ -210,16 +209,7 @@ export function StandaloneSidebarSection() {
           </div>
         ) : (
           <>
-            {sources.length === 0 && !showAddSource ? (
-              <div className="px-3 py-2 text-center">
-                <button
-                  onClick={() => setShowAddSource(true)}
-                  className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold underline underline-offset-2"
-                >
-                  Add your first source
-                </button>
-              </div>
-            ) : (
+            {sources.length > 0 && (
               <div className="max-h-[140px] overflow-y-auto space-y-0.5 scrollbar-thin">
                 {sources.map((src) => (
                   <div
@@ -227,9 +217,9 @@ export function StandaloneSidebarSection() {
                     className="flex items-center justify-between px-3 py-1.5 group/source rounded-lg hover:bg-slate-800/30"
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {src.source_type === 'url' ? (
+                      {src.source_type === 'url' || src.source_type === 'website' ? (
                         <Globe size={12} className="text-sky-400 flex-shrink-0" />
-                      ) : src.source_type === 'file' ? (
+                      ) : src.source_type === 'file' || src.source_type === 'pdf' || src.source_type === 'docx' || src.source_type === 'pptx' ? (
                         <Upload size={12} className="text-amber-400 flex-shrink-0" />
                       ) : (
                         <FileText size={12} className="text-emerald-400 flex-shrink-0" />
@@ -247,78 +237,32 @@ export function StandaloneSidebarSection() {
               </div>
             )}
 
-            {showAddSource && (
-              <div className="space-y-2 px-1 pt-1">
-                <div className="flex items-center gap-1">
-                  {(['text', 'url', 'file'] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setSourceType(t)}
-                      className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded-lg transition-colors ${
-                        sourceType === t
-                          ? 'bg-indigo-600/20 text-indigo-400'
-                          : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                      }`}
-                    >
-                      {t === 'text' ? 'Text' : t === 'url' ? 'URL' : 'File'}
-                    </button>
-                  ))}
-                </div>
-
-                {sourceType === 'text' && (
-                  <div className="space-y-1">
-                    <textarea
-                      value={sourceText}
-                      onChange={(e) => setSourceText(e.target.value)}
-                      placeholder="Paste text content..."
-                      rows={2}
-                      className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
-                    />
-                    <button
-                      onClick={handleAddSource}
-                      disabled={addingSource || !sourceText.trim()}
-                      className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-colors"
-                    >
-                      {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Add Text'}
-                    </button>
-                  </div>
-                )}
-
-                {sourceType === 'url' && (
-                  <div className="space-y-1">
-                    <input
-                      type="url"
-                      value={sourceUrl}
-                      onChange={(e) => setSourceUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                    />
-                    <button
-                      onClick={handleAddSource}
-                      disabled={addingSource || !sourceUrl.trim()}
-                      className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-colors"
-                    >
-                      {addingSource ? <Loader2 size={12} className="animate-spin mx-auto" /> : 'Fetch URL'}
-                    </button>
-                  </div>
-                )}
-
-                {sourceType === 'file' && (
-                  <div className="space-y-1">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.docx,.pptx,.txt,.md"
-                      onChange={handleFileUpload}
-                      className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600/20 file:text-indigo-400 hover:file:bg-indigo-600/30"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="px-1">
+              <AddSourceMenu
+                onYouTubeImport={handleYouTubeImport}
+                onWebsiteImport={handleWebsiteImport}
+                onDocumentUpload={handleDocumentUpload}
+                onMarkdownImport={handleMarkdownImport}
+                onTextImport={handleTextImport}
+                onGitHubImport={handleGitHubImport}
+                disabled={!activeSessionId}
+              />
+            </div>
           </>
         )}
       </div>
+
+      {movingSessionId && (
+        <MoveToWorkspaceDialog
+          sessionId={movingSessionId}
+          sessionTitle={sessions.find((s) => s.id === movingSessionId)?.title ?? ''}
+          onClose={() => setMovingSessionId(null)}
+          onMoved={(wsId) => {
+            setMovingSessionId(null);
+            useWorkspaceStore.getState().setActiveWorkspace(wsId);
+          }}
+        />
+      )}
     </div>
   );
 }

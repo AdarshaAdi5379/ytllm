@@ -55,7 +55,7 @@ export function AIMessage({ message, isStreaming }: Props) {
           <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0 shadow-sm">
             <Sparkles size={14} className="text-indigo-600" />
           </div>
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">AI Assistant</span>
+          <span className="text-xs font-medium text-slate-500">AI Assistant</span>
         </div>
 
         <div

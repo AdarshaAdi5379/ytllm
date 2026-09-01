@@ -1,4 +1,4 @@
-# KnowledgeOS — V1: Rebrand & Architecture Overhaul
+# Scritur — V1: Rebrand & Architecture Overhaul
 
 **Goal:** Rename, restructure, and production-harden the codebase for multi-source support.
 
@@ -14,8 +14,8 @@ The codebase was renamed `ytllm` → `knowledgeos` across all configuration file
 - Root `package.json`: `name: "ytllm"` → `"knowledgeos"`
 - `client/package.json`: `name: "ytllm-client"` → `"knowledgeos-client"`
 - `server-python/pyproject.toml`: `name: "ytllm-server"` → `"knowledgeos-server"`
-- `main.py` app title: "YouTube AI Chat Agent" → "KnowledgeOS"
-- `client/index.html` <title>: "YouTube AI Chat Agent" → "KnowledgeOS"
+- `main.py` app title: "YouTube AI Chat Agent" → "Scritur"
+- `client/index.html` <title>: "YouTube AI Chat Agent" → "Scritur"
 - `README.md` title and description updated
 - `CLAUDE.md` project description updated
 - `server-python/app/__init__.py` docstring updated

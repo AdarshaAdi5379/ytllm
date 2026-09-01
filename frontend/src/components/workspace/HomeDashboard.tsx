@@ -102,7 +102,7 @@ export function HomeDashboard({ onNavigate }: HomeDashboardProps) {
 
         {/* Continue learning */}
         <section>
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Continue learning</h2>
+          <h2 className="text-xs font-medium text-slate-400 mb-3">Continue learning</h2>
           {recentSessions.length > 0 ? (
             <div className="space-y-1">
               {recentSessions.map((s) => (
@@ -127,7 +127,7 @@ export function HomeDashboard({ onNavigate }: HomeDashboardProps) {
         {/* Other workspaces */}
         {otherWorkspaces.length > 0 && (
           <section>
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Workspaces</h2>
+            <h2 className="text-xs font-medium text-slate-400 mb-3">Workspaces</h2>
             <div className="space-y-1">
               {otherWorkspaces.map((w) => (
                 <button
@@ -153,7 +153,7 @@ export function HomeDashboard({ onNavigate }: HomeDashboardProps) {
         {/* Reviews row */}
         {(pendingFlashcards > 0 || pendingQuizzes > 0 || recentMentor) && (
           <section>
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Reviews</h2>
+            <h2 className="text-xs font-medium text-slate-400 mb-3">Reviews</h2>
             <div className="space-y-1">
               {pendingFlashcards > 0 && (
                 <button

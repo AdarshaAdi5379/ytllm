@@ -1,1 +1,1 @@
-# KnowledgeOS - Python Backend
+# Scritur - Python Backend

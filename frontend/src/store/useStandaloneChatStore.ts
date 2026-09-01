@@ -19,16 +19,23 @@ interface StandaloneChatStore {
 
   loadSessions: () => Promise<void>;
   createSession: (title?: string) => Promise<standaloneApi.StandaloneSessionItem>;
+  /** Lazily create exactly one session for the ephemeral New Chat (idempotent, race-safe). */
+  ensureSession: () => Promise<standaloneApi.StandaloneSessionItem>;
   setActiveSession: (sessionId: string | null) => Promise<void>;
   renameSession: (sessionId: string, title: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   addSource: (sessionId: string, type: 'text' | 'url' | 'file', payload: { title?: string; content?: string; url?: string; file?: File }) => Promise<void>;
   removeSource: (sessionId: string, sourceId: string) => Promise<void>;
+  moveSession: (sessionId: string, workspaceId: string, folderId?: string) => Promise<{ workspace_id: string; session_id: string }>;
   addMessage: (msg: ChatMessage) => void;
+  updateSessionTitle: (sessionId: string, title: string) => void;
   setStreaming: (v: boolean) => void;
   clearMessage: () => void;
   resetState: () => void;
 }
+
+// Module-level guard: concurrent ensureSession() calls share one creation promise.
+let ensurePromise: Promise<standaloneApi.StandaloneSessionItem> | null = null;
 
 export const useStandaloneChatStore = create<StandaloneChatStore>()((set, get) => ({
   sessions: [],
@@ -54,6 +61,37 @@ export const useStandaloneChatStore = create<StandaloneChatStore>()((set, get) =
     const { sessions } = get();
     set({ sessions: [session, ...sessions] });
     return session;
+  },
+
+  ensureSession: async () => {
+    const { activeSessionId, sessions } = get();
+    if (activeSessionId) {
+      const existing = sessions.find((s) => s.id === activeSessionId);
+      if (existing) return existing;
+    }
+    if (!ensurePromise) {
+      ensurePromise = standaloneApi
+        .createStandaloneSession()
+        .then((session) => {
+          set((state) => ({
+            activeSessionId: session.id,
+            messages: [],
+            sources: [],
+            sessions: [session, ...state.sessions],
+          }));
+          return session;
+        })
+        .finally(() => {
+          ensurePromise = null;
+        });
+    }
+    return ensurePromise;
+  },
+
+  updateSessionTitle: (sessionId, title) => {
+    set((state) => ({
+      sessions: state.sessions.map((s) => (s.id === sessionId ? { ...s, title } : s)),
+    }));
   },
 
   setActiveSession: async (sessionId) => {
@@ -94,6 +132,18 @@ export const useStandaloneChatStore = create<StandaloneChatStore>()((set, get) =
       activeSessionId: activeSessionId === sessionId ? null : activeSessionId,
       messages: activeSessionId === sessionId ? [] : get().messages,
     });
+  },
+
+  moveSession: async (sessionId, workspaceId, folderId) => {
+    const result = await standaloneApi.moveSessionToWorkspace(sessionId, workspaceId, folderId);
+    const { sessions, activeSessionId } = get();
+    set({
+      sessions: sessions.filter((s) => s.id !== sessionId),
+      activeSessionId: activeSessionId === sessionId ? null : activeSessionId,
+      messages: activeSessionId === sessionId ? [] : get().messages,
+      sources: activeSessionId === sessionId ? [] : get().sources,
+    });
+    return result;
   },
 
   addSource: async (sessionId, type, payload) => {

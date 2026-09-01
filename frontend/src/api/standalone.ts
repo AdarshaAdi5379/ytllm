@@ -1,4 +1,4 @@
-import { apiFetch, getAuthToken } from './client';
+import { apiFetch, getAuthToken, API_BASE } from './client';
 
 // --- Types ---
 
@@ -60,7 +60,7 @@ function buildHeaders(extra?: Record<string, string>): Record<string, string> {
 
 async function apiFetchWithGuest<T>(url: string, options?: RequestInit): Promise<T> {
   const headers = buildHeaders(options?.headers as Record<string, string> | undefined);
-  const response = await fetch(`/api${url}`, { ...options, headers });
+  const response = await fetch(`${API_BASE}${url}`, { ...options, headers });
 
   if (!response.ok) {
     let errorData: any;
@@ -120,7 +120,7 @@ export async function uploadStandaloneText(
   const guestToken = getGuestToken();
   if (guestToken) headers['X-Guest-Token'] = guestToken;
 
-  const response = await fetch(`/api/standalone/sessions/${sessionId}/sources`, {
+  const response = await fetch(`${API_BASE}/standalone/sessions/${sessionId}/sources`, {
     method: 'POST',
     headers,
     body: formData,
@@ -150,7 +150,7 @@ export async function uploadStandaloneUrl(sessionId: string, url: string): Promi
   const guestToken = getGuestToken();
   if (guestToken) headers['X-Guest-Token'] = guestToken;
 
-  const response = await fetch(`/api/standalone/sessions/${sessionId}/sources`, {
+  const response = await fetch(`${API_BASE}/standalone/sessions/${sessionId}/sources`, {
     method: 'POST',
     headers,
     body: formData,
@@ -184,7 +184,7 @@ export async function uploadStandaloneFile(
   const guestToken = getGuestToken();
   if (guestToken) headers['X-Guest-Token'] = guestToken;
 
-  const response = await fetch(`/api/standalone/sessions/${sessionId}/sources`, {
+  const response = await fetch(`${API_BASE}/standalone/sessions/${sessionId}/sources`, {
     method: 'POST',
     headers,
     body: formData,
@@ -226,6 +226,7 @@ export function streamStandaloneChat(
     onToken: (text: string) => void;
     onMeta?: (meta: any) => void;
     onCitations?: (citations: any[]) => void;
+    onTitle?: (title: string) => void;
     onError: (msg: string) => void;
     onDone: () => void;
   },
@@ -237,7 +238,7 @@ export function streamStandaloneChat(
   const guestToken = getGuestToken();
   if (guestToken) headers['X-Guest-Token'] = guestToken;
 
-  fetch(`/api/standalone/sessions/${sessionId}/chat`, {
+  fetch(`${API_BASE}/standalone/sessions/${sessionId}/chat`, {
     method: 'POST',
     headers,
     body: JSON.stringify(req),
@@ -274,6 +275,9 @@ export function streamStandaloneChat(
                 break;
               case 'citations':
                 callbacks.onCitations?.(event.citations || []);
+                break;
+              case 'title':
+                if (event.title) callbacks.onTitle?.(event.title);
                 break;
               case 'error':
                 callbacks.onError(event.message || 'Unknown error');

@@ -1,11 +1,13 @@
 import type { TranscriptResponse, ExportRequest } from '../../../shared/types';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
+export { API_BASE };
 
 type FastApiError = {
   error?: string;
   message?: string;
-  detail?: { error?: string; message?: string } | string;
+  detail?: { error?: string; message?: string } | { loc: string[]; msg: string; type: string }[] | string;
 };
 
 interface TranscriptResponseApi {
@@ -29,7 +31,17 @@ function parseApiError(errorData: FastApiError, status: number): { code: string;
     };
   }
 
-  if (errorData?.detail && typeof errorData.detail === 'object') {
+  if (Array.isArray(errorData?.detail)) {
+    const firstError = errorData.detail[0];
+    if (firstError?.msg) {
+      return {
+        code: 'VALIDATION_ERROR',
+        message: firstError.msg,
+      };
+    }
+  }
+
+  if (errorData?.detail && typeof errorData.detail === 'object' && !Array.isArray(errorData.detail)) {
     return {
       code: errorData.detail.error ?? errorData.error ?? 'UNKNOWN_ERROR',
       message: errorData.detail.message ?? errorData.message ?? `HTTP ${status}`,
@@ -81,6 +93,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
     } catch {
       errorData = { error: 'UNKNOWN_ERROR', message: `HTTP ${response.status}` };
     }
+    console.error('[API ERROR]', response.status, url, errorData);
     const normalized = parseApiError(errorData, response.status);
     const err = new Error(normalized.message) as Error & { code?: string; status?: number };
     err.code = normalized.code;

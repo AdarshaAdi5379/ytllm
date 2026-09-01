@@ -2,14 +2,14 @@ import { Loader2, Check, X, AlertCircle, Youtube, Globe, FileText, Code, Github 
 import { useImportStore } from '../../store/useImportStore';
 
 const TYPE_ICONS: Record<string, JSX.Element> = {
-  youtube_video: <Youtube size={12} className="text-red-400" />,
-  website_page: <Globe size={12} className="text-emerald-400" />,
-  pdf_document: <FileText size={12} className="text-rose-400" />,
-  markdown_note: <Code size={12} className="text-amber-400" />,
+  youtube_video: <Youtube size={12} className="text-slate-400" />,
+  website_page: <Globe size={12} className="text-slate-400" />,
+  pdf_document: <FileText size={12} className="text-slate-400" />,
+  markdown_note: <Code size={12} className="text-slate-400" />,
   text_note: <FileText size={12} className="text-slate-400" />,
-  docx_document: <FileText size={12} className="text-blue-400" />,
-  pptx_document: <FileText size={12} className="text-orange-400" />,
-  github_repo: <Github size={12} className="text-slate-300" />,
+  docx_document: <FileText size={12} className="text-slate-400" />,
+  pptx_document: <FileText size={12} className="text-slate-400" />,
+  github_repo: <Github size={12} className="text-slate-400" />,
 };
 
 export function ImportNotifications() {

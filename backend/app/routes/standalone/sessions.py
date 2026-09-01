@@ -48,8 +48,6 @@ async def _get_session_owner_check(
         return s
     if s.user_id is not None:
         raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Session not found."})
-    if guest_token and s.guest_token == guest_token:
-        return s
 
     raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Session not found."})
 
@@ -88,8 +86,6 @@ async def list_sessions(
             select(func.count(StandaloneMessage.id)).where(StandaloneMessage.session_id == s.id)
         )
         resp.message_count = int(msg_count.scalar() or 0)
-        if resp.message_count == 0:
-            continue
         src_count = await db.execute(
             select(func.count(StandaloneSource.id)).where(StandaloneSource.session_id == s.id)
         )
@@ -106,6 +102,12 @@ async def create_session(
     db: AsyncSession = Depends(get_db),
 ):
     guest_token = req.guest_token or _get_guest_token(request)
+
+    if not user and not guest_token:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "TOKEN_REQUIRED", "message": "Guest token is required for unauthenticated sessions."},
+        )
 
     session = StandaloneSession(
         user_id=user.id if user else None,

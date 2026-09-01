@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { setAuthToken, setOnUnauthorized } from '../api/client';
 import { getGuestToken, claimGuestSessions } from '../api/standalone';
 import { supabase } from '../lib/supabase';
+import { useStandaloneChatStore } from './useStandaloneChatStore';
 
 interface AuthUser {
   id: string;
@@ -81,20 +82,25 @@ export const useAuthStore = create<AuthStore>()(
 
         // Try Supabase session first
         if (supabase) {
-          const { getSupabaseSession } = await import('../lib/auth');
-          const session = await getSupabaseSession();
-          if (session?.access_token) {
-            setAuthToken(session.access_token);
-            try {
-              const { getMe } = await import('../api/client');
-              const userData = await getMe();
-              const hc = useAuthStore.getState().hasCompletedOnboarding;
-              set({ user: userData, token: session.access_token, isAuthenticated: true, isAuthLoading: false, showOnboarding: !hc });
-              return;
-            } catch {
-              // session invalid — clear and fall through
-              setAuthToken(null);
+          try {
+            const { getSupabaseSession } = await import('../lib/auth');
+            const session = await getSupabaseSession();
+            if (session?.access_token) {
+              setAuthToken(session.access_token);
+              try {
+                const { getMe } = await import('../api/client');
+                const userData = await getMe();
+                const hc = useAuthStore.getState().hasCompletedOnboarding;
+                set({ user: userData, token: session.access_token, isAuthenticated: true, isAuthLoading: false, showOnboarding: !hc });
+                return;
+              } catch (err) {
+                // session invalid — clear and fall through
+                console.error('resolveAuthOnMount: getMe failed for Supabase session:', err);
+                setAuthToken(null);
+              }
             }
+          } catch (err) {
+            console.error('resolveAuthOnMount: getSupabaseSession failed:', err);
           }
         }
 
@@ -108,7 +114,8 @@ export const useAuthStore = create<AuthStore>()(
             const hc = useAuthStore.getState().hasCompletedOnboarding;
             set({ user: userData, token: storedToken, isAuthenticated: true, isAuthLoading: false, showOnboarding: !hc });
             return;
-          } catch {
+          } catch (err) {
+            console.error('resolveAuthOnMount: getMe failed for stored token:', err);
             setAuthToken(null);
             set({ user: null, token: null, isAuthenticated: false });
           }
@@ -126,6 +133,7 @@ export const useAuthStore = create<AuthStore>()(
           const result = await claimGuestSessions(guestToken);
           if (result.claimed > 0) {
             localStorage.removeItem('standalone-guest-token');
+            useStandaloneChatStore.getState().loadSessions();
           }
         } catch {
           // guest claim is best-effort
@@ -138,17 +146,29 @@ export const useAuthStore = create<AuthStore>()(
           const { getMe } = await import('../api/client');
           const userData = await getMe();
           const hasCompleted = useAuthStore.getState().hasCompletedOnboarding;
-          set({ user: userData, token: accessToken, isAuthenticated: true, showOnboarding: !hasCompleted });
+          // Only trigger onboarding on a fresh login. TOKEN_REFRESHED and other
+          // re-auth events must not re-show the wizard mid-session (it replaces
+          // the whole workspace panel, hiding header tabs and breaking nav).
+          const wasAuthenticated = useAuthStore.getState().isAuthenticated;
+          const prevShowOnboarding = useAuthStore.getState().showOnboarding;
+          set({
+            user: userData,
+            token: accessToken,
+            isAuthenticated: true,
+            showOnboarding: wasAuthenticated ? prevShowOnboarding : !hasCompleted,
+          });
           try {
             const guestToken = getGuestToken();
             const result = await claimGuestSessions(guestToken);
             if (result.claimed > 0) {
               localStorage.removeItem('standalone-guest-token');
+              useStandaloneChatStore.getState().loadSessions();
             }
           } catch {
             // best-effort
           }
-        } catch {
+        } catch (err) {
+          console.error('setSupabaseAuth failed:', err);
           setAuthToken(null);
           set({ user: null, token: null, isAuthenticated: false });
         }

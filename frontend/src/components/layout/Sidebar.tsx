@@ -48,13 +48,13 @@ export function Sidebar() {
       <div className="p-6 border-b border-slate-800/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center">
               <LayoutDashboard size={18} className="text-white" />
             </div>
-            <h1 className="text-sm font-black text-white tracking-widest uppercase">YT AI CHAT</h1>
+            <h1 className="text-sm font-bold text-white tracking-tight">Scritur</h1>
           </div>
           <div
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter ${
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium ${
               connected === false ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
             }`}
           >
@@ -67,7 +67,7 @@ export function Sidebar() {
         <div className="flex items-center gap-1 mb-3 bg-slate-800/50 rounded-lg p-0.5">
           <button
             onClick={() => setAppMode('standalone')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium transition-all ${
               appMode === 'standalone'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white'
@@ -78,7 +78,7 @@ export function Sidebar() {
           </button>
           <button
             onClick={() => setAppMode('workspace')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium transition-all ${
               appMode === 'workspace'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white'
@@ -94,12 +94,11 @@ export function Sidebar() {
           <button
             onClick={openAddVideoModal}
             disabled={videoIds.length >= 10}
-            className="group relative w-full overflow-hidden flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+            className="group relative w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Add new video"
           >
-            <div className="absolute inset-0 bg-white/10 group-hover:bg-transparent transition-colors"></div>
-            <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
-            <span>Add New Video</span>
+            <Plus size={16} />
+            <span>Add new video</span>
           </button>
         )}
       </div>
@@ -112,7 +111,7 @@ export function Sidebar() {
       ) : (
         <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
           <div className="px-3 mb-2">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Your Videos</p>
+            <p className="text-[10px] font-medium text-slate-500">Your videos</p>
           </div>
           {videoIds.length === 0 ? (
             <div className="p-8 text-center bg-slate-800/20 rounded-2xl border border-dashed border-slate-700/50">
@@ -139,17 +138,17 @@ export function Sidebar() {
           <div className="space-y-1">
             <button
               onClick={() => setAuthModalMode('login')}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all uppercase tracking-widest"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all"
             >
               <LogIn size={14} />
-              Sign In
+              Sign in
             </button>
             <button
               onClick={() => setAuthModalMode('register')}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600/80 hover:bg-indigo-600 transition-all uppercase tracking-widest"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-white bg-indigo-600/80 hover:bg-indigo-600 transition-all"
             >
               <UserPlus size={14} />
-              Sign Up
+              Sign up
             </button>
           </div>
         </div>
@@ -161,10 +160,10 @@ export function Sidebar() {
           <div className="space-y-2">
             <button
               onClick={() => setShowSavedVideos((v) => !v)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all uppercase tracking-widest"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all"
             >
               <Bookmark size={14} />
-              My Videos
+              My videos
             </button>
             {showSavedVideos && <SavedVideosList onRestore={restore} />}
             {restoring && (
@@ -184,8 +183,8 @@ export function Sidebar() {
                   className="w-6 h-6 rounded-full flex-shrink-0 object-cover"
                 />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                  <User size={12} className="text-white" />
+                <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                  <User size={12} className="text-indigo-600" />
                 </div>
               )}
               <span className="truncate">{user.display_name || user.email}</span>
@@ -196,13 +195,13 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        <div className="flex items-center justify-between text-[10px] font-medium text-slate-500">
           <span>Usage</span>
           <span>{videoIds.length}/10</span>
         </div>
         <div className="mt-2 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500" 
+            className="h-full bg-indigo-600 transition-all duration-500" 
             style={{ width: `${(videoIds.length / 10) * 100}%` }}
           />
         </div>

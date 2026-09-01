@@ -1,18 +1,30 @@
 import json
+from loguru import logger
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, check_workspace_access
 from app.db_models import (
     User, StandaloneSession, StandaloneMessage, StandaloneSource,
     Workspace, Source, ChatSession, ChatMessageNew, Folder,
 )
 from app.models import MoveToWorkspaceRequest
 from app.services import embedding_service
+from app.services.text_service import content_to_index_key
 
 router = APIRouter()
+
+TYPE_MAPPING = {
+    "text": "text_note",
+    "txt": "text_note",
+    "md": "markdown_note",
+    "website": "website_page",
+    "pdf": "pdf_document",
+    "docx": "docx_document",
+    "pptx": "pptx_document",
+}
 
 
 def _get_guest_token(request: Request) -> str | None:
@@ -48,7 +60,6 @@ async def move_session_to_workspace(
     )
     ws = ws_result.scalar_one_or_none()
     if not ws or (ws.owner_id != user.id):
-        from app.services.auth_service import check_workspace_access
         role = await check_workspace_access(db, req.workspace_id, user.id, ("owner", "admin", "editor"))
         if not role:
             raise HTTPException(
@@ -70,75 +81,83 @@ async def move_session_to_workspace(
                 detail={"error": "FOLDER_NOT_FOUND", "message": "Folder not found in workspace."},
             )
 
-    type_mapping = {
-        "text": "text_note",
-        "txt": "text_note",
-        "md": "markdown_note",
-        "website": "website_page",
-        "pdf": "pdf_document",
-        "docx": "docx_document",
-        "pptx": "pptx_document",
-    }
-
     source_result = await db.execute(
         select(StandaloneSource).where(StandaloneSource.session_id == session_id)
     )
     standalone_sources = source_result.scalars().all()
 
-    new_source_ids = []
-    for src in standalone_sources:
-        mapped_type = type_mapping.get(src.source_type, "text_note")
+    indexed_keys: list[str] = []
 
-        new_source = Source(
+    try:
+        new_source_ids = []
+        for src in standalone_sources:
+            mapped_type = TYPE_MAPPING.get(src.source_type, "text_note")
+            new_index_key = content_to_index_key(src.content)
+
+            new_source = Source(
+                workspace_id=req.workspace_id,
+                folder_id=req.folder_id,
+                user_id=user.id,
+                source_type=mapped_type,
+                title=src.title,
+                metadata_json=json.dumps({
+                    "index_key": new_index_key,
+                    "original_index_key": src.index_key,
+                    "original_session_id": session_id,
+                    "file_name": src.file_name,
+                }),
+                raw_text=src.content,
+                status="ready",
+            )
+            db.add(new_source)
+            await db.flush()
+            new_source_ids.append(new_source.id)
+
+            try:
+                indexed_keys.append(new_index_key)
+                await embedding_service.index_transcript(new_index_key, src.content)
+            except Exception:
+                logger.exception("Failed to re-index source {} during move", src.id)
+                raise
+
+        new_session = ChatSession(
             workspace_id=req.workspace_id,
             folder_id=req.folder_id,
             user_id=user.id,
-            source_type=mapped_type,
-            title=src.title,
-            metadata_json=json.dumps({
-                "original_index_key": src.index_key,
-                "original_session_id": session_id,
-                "file_name": src.file_name,
-            }),
-            raw_text=src.content,
-            status="ready",
+            title=session.title,
+            source_ids=json.dumps(new_source_ids),
+            model=session.model,
+            temperature=session.temperature,
         )
-        db.add(new_source)
+        db.add(new_session)
         await db.flush()
-        new_source_ids.append(new_source.id)
 
-    new_session = ChatSession(
-        workspace_id=req.workspace_id,
-        folder_id=req.folder_id,
-        user_id=user.id,
-        title=session.title,
-        source_ids=json.dumps(new_source_ids),
-        model=session.model,
-        temperature=session.temperature,
-    )
-    db.add(new_session)
-    await db.flush()
-
-    msg_result = await db.execute(
-        select(StandaloneMessage)
-        .where(StandaloneMessage.session_id == session_id)
-        .order_by(StandaloneMessage.timestamp)
-    )
-    for msg in msg_result.scalars().all():
-        new_msg = ChatMessageNew(
-            session_id=new_session.id,
-            role=msg.role,
-            content=msg.content,
-            citations=msg.citations,
-            timestamp=msg.timestamp,
+        msg_result = await db.execute(
+            select(StandaloneMessage)
+            .where(StandaloneMessage.session_id == session_id)
+            .order_by(StandaloneMessage.timestamp)
         )
-        db.add(new_msg)
+        for msg in msg_result.scalars().all():
+            new_msg = ChatMessageNew(
+                session_id=new_session.id,
+                role=msg.role,
+                content=msg.content,
+                citations=msg.citations,
+                timestamp=msg.timestamp,
+            )
+            db.add(new_msg)
+
+        await db.delete(session)
+        await db.commit()
+
+    except Exception:
+        logger.exception("Move failed, cleaning up re-indexed vectors")
+        for key in indexed_keys:
+            embedding_service.delete_chunks(key)
+        raise
 
     for src in standalone_sources:
         embedding_service.delete_chunks(src.index_key)
-
-    await db.delete(session)
-    await db.commit()
 
     return {
         "workspace_id": req.workspace_id,

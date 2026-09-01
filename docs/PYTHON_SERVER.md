@@ -1,6 +1,6 @@
-# KnowledgeOS - Python Backend
+# Scritur - Python Backend
 
-A Python-based backend for the KnowledgeOS project, originally built with Node.js/Express and now converted to Python/FastAPI.
+A Python-based backend for the Scritur project, originally built with Node.js/Express and now converted to Python/FastAPI.
 
 ## Overview
 
