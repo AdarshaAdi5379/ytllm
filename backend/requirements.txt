@@ -1,5 +1,6 @@
 # Web framework
 fastapi>=0.115.0
+python-multipart>=0.0.9
 
 # Web scraping
 beautifulsoup4>=4.12.0
