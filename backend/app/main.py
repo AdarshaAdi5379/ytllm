@@ -1,5 +1,4 @@
 import sentry_sdk
-import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -15,8 +14,6 @@ from app.middleware.error_handler import register_error_handlers
 from app.middleware.rate_limit import limiter
 from app.routes import health, transcript, chat, export, auth, videos
 from app.routes import workspace_router, sources_router, ai_router, tasks_router, standalone_router
-from app.services import embedding_service
-from app.utils import session_cache
 from app.utils.logging import setup_logging
 
 MAX_BODY_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -29,23 +26,9 @@ if config.get("sentry_dsn"):
         traces_sample_rate=0.1,
     )
 
-async def _cleanup_loop(stop_event: asyncio.Event) -> None:
-    interval_s = int(config.get("cleanup_interval_s", 600))
-    max_age_s = int(config.get("vector_index_ttl_s", config.get("session_cache_ttl", 7200)))
-
-    while not stop_event.is_set():
-        try:
-            active_ids = set(session_cache.session_cache.keys())
-            removed = embedding_service.cleanup_orphaned_indexes(active_ids, max_age_s=max_age_s)
-            if removed:
-                logger.info("Cleanup removed {} orphaned vector index dirs", removed)
-        except Exception as e:
-            logger.exception("Cleanup loop error: {}", e)
-
-        try:
-            await asyncio.wait_for(stop_event.wait(), timeout=interval_s)
-        except asyncio.TimeoutError:
-            continue
+# Chroma vector indexes live in Chroma Cloud (server-side). Explicit collection
+# deletion happens on source deletion; there is no local filesystem to GC.
+# (The legacy _cleanup_loop that scanned local index dirs was removed.)
 
 
 @asynccontextmanager
@@ -53,16 +36,7 @@ async def lifespan(app: FastAPI):
     setup_logging()
     logger.info("Starting Scritur (env={})", config["node_env"])
     await init_db()
-    stop_event = asyncio.Event()
-    task = asyncio.create_task(_cleanup_loop(stop_event))
-    try:
-        yield
-    finally:
-        stop_event.set()
-        try:
-            await asyncio.wait_for(task, timeout=5)
-        except Exception:
-            task.cancel()
+    yield
 
 
 app = FastAPI(title="Scritur", lifespan=lifespan)

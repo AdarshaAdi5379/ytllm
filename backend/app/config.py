@@ -31,8 +31,18 @@ class Settings(BaseSettings):
     embedding_batch_size: int = 20
     embedding_batch_delay: float = 0.5
 
-    # Vector storage path (persistent, not /tmp)
-    vector_storage_path: str = Field(default="./data/vectors", alias="VECTOR_STORAGE_PATH")
+    # Chroma Cloud (server/client) settings
+    # If CHROMA_API_KEY is set, Chroma Cloud is used (CloudClient).
+    # Otherwise, if CHROMA_HOST is set, a plain Chroma HttpClient is used
+    # (e.g. the local `chromadb` docker-compose service). If neither is set,
+    # a runtime error is raised on first vector use so local-persistence
+    # fallbacks are impossible on ephemeral (Render) filesystems.
+    chroma_api_key: str = Field(default="", alias="CHROMA_API_KEY")
+    chroma_host: str = Field(default="", alias="CHROMA_HOST")
+    chroma_port: int = Field(default=8000, alias="CHROMA_PORT")
+    chroma_ssl: bool = Field(default=True, alias="CHROMA_SSL")
+    chroma_tenant: str = Field(default="default_tenant", alias="CHROMA_TENANT")
+    chroma_database: str = Field(default="default_database", alias="CHROMA_DATABASE")
 
     # Transcript acceptance (helps avoid partial/bad caption fetches)
     transcript_min_words: int = Field(default=100, alias="TRANSCRIPT_MIN_WORDS")
@@ -71,6 +81,10 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         populate_by_name = True
+        # Ignore unmodeled env vars (e.g. frontend-only VITE_* keys copied into
+        # the same .env). Strict extra-forbid would sys.exit(1) on any unknown
+        # variable, which is fragile on Render where many env vars are present.
+        extra = "ignore"
 
 
 try:
@@ -135,7 +149,12 @@ config = {
     "top_k_chunks": settings.top_k_chunks,
     "embedding_batch_size": settings.embedding_batch_size,
     "embedding_batch_delay": settings.embedding_batch_delay,
-    "vector_storage_path": settings.vector_storage_path,
+    "chroma_api_key": settings.chroma_api_key,
+    "chroma_host": settings.chroma_host,
+    "chroma_port": settings.chroma_port,
+    "chroma_ssl": settings.chroma_ssl,
+    "chroma_tenant": settings.chroma_tenant,
+    "chroma_database": settings.chroma_database,
     "transcript_min_words": settings.transcript_min_words,
     "enable_whisper_fallback": settings.enable_whisper_fallback,
     "whisper_model": settings.whisper_model,

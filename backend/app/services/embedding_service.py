@@ -1,7 +1,5 @@
-import os
-import shutil
-import time
 from loguru import logger
+import time
 from openai import AsyncOpenAI
 import chromadb
 
@@ -16,37 +14,160 @@ client = AsyncOpenAI(
     base_url=config.get("openai_base_url"),
 )
 
-# In-memory map of video_id -> chromadb client
+# In-memory cache of index_key -> chromadb ClientAPI collection handle
 vector_indexes = {}
 
+# Lazily-initialized shared Chroma client (Cloud or HTTP).
+_client = None
 
-def _vector_root() -> str:
-    return config.get("vector_storage_path", "./data/vectors")
+
+def _collection_name(index_key: str) -> str:
+    """Collection names are server-side and globally namespaced by Chroma.
+
+    Chroma Cloud requires unique collection names within the configured
+    tenant/database. We keep the historical `video_` prefix for
+    backward compatibility so existing collection names remain valid."
+    """
+    return f"video_{index_key}"
 
 
-def get_index_path(video_id: str) -> str:
-    """Get the path for storing the vector index."""
-    return os.path.join(_vector_root(), video_id)
+def resolve_chroma_client_type():
+    """Return which Chroma backend is active based on env config.
+
+    Selection is explicit and never silently falls back to local persistence:
+      * CHROMA_API_KEY set  -> "cloud"   (chromadb.CloudClient)
+      * CHROMA_HOST set     -> "http"    (chromadb.HttpClient to self-hosted server)
+      * neither             -> raises RuntimeError on first use
+
+    Returns:
+        One of: "cloud", "http".
+    Raises:
+        RuntimeError: when neither CHROMA_API_KEY nor CHROMA_HOST is configured.
+    """
+    if config.get("chroma_api_key"):
+        return "cloud"
+    if config.get("chroma_host"):
+        return "http"
+    raise RuntimeError(
+        "Chroma is not configured. Set CHROMA_API_KEY (Chroma Cloud) or "
+        "CHROMA_HOST (self-hosted Chroma HTTP server). There is no "
+        "local-filesystem persistence fallback — this is intentional so "
+        "that deployments on ephemeral filesystems (e.g. Render) never "
+        "silently lose vector data."
+    )
+
+
+def _new_client():
+    """Build a fresh Chroma client (Cloud or HTTP). Never uses local persistence."""
+    backend = resolve_chroma_client_type()
+    tenant = config.get("chroma_tenant") or "default_tenant"
+    database = config.get("chroma_database") or "default_database"
+    if backend == "cloud":
+        return chromadb.CloudClient(
+            tenant=tenant,
+            database=database,
+            api_key=config["chroma_api_key"],
+        )
+    # backend == "http"
+    return chromadb.HttpClient(
+        host=config["chroma_host"],
+        port=config.get("chroma_port", 8000),
+        ssl=config.get("chroma_ssl", True),
+        headers={"x-chroma-token": config["chroma_api_key"]} if config.get("chroma_api_key") else None,
+        tenant=tenant,
+        database=database,
+    )
+
+
+def _get_client():
+    """Return the shared Chroma client (Chroma Cloud or HTTP server).
+
+    Prefers Chroma Cloud (CHROMA_API_KEY). Falls back to a self-hosted Chroma
+    server (CHROMA_HOST), e.g. the local docker-compose `chromadb` service.
+    Uses NO local filesystem persistence so it is safe on Render's
+    ephemeral disk.
+    """
+    global _client
+    if _client is not None:
+        return _client
+    _client = _new_client()
+    return _client
+
+
+def reset_chroma_client():
+    """Drop the cached Chroma client (mainly for tests)."""
+    global _client
+    _client = None
+
+
+def check_chroma_connectivity() -> dict:
+    """Safe, side-effect-free Chroma connectivity check.
+
+    Verifies the configured Chroma backend (Cloud or HTTP) is reachable and
+    usable WITHOUT touching any real application collections. It creates and
+    deletes a short-lived throwaway collection named `chroma-connectivity-test`
+    and heart-beats the server.
+
+    Safe to run from a CLI or via the health endpoint GET /api/health/chroma.
+
+    Returns:
+        dict with keys: ok (bool), backend (str), tenant, database,
+        error (str|None), and elapsed (float seconds).
+    """
+
+    start = time.monotonic()
+    result = {
+        "ok": False,
+        "backend": None,
+        "tenant": config.get("chroma_tenant") or "default_tenant",
+        "database": config.get("chroma_database") or "default_database",
+        "error": None,
+        "elapsed": 0.0,
+    }
+    try:
+        backend = resolve_chroma_client_type()
+        result["backend"] = backend
+        # Use a fresh client so we never mutate the shared cached `_client`.
+        # NOTE: we intentionally do NOT call reset_chroma_client() — building a
+        # new client leaves the app's shared client untouched.
+        client_obj = _new_client()
+        test_name = "chroma-connectivity-test"
+        # create_collection raises if it already exists; delete first to be
+        # idempotent, then create/get.
+        try:
+            client_obj.delete_collection(name=test_name)
+        except Exception:
+            pass
+        client_obj.get_or_create_collection(name=test_name)
+        # heartbeat confirms the server is actually answering.
+        client_obj.heartbeat()
+        result["ok"] = True
+        # cleanup
+        try:
+            client_obj.delete_collection(name=test_name)
+        except Exception:
+            pass
+    except Exception as e:
+        result["error"] = f"{type(e).__name__}: {e}"
+    result["elapsed"] = round(time.monotonic() - start, 3)
+    return result
 
 
 async def get_or_create_index(video_id: str):
-    """Get or create a ChromaDB index for a video."""
+    """Get or create a Chroma collection for an index key (video/source)."""
     if video_id in vector_indexes:
         return vector_indexes[video_id]
 
-    index_path = get_index_path(video_id)
-    os.makedirs(index_path, exist_ok=True)
-
-    _client = chromadb.PersistentClient(path=index_path)
-    collection = _client.get_or_create_collection(
-        name=f"video_{video_id}", metadata={"hnsw:space": "cosine"}
+    c = _collection_name(video_id)
+    collection = _get_client().get_or_create_collection(
+        name=c, metadata={"hnsw:space": "cosine"}
     )
     vector_indexes[video_id] = collection
     return collection
 
 
 async def embed_text(text: str) -> list[float]:
-    """Embeds a single text using OpenAI embeddings."""
+    """Embeds a single text using OpenAI-compatible embeddings (works with OpenRouter)."""
 
     async def _embed():
         resp = await client.embeddings.create(
@@ -272,56 +393,43 @@ async def search_across_collections(
 
 
 def delete_index(video_id: str) -> None:
-    """Deletes the vector index for a video (cleanup)."""
+    """Delete the Chroma collection for an index key."""
     if video_id in vector_indexes:
         del vector_indexes[video_id]
+    _delete_collection(video_id)
 
 
 def delete_chunks(index_key: str) -> None:
-    """Deletes the vector index for a given key (standalone or workspace)."""
+    """Delete the Chroma collection for a given key (standalone or workspace)."""
     if index_key in vector_indexes:
         del vector_indexes[index_key]
-    delete_index_files(index_key)
+    _delete_collection(index_key)
 
 
 def delete_index_files(video_id: str) -> None:
-    """Deletes on-disk vector index for a video."""
-    index_path = get_index_path(video_id)
-    if os.path.isdir(index_path):
-        shutil.rmtree(index_path, ignore_errors=True)
+    """Backward-compatible no-op for legacy on-disk index cleanup.
+
+    Previously removed the local index directory; index data now lives in a
+    Chroma (Cloud) collection, which `delete_index`/`delete_chunks` remove.
+    Kept so callers like workspace/sources.py (which call delete_index_files
+    followed by delete_index) don't issue a redundant duplicate remote delete.
+    """
+    pass
 
 
-def cleanup_orphaned_indexes(
-    active_video_ids: set[str],
-    max_age_s: int,
-) -> int:
-    root = _vector_root()
-    if not os.path.isdir(root):
-        return 0
+def _delete_collection(index_key: str) -> None:
+    """Delete a remote Chroma collection, tolerating a missing collection.
 
-    now = time.time()
-    removed = 0
-    for name in os.listdir(root):
-        path = os.path.join(root, name)
-        if not os.path.isdir(path):
-            continue
-        if name in active_video_ids:
-            continue
-
-        try:
-            mtime = os.path.getmtime(path)
-        except Exception:
-            mtime = now
-
-        if now - mtime >= max_age_s:
-            shutil.rmtree(path, ignore_errors=True)
-            removed += 1
-
-    for vid in list(vector_indexes.keys()):
-        if vid not in active_video_ids:
-            del vector_indexes[vid]
-
-    return removed
+    Uses the cache name directly because non-existent index keys map to
+    non-existent collections.
+    """
+    try:
+        _get_client().delete_collection(name=_collection_name(index_key))
+    except Exception:
+        # Chroma raises NotFoundError for already-deleted collections and some
+        # cloud backends raise for network blips. Deletion is best-effort:
+        # source deletion in the DB is authoritative, vectors are derived.
+        logger.debug("delete_collection failed (ignored) for {}", index_key)
 
 
 def _build_where_clause(filters: dict | None) -> dict | None:

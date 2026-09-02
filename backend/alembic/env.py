@@ -6,10 +6,11 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from app.config import config as app_config
+from app.database import database_url_without_sslmode, database_connect_args
 from app.db_models import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", app_config["database_url"])
+config.set_main_option("sqlalchemy.url", database_url_without_sslmode())
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -41,6 +42,7 @@ def run_migrations_online() -> None:
         section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=database_connect_args(),
     )
 
     async def run():

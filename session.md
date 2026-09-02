@@ -674,3 +674,67 @@ Ran a comprehensive production deployment verification audit. Found 3 blockers, 
 ### Notes / Test Artifacts
 - Test users created for verification: `uitest@example.com`, `uitest2@example.com`, `uitest3@example.com` (Supabase + backend, password `uitest12345`) — delete if unwanted.
 - Playwright scripts + logs + screenshots in `/tmp/pwtest/` (repro.js, verify.js, *.log, final.png, verify.png).
+
+---
+
+## Session 11 — Supabase DB Connection Fix, Alembic SSL Fix & Chroma Cloud Verification
+
+### Date
+2026-09-02
+
+### Problems Solved
+
+**1. Supabase DATABASE_URL connection failing with `ConnectionRefusedError` on IPv6**
+- Symptom: Every TCP attempt to `db.<ref>.supabase.co:5432` failed with `ConnectionRefusedError [Errno 111] Connect call failed ('2406:da1a:82a:9d01:ce6:989a:1445:49c9', 5432, 0, 0)`.
+- Root cause: This sandbox (and the user's machine) resolve Supabase's **direct** host `db.<ref>.supabase.co` to **IPv6 only**, with no IPv6 route — so the TCP handshake is refused at the network layer **before any auth happens**. This is NOT a password problem.
+- Fix: Switched to Supabase's **Session pooler** hostname `aws-1-ap-south-1.pooler.supabase.com` (region Mumbai), which resolves to **IPv4** and connects fine.
+- Final working URL: `postgresql+asyncpg://postgres.iqgiybtbrzdsboephdaq:Adarshamyname11@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require`
+- Verification: live `asyncpg` connect + SQLAlchemy engine both confirmed `PostgreSQL 17.6`, database `postgres`.
+
+**2. Alembic migrations fail with `TypeError: connect() got an unexpected keyword argument 'sslmode'`**
+- Symptom: `init_db()` crashed because SQLAlchemy's asyncpg dialect rejects `sslmode=require` as a URL query param (it must come via `connect_args`).
+- Root cause: `?sslmode=require` in the URL is not forwarded to asyncpg's `connect()` — asyncpg reads SSL from `connect_args`. The app engine (`database.py`) and Alembic engine (`alembic/env.py`) are built independently, so both needed the fix.
+- Fix (2 files):
+  - `backend/app/database.py`: Added `database_url_without_sslmode()` (strips `sslmode` from URL) + `database_connect_args()` (returns `{"ssl": "require"}` when `sslmode=require` is present). Engine now uses both.
+  - `backend/alembic/env.py`: Reuses the same two helpers so the Alembic migration engine applies identical SSL handling as the app engine.
+- Verification: all 14 Alembic migrations ran cleanly (`6c24d2dbf94d` → `e08fe825261f` head); live schema confirmed on Supabase (21 tables).
+
+**3. Chroma Cloud integration — verified end-to-end against real Chroma Cloud**
+- Inspected existing Chroma implementation (`embedding_service.py`, `config.py`, `.env.example`). Config layer was already correct (all 6 Chroma env vars declared). The `_get_client()` logic was mostly right but had a misleading `PersistentClient` reference in its error message and no connectivity-check helper.
+- Refactored client selection into explicit, testable functions:
+  - `resolve_chroma_client_type()` → returns `"cloud"` / `"http"` / raises `RuntimeError`
+  - `_new_client()` → builds the client (never uses local persistence)
+  - `reset_chroma_client()` → drops cached client (for tests)
+- Added `check_chroma_connectivity()` — safe, side-effect-free check that creates+deletes a throwaway `chroma-connectivity-test` collection and heart-beats the server. Returns `{ok, backend, tenant, database, error, elapsed}`.
+- Added `GET /api/health/chroma` endpoint for runtime connectivity checks.
+- Added `tests/test_chroma_config.py` (9 tests): client selection (cloud/http/neither), API-key precedence, `PersistentClient` guard (source inspection), connectivity OK + error paths, collection naming + isolation.
+- **Verified against real Chroma Cloud** (credentials already in `.env`):
+  - Connectivity: `{"ok": true, "backend": "cloud", "tenant": "1742225b-...", "database": "scritur"}`
+  - Full Scritur flow: index transcript → retrieve chunks (with citation metadata) → metadata filter by `source_id` → delete → confirm collection gone → isolation (second collection unaffected). All operations passed.
+- Cleaned up `.env`: removed misleading `CHROMA_HOST=api.trychroma.com` (redundant when API key is set), added precedence comments, removed stale Supabase password comment.
+- Updated `.env.example` to document the explicit selection precedence.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `backend/.env` | DATABASE_URL → Supabase Session pooler (IPv4); cleaned up Chroma config (removed misleading CHROMA_HOST, added precedence comments); removed stale Supabase password comment |
+| `backend/app/database.py` | Added `database_url_without_sslmode()` + `database_connect_args()` helpers; engine now strips `sslmode` from URL and passes `ssl="require"` via `connect_args` |
+| `backend/alembic/env.py` | Reuses `database_url_without_sslmode()` + `database_connect_args()` so Alembic engine matches app engine SSL handling |
+| `backend/app/services/embedding_service.py` | Added `resolve_chroma_client_type()`, `_new_client()`, `reset_chroma_client()`, `check_chroma_connectivity()`; refactored `_get_client()`; removed misleading `PersistentClient` reference from error message |
+| `backend/app/routes/health.py` | Added `GET /api/health/chroma` endpoint |
+| `backend/tests/test_chroma_config.py` | **New** — 9 tests for Chroma client selection, connectivity, collection naming, and `PersistentClient` guard |
+| `backend/.env.example` | Sharpened Chroma precedence documentation |
+
+### Key Decisions
+- **Supabase Session pooler for IPv4**: The direct `db.<ref>.supabase.co` host resolves to IPv6-only in some networks with no IPv6 route. The `aws-1-ap-south-1.pooler.supabase.com` pooler host resolves to IPv4 and connects reliably. Trade-off: this is the transaction/session pooler (port 5432) — fine for app queries, but DDL-heavy migrations may need the direct connection in rare cases.
+- **SSL via connect_args, not URL**: asyncpg reads SSL from `connect_args`, not from an `sslmode` URL query param. Centralized the logic in `database.py` and reused it in `alembic/env.py` so both engines stay in sync.
+- **Chroma selection is explicit, never silent**: API key → Cloud, host → HTTP, neither → `RuntimeError`. No `PersistentClient`/local-filesystem fallback exists anywhere in the app — intentional for ephemeral (Render) filesystems.
+- **Chroma credentials were already in `.env`**: No new credentials needed; the existing `CHROMA_API_KEY=ck-5FiTvccrb2M7EyGYZAEzf5H4NYb5pz825WrDstqjG4Qw` / `CHROMA_TENANT=1742225b-da38-47b9-aa68-c9b8c6b826b6` / `CHROMA_DATABASE=scritur` were present and verified working.
+
+### Verification
+- All 58 backend tests pass (49 original + 9 new Chroma tests)
+- Supabase: live engine connect + 14 migrations applied + 21 tables confirmed on remote DB
+- Chroma Cloud: connectivity check OK; full index→retrieve→filter→delete→isolation flow verified against real Cloud
+- App boots cleanly: `from app.main import app` → FastAPI app with 15 routes
+- Frontend: not touched
