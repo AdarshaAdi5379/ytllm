@@ -151,6 +151,9 @@ export const useAuthStore = create<AuthStore>()(
           // the whole workspace panel, hiding header tabs and breaking nav).
           const wasAuthenticated = useAuthStore.getState().isAuthenticated;
           const prevShowOnboarding = useAuthStore.getState().showOnboarding;
+          // Set isAuthenticated AFTER getMe() confirms token validity.
+          // This prevents App.tsx from firing authenticated API calls (e.g. /videos/)
+          // while the token is still unvalidated.
           set({
             user: userData,
             token: accessToken,

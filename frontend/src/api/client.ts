@@ -93,7 +93,14 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
     } catch {
       errorData = { error: 'UNKNOWN_ERROR', message: `HTTP ${response.status}` };
     }
-    console.error('[API ERROR]', response.status, url, errorData);
+    // Suppress 401 console.error when _onUnauthorized already handled it.
+    // The handler attempts a Supabase session refresh before clearing auth.
+    // Logging here creates duplicate noise during normal startup restore
+    // and transient token race windows. Real 401s are still thrown and
+    // caught by callers who log them with full context.
+    if (!(response.status === 401 && _onUnauthorized)) {
+      console.error('[API ERROR]', response.status, url, errorData);
+    }
     const normalized = parseApiError(errorData, response.status);
     const err = new Error(normalized.message) as Error & { code?: string; status?: number };
     err.code = normalized.code;
