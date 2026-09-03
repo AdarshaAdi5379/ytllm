@@ -114,7 +114,7 @@ export function SearchPanel() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Search input */}
-      <div className="p-4 border-b border-gray-100 space-y-2">
+      <div className="p-4 pl-12 lg:pl-4 border-b border-gray-100 space-y-2">
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -149,7 +149,7 @@ export function SearchPanel() {
           {hasActiveFilters && (
             <button
               onClick={(e) => { e.stopPropagation(); clearFilters(); }}
-              className="ml-1 p-0.5 text-rose-400 hover:text-rose-600"
+              className="ml-1 p-1.5 text-rose-400 hover:text-rose-600"
             >
               <X size={8} />
             </button>

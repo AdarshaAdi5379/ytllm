@@ -194,7 +194,7 @@ export function QuizTake({ quiz, onBack }: Props) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
+      <header className="flex items-center justify-between pl-12 pr-6 py-3 lg:pl-6 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <button
             onClick={onBack}
@@ -341,13 +341,13 @@ export function QuizTake({ quiz, onBack }: Props) {
           <button
             onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
             disabled={currentIndex === 0}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-30"
+            className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-30"
           >
             <ChevronLeft size={14} />
             Previous
           </button>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 overflow-x-auto">
             {questions.map((q, i) => (
               <button
                 key={q.id}
@@ -377,7 +377,7 @@ export function QuizTake({ quiz, onBack }: Props) {
           ) : (
             <button
               onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+              className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
             >
               Next
               <ChevronRight size={14} />

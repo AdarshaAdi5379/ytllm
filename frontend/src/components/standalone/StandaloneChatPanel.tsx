@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Send, Loader2, MessageSquare, Trash2, Plus,
-  User, Bot, Sparkles, AlertCircle, Paperclip, X,
+  User, Bot, Sparkles, AlertCircle, Paperclip, X, Menu,
 } from 'lucide-react';
 import { useStandaloneChatStore } from '../../store/useStandaloneChatStore';
 import { streamStandaloneChat } from '../../api/standalone';
+import { useAppStore } from '../../store/useAppStore';
 
 export function StandaloneChatPanel() {
   const {
@@ -26,6 +27,7 @@ export function StandaloneChatPanel() {
   const [addingSource, setAddingSource] = useState(false);
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const attachFileRef = useRef<HTMLInputElement>(null);
+  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -159,15 +161,22 @@ export function StandaloneChatPanel() {
   return (
     <main className="flex-1 flex flex-col bg-white overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+      <header className="flex items-center justify-between pr-4 py-3 lg:pl-4 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-all"
+            aria-label="Open sidebar"
+          >
+            <Menu size={20} />
+          </button>
           <Sparkles size={18} className="text-indigo-600" />
           <span className="text-sm font-bold text-gray-800">{activeSessionId ? 'Standalone Chat' : 'New Chat'}</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={handleNewChat}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all min-h-[44px]"
           >
             <Plus size={14} />
             New Chat
@@ -175,7 +184,7 @@ export function StandaloneChatPanel() {
           <button
             onClick={handleClear}
             disabled={messages.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 rounded-lg transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 rounded-lg transition-all min-h-[44px]"
           >
             <Trash2 size={14} />
             Clear
@@ -187,7 +196,7 @@ export function StandaloneChatPanel() {
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {messages.length === 0 && !streaming ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-md px-6">
+            <div className="text-center max-w-md px-6 lg:pl-6">
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto mb-4">
                 <MessageSquare size={22} className="text-indigo-400" />
               </div>
@@ -207,7 +216,7 @@ export function StandaloneChatPanel() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  className={`max-w-[80%] rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed break-words ${
                     msg.role === 'user'
                       ? 'bg-indigo-600 text-white rounded-tr-md'
                       : 'bg-gray-100 text-gray-800 rounded-tl-md'
@@ -228,7 +237,7 @@ export function StandaloneChatPanel() {
                 <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
                   <Bot size={16} className="text-indigo-600" />
                 </div>
-                <div className="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed bg-gray-100 text-gray-800 rounded-tl-md">
+                <div className="max-w-[80%] rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed bg-gray-100 text-gray-800 rounded-tl-md break-words">
                   {streamText}
                   <span className="inline-block w-1.5 h-4 bg-indigo-600 animate-pulse ml-0.5 rounded-sm" />
                 </div>
@@ -258,7 +267,7 @@ export function StandaloneChatPanel() {
               <button
                 onClick={() => setShowAttachMenu(!showAttachMenu)}
                 disabled={streaming || !activeSessionId}
-                className={`p-2 rounded-xl transition-all ${
+                className={`p-2.5 rounded-xl transition-all min-h-[44px] min-w-[44px] flex items-center justify-center ${
                   showAttachMenu
                     ? 'bg-indigo-100 text-indigo-600'
                     : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
@@ -271,7 +280,7 @@ export function StandaloneChatPanel() {
               {showAttachMenu && (
                 <div
                   ref={attachMenuRef}
-                  className="absolute bottom-full left-0 mb-2 w-72 bg-white rounded-xl border border-gray-200 shadow-xl z-50 p-3"
+                  className="absolute bottom-full left-0 mb-2 w-64 sm:w-72 bg-white rounded-xl border border-gray-200 shadow-xl z-50 p-3"
                 >
                   <div className="flex items-center gap-1 mb-3">
                     {(['text', 'url', 'file'] as const).map((t) => (
@@ -362,7 +371,7 @@ export function StandaloneChatPanel() {
             {streaming ? (
               <button
                 onClick={handleStop}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold rounded-xl transition-all"
+                className="flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold rounded-xl transition-all"
               >
                 Stop
               </button>
@@ -370,7 +379,7 @@ export function StandaloneChatPanel() {
               <button
                 onClick={handleSend}
                 disabled={!input.trim()}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-300 text-white text-sm font-semibold rounded-xl transition-all"
+                className="flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-300 text-white text-sm font-semibold rounded-xl transition-all"
               >
                 <Send size={16} />
                 Send

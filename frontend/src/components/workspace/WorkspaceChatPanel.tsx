@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Paperclip, Globe, FileText, Upload } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Paperclip, Globe, FileText, Upload, Menu } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem, importTextSource, importWebsiteSource, uploadDocument } from '../../api/workspace';
@@ -26,6 +26,7 @@ export function WorkspaceChatPanel() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const viewMode = useAppStore((s) => s.viewMode);
   const setViewMode = useAppStore((s) => s.setViewMode);
+  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
 
   const [input, setInput] = useState('');
   const [showSessions, setShowSessions] = useState(true);
@@ -218,11 +219,18 @@ export function WorkspaceChatPanel() {
   return (
     <main className="flex-1 flex flex-col bg-white">
       {/* Top bar with session selector + settings */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
-        <div className="flex items-center gap-2 flex-wrap">
+      <header className="flex items-center justify-between pr-4 py-3 sm:pr-6 lg:pl-4 border-b border-gray-100">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-all"
+            aria-label="Open sidebar"
+          >
+            <Menu size={20} />
+          </button>
           <button
             onClick={() => setViewMode(viewMode === 'home' ? 'chat' : 'home')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all min-h-[44px] ${
               viewMode === 'home' ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
             }`}
             title="Home"
@@ -232,10 +240,10 @@ export function WorkspaceChatPanel() {
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </button>
-          <div className="w-px h-4 bg-gray-200" />
+          <div className="hidden sm:block w-px h-4 bg-gray-200" />
           <button
             onClick={() => setShowSessions(!showSessions)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all min-h-[44px]"
           >
             <MessageSquare size={14} />
             <span>Chats</span>
@@ -243,12 +251,12 @@ export function WorkspaceChatPanel() {
           </button>
           <button
             onClick={handleNewChat}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+            className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all min-h-[44px]"
           >
             <Plus size={12} />
-            New Chat
+            <span className="hidden sm:inline">New Chat</span>
           </button>
-          <div className="w-px h-4 bg-gray-200" />
+          <div className="hidden sm:block w-px h-4 bg-gray-200" />
           {[
             { mode: 'chat' as const, icon: <MessageSquare size={12} />, label: 'Chat' },
             { mode: 'notes' as const, icon: <Book size={12} />, label: 'Notes' },
@@ -258,21 +266,21 @@ export function WorkspaceChatPanel() {
             <button
               key={tab.mode}
               onClick={() => setViewMode(tab.mode)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg transition-all min-h-[44px] ${
                 viewMode === tab.mode ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
               }`}
             >
               {tab.icon}
-              {tab.label}
+              <span className="hidden xs:inline">{tab.label}</span>
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <ActionsToolbar />
           <div className="relative">
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+              className="flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all min-h-[44px]"
               title="Chat settings"
             >
               <SlidersHorizontal size={13} />
@@ -319,7 +327,7 @@ export function WorkspaceChatPanel() {
       <div className="flex flex-1 overflow-hidden">
         {/* Session sidebar */}
         {showSessions && (
-          <div className="w-56 flex-shrink-0 border-r border-gray-100 bg-gray-50/50 overflow-y-auto p-2">
+          <div className="hidden md:flex w-56 flex-shrink-0 border-r border-gray-100 bg-gray-50/50 overflow-y-auto p-2">
             {sessions.length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-8">No chats yet</p>
             ) : (
@@ -342,7 +350,7 @@ export function WorkspaceChatPanel() {
                         e.stopPropagation();
                         if (activeWorkspaceId) deleteSessionFromStore(activeWorkspaceId, s.id);
                       }}
-                      className="p-0.5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-500 transition-all"
+                      className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-500 transition-all"
                     >
                       <Trash2 size={9} />
                     </button>
@@ -383,7 +391,7 @@ export function WorkspaceChatPanel() {
           <ProgressDashboardPanel />
         ) : (
         <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+          <div className="flex-1 overflow-y-auto px-4 py-4 lg:pl-4 space-y-4 scrollbar-thin">
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
@@ -401,7 +409,7 @@ export function WorkspaceChatPanel() {
                 <div key={i}>
                   <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      className={`max-w-[80%] rounded-2xl px-3 py-2.5 sm:px-4 text-sm leading-relaxed break-words ${
                         msg.role === 'user'
                           ? 'bg-indigo-600 text-white rounded-br-md'
                           : 'bg-gray-100 text-gray-800 rounded-bl-md'
@@ -456,7 +464,7 @@ export function WorkspaceChatPanel() {
                       <span className="max-w-[100px] truncate">{src.title}</span>
                       <button
                         onClick={() => setRecentSources((prev) => prev.filter((s) => s.id !== src.id))}
-                        className="p-0.5 text-indigo-400 hover:text-indigo-600"
+                        className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-indigo-400 hover:text-indigo-600"
                       >
                         <X size={8} />
                       </button>
@@ -471,7 +479,7 @@ export function WorkspaceChatPanel() {
                   <button
                     onClick={() => setShowAttachMenu(!showAttachMenu)}
                     disabled={streaming}
-                    className={`p-2 rounded-xl transition-all ${
+                    className={`p-2.5 rounded-xl transition-all min-h-[44px] min-w-[44px] flex items-center justify-center ${
                       showAttachMenu
                         ? 'bg-indigo-100 text-indigo-600'
                         : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
@@ -484,7 +492,7 @@ export function WorkspaceChatPanel() {
                   {showAttachMenu && (
                     <div
                       ref={attachMenuRef}
-                      className="absolute bottom-full left-0 mb-2 w-72 bg-white rounded-xl border border-gray-200 shadow-xl z-50 p-3"
+                      className="absolute bottom-full left-0 mb-2 w-64 sm:w-72 bg-white rounded-xl border border-gray-200 shadow-xl z-50 p-3"
                     >
                       <div className="flex items-center gap-1 mb-3">
                         {(['text', 'url', 'file'] as const).map((t) => (
@@ -578,7 +586,7 @@ export function WorkspaceChatPanel() {
                 <button
                   onClick={handleSend}
                   disabled={streaming || !input.trim()}
-                  className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {streaming ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </button>

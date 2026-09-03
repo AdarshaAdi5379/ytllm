@@ -88,7 +88,7 @@ function ActionModal({ actionType, onClose }: ActionModalProps) {
       >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-800">{AI_ACTION_LABELS[actionType]}</h3>
-          <button onClick={onClose} className="p-0.5 text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600">
             <X size={14} />
           </button>
         </div>

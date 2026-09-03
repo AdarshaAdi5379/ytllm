@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2, UserPlus, Sparkles, Layers } from 'lucide-react';
+import { Plus, Wifi, WifiOff, LayoutDashboard, LogIn, LogOut, User, Bookmark, Loader2, UserPlus, Sparkles, Layers, Menu, X } from 'lucide-react';
 import { VideoCard } from '../video/VideoCard';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -14,7 +14,7 @@ import { ProfilePanel } from '../auth/ProfilePanel';
 export function Sidebar() {
   const { videos, openAddVideoModal, clearVideos } = useVideoStore();
   const { user, isAuthenticated, isAuthLoading, clearAuth, setAuthModalMode, updateProfile } = useAuthStore();
-  const { appMode, setAppMode } = useAppStore();
+  const { appMode, setAppMode, sidebarOpen, setSidebarOpen } = useAppStore();
   const videoIds = Object.keys(videos);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [showSavedVideos, setShowSavedVideos] = useState(false);
@@ -41,11 +41,10 @@ export function Sidebar() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  return (
+  const sidebarContent = (
     <>
-    <aside className="w-72 flex-shrink-0 h-full flex flex-col bg-slate-900 border-r border-slate-800 shadow-2xl z-10">
       {/* Header */}
-      <div className="p-6 border-b border-slate-800/50">
+      <div className="p-4 sm:p-6 border-b border-slate-800/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center">
@@ -53,13 +52,22 @@ export function Sidebar() {
             </div>
             <h1 className="text-sm font-bold text-white tracking-tight">Scritur</h1>
           </div>
-          <div
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium ${
-              connected === false ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
-            }`}
-          >
-            {connected === false ? <WifiOff size={10} /> : <Wifi size={10} />}
-            <span>{connected === false ? 'Offline' : 'Online'}</span>
+          <div className="flex items-center gap-2">
+            <div
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium ${
+                connected === false ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
+              }`}
+            >
+              {connected === false ? <WifiOff size={10} /> : <Wifi size={10} />}
+              <span>{connected === false ? 'Offline' : 'Online'}</span>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all"
+              aria-label="Close sidebar"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
 
@@ -206,8 +214,37 @@ export function Sidebar() {
           />
         </div>
       </div>
+    </>
+  );
 
-    </aside>
+  return (
+    <>
+      {/* Hamburger button - visible on mobile only */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="lg:hidden fixed top-3 left-3 z-30 p-2 rounded-lg bg-slate-900 text-white shadow-lg hover:bg-slate-800 transition-all"
+        aria-label="Open sidebar"
+      >
+        <Menu size={20} />
+      </button>
+
+      {/* Desktop sidebar - always visible */}
+      <aside className="hidden lg:flex w-72 flex-shrink-0 h-full flex-col bg-slate-900 border-r border-slate-800 shadow-2xl z-10">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-40">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="absolute inset-y-0 left-0 w-72 flex flex-col bg-slate-900 border-r border-slate-800 shadow-2xl z-50">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
 
       {showProfile && <ProfilePanel onClose={() => setShowProfile(false)} />}
     </>

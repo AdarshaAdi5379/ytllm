@@ -63,7 +63,7 @@ export function HomeDashboard({ onNavigate }: HomeDashboardProps) {
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto scrollbar-thin">
-      <div className="max-w-2xl mx-auto w-full px-8 py-10 space-y-10">
+      <div className="max-w-2xl mx-auto w-full px-4 py-6 pl-12 sm:pl-8 lg:pl-8 sm:pr-8 sm:py-10 space-y-10">
 
         {/* Greeting */}
         <div>

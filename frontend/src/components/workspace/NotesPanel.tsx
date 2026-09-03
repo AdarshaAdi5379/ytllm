@@ -100,7 +100,7 @@ export function NotesPanel() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto px-4 py-4 pl-12 lg:pl-4 space-y-3 scrollbar-thin">
         {/* New note input */}
         <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
           <textarea
@@ -221,9 +221,9 @@ export function NotesPanel() {
                         <button
                           key={s}
                           onClick={() => setEditImportance(s)}
-                          className={`p-0.5 ${s <= editImportance ? 'text-amber-400' : 'text-gray-300'}`}
+                          className={`p-1 ${s <= editImportance ? 'text-amber-400' : 'text-gray-300'}`}
                         >
-                          <Star size={10} fill={s <= editImportance ? 'currentColor' : 'none'} />
+                          <Star size={12} fill={s <= editImportance ? 'currentColor' : 'none'} />
                         </button>
                       ))}
                     </div>
@@ -252,9 +252,9 @@ export function NotesPanel() {
                         e.stopPropagation();
                         deleteNote(note.id);
                       }}
-                      className="p-0.5 flex-shrink-0 text-gray-400 hover:text-rose-500 transition-all"
+                      className="p-1.5 flex-shrink-0 text-gray-400 hover:text-rose-500 transition-all"
                     >
-                      <Trash2 size={10} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">

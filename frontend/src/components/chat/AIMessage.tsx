@@ -61,7 +61,7 @@ export function AIMessage({ message, isStreaming }: Props) {
         <div
           ref={containerRef}
           className={cn(
-            'bg-slate-50/50 border border-slate-100 rounded-2xl rounded-tl-sm px-5 py-4 text-[14px] leading-relaxed text-slate-700 hover:border-slate-200 transition-colors duration-300',
+            'bg-slate-50/50 border border-slate-100 rounded-2xl rounded-tl-sm px-3 py-2.5 sm:px-5 sm:py-4 text-[14px] leading-relaxed text-slate-700 hover:border-slate-200 transition-colors duration-300 break-words overflow-wrap-anywhere',
             isStreaming && 'streaming-cursor'
           )}
           dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}

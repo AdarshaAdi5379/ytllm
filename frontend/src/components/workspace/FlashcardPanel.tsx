@@ -160,7 +160,7 @@ export function FlashcardPanel() {
   if (reviewMode) {
     return (
       <div className="flex-1 flex flex-col overflow-hidden bg-slate-900">
-        <header className="flex items-center justify-between px-6 py-3 border-b border-slate-800">
+        <header className="flex items-center justify-between pl-12 pr-6 py-3 lg:pl-6 border-b border-slate-800">
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
             <Brain size={16} className="text-indigo-400" />
             Reviewing Flashcards
@@ -195,7 +195,7 @@ export function FlashcardPanel() {
           {expandedSections.stats && (
             <div className="px-4 pb-4">
               {stats ? (
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="bg-indigo-50 rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-indigo-600">{stats.total}</p>
                     <p className="text-[10px] text-indigo-500 font-medium uppercase tracking-wider mt-1">Total</p>
@@ -517,9 +517,9 @@ export function FlashcardPanel() {
                               e.stopPropagation();
                               handleDelete(card.id);
                             }}
-                            className="p-0.5 flex-shrink-0 text-gray-400 hover:text-rose-500 transition-all"
+                            className="p-1.5 flex-shrink-0 text-gray-400 hover:text-rose-500 transition-all"
                           >
-                            <Trash2 size={10} />
+                            <Trash2 size={12} />
                           </button>
                         </div>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">

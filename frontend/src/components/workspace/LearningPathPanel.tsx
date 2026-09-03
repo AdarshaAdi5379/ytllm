@@ -45,10 +45,10 @@ export function LearningPathPanel() {
 
     return (
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center gap-2 px-6 py-3 border-b border-gray-100">
+        <header className="flex items-center gap-2 pl-12 pr-6 py-3 lg:pl-6 border-b border-gray-100">
           <button
             onClick={() => setActivePath(null)}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
           >
             <ArrowLeft size={16} />
           </button>

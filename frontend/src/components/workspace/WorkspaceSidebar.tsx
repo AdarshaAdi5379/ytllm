@@ -35,6 +35,7 @@ export function WorkspaceSidebarContent() {
   const openAddVideoModal = useVideoStore((s) => s.openAddVideoModal);
   const viewMode = useAppStore((s) => s.viewMode);
   const setViewMode = useAppStore((s) => s.setViewMode);
+  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
 
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreatingWs, setIsCreatingWs] = useState(false);
@@ -206,6 +207,7 @@ export function WorkspaceSidebarContent() {
                       onClick={() => {
                         setActiveWorkspace(ws.id);
                         setShowWsSwitcher(false);
+                        setSidebarOpen(false);
                       }}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold transition-all ${
                         ws.id === activeWorkspaceId
@@ -249,7 +251,7 @@ export function WorkspaceSidebarContent() {
                         setIsCreatingWs(false);
                         setNewWsName('New Workspace');
                       }}
-                      className="p-0.5 text-emerald-400 hover:text-emerald-300"
+                      className="p-1.5 text-emerald-400 hover:text-emerald-300"
                     >
                       <Check size={10} />
                     </button>
@@ -258,7 +260,7 @@ export function WorkspaceSidebarContent() {
                         setIsCreatingWs(false);
                         setNewWsName('New Workspace');
                       }}
-                      className="p-0.5 text-slate-500 hover:text-slate-300"
+                      className="p-1.5 text-slate-500 hover:text-slate-300"
                     >
                       <X size={10} />
                     </button>
@@ -327,7 +329,7 @@ export function WorkspaceSidebarContent() {
         <span className="text-[10px] font-medium text-slate-500">Folders</span>
         <button
           onClick={() => setAddingFolder(true)}
-          className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-all"
+          className="p-1.5 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-all"
           title="New folder"
         >
           <FolderPlus size={12} />
@@ -349,12 +351,12 @@ export function WorkspaceSidebarContent() {
             placeholder="Folder name"
             className="flex-1 bg-slate-800 text-xs text-white px-1.5 py-1 rounded outline-none border border-slate-600 focus:border-indigo-500"
           />
-          <button onClick={handleAddFolder} className="p-0.5 text-emerald-400 hover:text-emerald-300">
+          <button onClick={handleAddFolder} className="p-1.5 text-emerald-400 hover:text-emerald-300">
             <Check size={12} />
           </button>
           <button
             onClick={() => { setAddingFolder(false); setNewFolderName(''); }}
-            className="p-0.5 text-slate-500 hover:text-slate-300"
+            className="p-1.5 text-slate-500 hover:text-slate-300"
           >
             <X size={12} />
           </button>
@@ -536,11 +538,11 @@ function FolderTreeNode({
         style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
         {hasChildren ? (
-          <button onClick={toggleExpand} className="p-0.5 text-slate-500 hover:text-slate-300">
+          <button onClick={toggleExpand} className="p-1.5 text-slate-500 hover:text-slate-300">
             {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
           </button>
         ) : (
-          <button onClick={toggleExpand} className="p-0.5 text-slate-500 hover:text-slate-300">
+          <button onClick={toggleExpand} className="p-1.5 text-slate-500 hover:text-slate-300">
             {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
           </button>
         )}
@@ -575,12 +577,12 @@ function FolderTreeNode({
         <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
           <button
             onClick={() => { setShowImportInput(!showImportInput); setShowMenu(false); }}
-            className="p-0.5 text-slate-500 hover:text-emerald-400"
+            className="p-1.5 text-slate-500 hover:text-emerald-400"
             title="Import YouTube"
           >
             <Plus size={10} />
           </button>
-          <button onClick={() => setShowMenu(!showMenu)} className="p-0.5 text-slate-500 hover:text-slate-300">
+          <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 text-slate-500 hover:text-slate-300">
             <MoreHorizontal size={10} />
           </button>
           {showMenu && (
@@ -631,13 +633,13 @@ function FolderTreeNode({
           <button
             onClick={handleImport}
             disabled={importing}
-            className="p-0.5 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+            className="p-1.5 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
           >
             {importing ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
           </button>
           <button
             onClick={() => { setShowImportInput(false); setImportUrl(''); }}
-            className="p-0.5 text-slate-500 hover:text-slate-300"
+            className="p-1.5 text-slate-500 hover:text-slate-300"
           >
             <X size={10} />
           </button>
@@ -745,10 +747,10 @@ function SourceItemRow({
         <span className="flex-1 truncate">{source.title}</span>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-0.5 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 transition-all flex-shrink-0"
+          className="p-1.5 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 transition-all flex-shrink-0"
           title="Remove source"
         >
-          <Trash2 size={9} />
+          <Trash2 size={12} />
         </button>
       </div>
     </div>

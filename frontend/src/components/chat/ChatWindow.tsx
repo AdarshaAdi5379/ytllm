@@ -21,7 +21,7 @@ export function ChatWindow({ videoId }: Props) {
   const messages = video.chatHistory;
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8 scrollbar-thin relative">
+    <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-8 space-y-4 sm:space-y-8 scrollbar-thin relative">
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" 
            style={{ backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '24px 24px' }}>

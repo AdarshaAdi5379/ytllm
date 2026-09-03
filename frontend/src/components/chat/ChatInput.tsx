@@ -53,7 +53,7 @@ export function ChatInput({ onSend, disabled }: Props) {
         <button
           onClick={handleSend}
           disabled={!value.trim() || disabled}
-          className="flex-shrink-0 w-9 h-9 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="flex-shrink-0 min-h-[44px] min-w-[44px] w-9 h-9 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
           aria-label="Send message"
         >
           <Send size={16} />

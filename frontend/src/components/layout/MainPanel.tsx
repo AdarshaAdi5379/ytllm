@@ -37,7 +37,7 @@ export function MainPanel() {
     return (
       <main className="flex-1 flex flex-col bg-white">
         {/* Top bar with auth buttons */}
-        <header className="flex items-center justify-end px-6 py-4 border-b border-gray-100">
+        <header className="flex items-center justify-end pl-12 pr-6 py-4 lg:pl-6 border-b border-gray-100">
           {!isAuthenticated ? (
             <div className="flex items-center gap-2">
                 <button
@@ -119,11 +119,11 @@ export function MainPanel() {
       <VideoHeader videoId={video.videoId} />
       <VideoPlayer videoId={video.videoId} />
       
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Chat Section */}
-        <div className="flex-1 flex flex-col relative bg-white">
+        <div className="flex-1 flex flex-col relative bg-white min-w-0">
           <ChatWindow videoId={video.videoId} />
-          <div className="p-4 bg-gradient-to-t from-white via-white to-transparent">
+          <div className="p-3 sm:p-4 bg-gradient-to-t from-white via-white to-transparent">
             <ChatInput
               videoId={video.videoId}
               onSend={handleSend}
@@ -132,8 +132,8 @@ export function MainPanel() {
           </div>
         </div>
 
-        {/* Info Section (Right Sidebar) */}
-        <div className="w-80 flex-shrink-0 flex flex-col bg-slate-50/50 border-l border-slate-100 overflow-y-auto scrollbar-thin">
+        {/* Info Section (Right Sidebar) - hidden on mobile */}
+        <div className="hidden lg:flex w-80 flex-shrink-0 flex-col bg-slate-50/50 border-l border-slate-100 overflow-y-auto scrollbar-thin">
           <div className="p-4 space-y-4">
             <SummaryCard videoId={video.videoId} onQuestionClick={handleSend} />
             <TranscriptPanel videoId={video.videoId} />

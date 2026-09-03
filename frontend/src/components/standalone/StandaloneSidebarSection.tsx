@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useStandaloneChatStore } from '../../store/useStandaloneChatStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useAppStore } from '../../store/useAppStore';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { MoveToWorkspaceDialog } from '../modals/MoveToWorkspaceDialog';
 import { AddSourceMenu } from '../shared/AddSourceMenu';
@@ -23,6 +24,7 @@ export function StandaloneSidebarSection() {
   const user = useAuthStore((s) => s.user);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
+  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
 
   useEffect(() => {
     loadSessions();
@@ -39,6 +41,7 @@ export function StandaloneSidebarSection() {
   const handleNewChat = () => {
     // Ephemeral New Chat: clear active UI state only — no database session is created.
     setActiveSession(null);
+    setSidebarOpen(false);
   };
 
   const handleRename = async (id: string) => {
@@ -111,7 +114,7 @@ export function StandaloneSidebarSection() {
           visibleSessions.map((s) => (
             <div key={s.id} className="group">
               <div
-                onClick={() => setActiveSession(s.id)}
+                onClick={() => { setActiveSession(s.id); setSidebarOpen(false); }}
                 className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all ${
                   activeSessionId === s.id
                     ? 'bg-indigo-600/20 text-white'

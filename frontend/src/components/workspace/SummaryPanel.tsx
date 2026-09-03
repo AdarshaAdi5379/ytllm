@@ -104,7 +104,7 @@ export function SummaryPanel() {
   return (
     <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
       {/* Type selector tabs */}
-      <div className="flex items-center gap-1 px-4 py-3 border-b border-gray-200 bg-white overflow-x-auto scrollbar-thin">
+      <div className="flex items-center gap-1 pl-12 pr-4 py-3 lg:pl-4 border-b border-gray-200 bg-white overflow-x-auto scrollbar-thin">
         {SUMMARY_TYPES.map((type) => {
           const hasSummary = summaries.some((s) => s.type === type);
           const isActive = activeType === type;
@@ -113,7 +113,7 @@ export function SummaryPanel() {
             <button
               key={type}
               onClick={() => setActiveType(type)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                 isActive
                   ? 'bg-indigo-100 text-indigo-700'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'

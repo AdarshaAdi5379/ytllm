@@ -19,7 +19,7 @@ export function VideoHeader({ videoId }: Props) {
 
   return (
     <>
-      <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between gap-6">
+      <header className="bg-white border-b border-slate-100 pl-12 pr-6 py-4 lg:pl-6 flex items-center justify-between gap-6">
         <div className="flex-1 min-w-0 flex items-center gap-4">
           <button
             onClick={() => setActiveVideo(null)}

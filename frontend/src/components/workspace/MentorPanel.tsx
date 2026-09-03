@@ -227,12 +227,12 @@ export function MentorPanel() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
+      <div className="flex items-center justify-between pl-12 pr-6 py-3 lg:pl-6 border-b border-gray-100">
         <div className="flex items-center gap-2">
           {view !== 'list' && (
             <button
               onClick={handleBackToList}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
             >
               <ArrowLeft size={14} />
             </button>
@@ -248,7 +248,7 @@ export function MentorPanel() {
         {view === 'list' && (
           <button
             onClick={() => { setView('active'); clearActiveSession(); }}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all"
+            className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all"
           >
             <Plus size={12} />
             New Session
@@ -257,7 +257,7 @@ export function MentorPanel() {
         {view === 'active' && activeSession && activeSession.status === 'active' && (
           <button
             onClick={handleEnd}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all"
+            className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all"
           >
             End Session
           </button>
