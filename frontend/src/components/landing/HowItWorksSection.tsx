@@ -34,7 +34,7 @@ export function HowItWorksSection({ onStartLearning }: HowItWorksSectionProps) {
             Here&apos;s how it works
           </h2>
           <p className="text-lg text-gray-500 max-w-xl mx-auto">
-            Import content from anywhere, then learn with tools that adapt to you.
+            Import content from anywhere, then turn it into an AI study tool that adapts to you.
           </p>
         </div>
 
