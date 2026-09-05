@@ -738,3 +738,87 @@ Ran a comprehensive production deployment verification audit. Found 3 blockers, 
 - Chroma Cloud: connectivity check OK; full index→retrieve→filter→delete→isolation flow verified against real Cloud
 - App boots cleanly: `from app.main import app` → FastAPI app with 15 routes
 - Frontend: not touched
+
+---
+
+## Session 12 — Mobile UI, Auth Race Fix, Frontend SEO, Vercel Analytics & Render Keep-Alive
+
+### Date
+2026-09-04
+
+### Problems Solved
+
+**1. Auth restore race causing transient 401 on `/videos/` and `/standalone/claim`**
+- Symptom: On page load/refresh while authenticated, console showed transient 401 errors on authenticated API calls before auth fully resolved.
+- Root cause: `isAuthenticated` could become `true` via a listener event before `resolveAuthOnMount()` completed, causing the videos effect to fire with an unvalidated token. Separately, a second 401 from a failed `fetchSavedVideos()` triggered an aggressive `clearAuth()` causing false logout, and duplicate `[API ERROR] 401` logs obscured real issues.
+- Fix (3 files):
+  - `frontend/src/App.tsx` — videos effect gated on `isAuthLoading === false` (`|| isAuthLoading` check added); aggressive `clearAuth()`/`resetState()` removed (global `_onUnauthorized` handler owns refresh/clear); `isAuthLoading` added to effect deps.
+  - `frontend/src/api/client.ts` — `console.error('[API ERROR]', ...)` suppressed when `_onUnauthorized` already handled the 401; other status codes continue to log normally.
+  - `frontend/src/store/useAuthStore.ts` — comment added documenting that `set()` with `isAuthenticated: true` is intentionally after `getMe()` to prevent premature authenticated API calls.
+
+**2. Mobile layout issues across workspace and standalone views**
+- Sidebar was not mobile-friendly, touch targets too small, content clipped on mobile.
+- Fix (17+ files): mobile drawer with hamburger + overlay, 44px touch targets, responsive panels/grids, inline hamburger buttons, `pl-12` on scrollable containers to avoid overlap, sidebar auto-close on navigation.
+
+### Features Implemented
+
+**SEO fundamentals (public homepage `https://www.scritur.space/`)**
+- `sitemap.xml` — single URL, canonical www domain, no invented `lastmod`/`changefreq`/`priority`
+- `robots.txt` — allows all user-agents, points to sitemap
+- `frontend/index.html` — canonical URL, improved title/description, Open Graph, Twitter Card (`summary_large_image`), `SoftwareApplication` JSON-LD (no pricing/offers, no invented claims)
+- `frontend/public/favicon.svg` — brand-matching indigo→violet "K" mark, fixes previously broken `/favicon.svg` reference
+- `frontend/public/og-image.svg` — 1200×630 SVG social preview
+- `frontend/src/components/landing/HowItWorksSection.tsx` — single natural copy tweak ("AI study tool" in intro line) to support primary keyword "ai study app" naturally
+
+**Vercel Web Analytics**
+- Installed `@vercel/analytics` (Vite React import: `@vercel/analytics/react`, not `/next`)
+- Added `<Analytics />` component in `frontend/src/main.tsx` alongside existing providers
+
+**Render backend keep-alive (dashboard setup, no code changes)**
+- UptimeRobot HTTP monitor pinging `https://scritur-backend.onrender.com/api/health/` every 5 minutes
+- Keeps Render-free-tier service awake (prevents 15-min spin-down cold starts)
+- Cost: ~720 of 750 monthly compute hours when running 24/7
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `frontend/src/App.tsx` | Gated videos effect on `isAuthLoading === false`; removed aggressive `clearAuth()`/`resetState()` on 401; removed unused `useWorkspaceStore`/`useChatSessionStore` imports |
+| `frontend/src/api/client.ts` | Suppressed duplicate `[API ERROR] 401` console.error when `_onUnauthorized` already handled it |
+| `frontend/src/store/useAuthStore.ts` | Comment documenting intentional post-`getMe()` placement of `isAuthenticated: true` |
+| `frontend/index.html` | Updated title, meta description, canonical, OG, Twitter Card, JSON-LD (`SoftwareApplication`) |
+| `frontend/src/components/landing/HowItWorksSection.tsx` | Intro copy: "learn with tools" → "turn it into an AI study tool" |
+| `frontend/src/main.tsx` | Added `import { Analytics }` from `@vercel/analytics/react`; added `<Analytics />` component |
+| `frontend/public/sitemap.xml` | **New** — single URL: `https://www.scritur.space/` |
+| `frontend/public/robots.txt` | **New** — `Allow: /`; sitemap reference |
+| `frontend/public/favicon.svg` | **New** — brand-matching SVG favicon |
+| `frontend/public/og-image.svg` | **New** — 1200×630 SVG social preview |
+| `frontend/package.json` | Added `@vercel/analytics` dependency |
+
+### Commits
+| Hash | Date | Message |
+|------|------|---------|
+| `6b8bfcce` | 2026-09-03 | changed mobile ui and sidebar ui details |
+| `0ad879b3` | 2026-09-03 | fixed auth race condition |
+| `1708dca6` | 2026-09-03 | added sitemap and robots.txt file |
+| `0c70dee1` | 2026-09-03 | edited sitemap |
+| `85dffb95` | 2026-09-03 | Improve homepage SEO copy |
+| `4579a8d4` | 2026-09-03 | added vercel analytics feature code |
+
+### Key Decisions
+- **Canonical domain is `https://www.scritur.space/`** — `scritur.space` (non-www) 308-redirects to `www`; all sitemap/SEO URLs use the canonical 200-returning host.
+- **`@vercel/analytics/react`** (not `/next`) — project is Vite + React 18, not Next.js.
+- **No pricing/free/no-signup claims in SEO metadata** — Supabase auth is required; "no sign up" would be false. Only "Start Learning Free" CTA language (not in metadata).
+- **JSON-LD `SoftwareApplication`** — factual only (name, category, OS, description); no `offers`, no ratings/reviews.
+- **UptimeRobot over Render cron** — Render's built-in cron jobs require a paid plan; free tier has no cron feature. UptimeRobot is free and sufficient.
+- **Single ping target per service** — only the Scritur backend is kept awake; other inactive Render services are not affected.
+- **Sitemap stays at one URL** — no fake routing, no forced public pages. New URLs will require real routes + prerendering.
+
+### Verification
+- `npx tsc --noEmit`: clean (no errors)
+- `npm run build`: passes
+- Backend tests: 58/58 pass (all Chroma + auth + standalone + code chunker tests)
+- `dist/index.html`: confirms canonical, OG, Twitter, JSON-LD present and correct
+- `dist/robots.txt` + `dist/sitemap.xml`: valid, unchanged from expected content
+- No localhost, no non-canonical URLs, no private routes in sitemap
+- UptimeRobot monitor: 100% uptime confirmed at time of setup

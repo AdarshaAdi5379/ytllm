@@ -78,3 +78,48 @@
 - Deploy to cloud server (IPv6 needed for Supabase PostgreSQL host)
 - Workspace restructure: sessions auto-share all sources
 - Standalone chat polish
+
+## 2026-09-04 — Auth Race Fix, Mobile UI, Frontend SEO, Vercel Analytics & Render Keep-Alive
+
+### Context
+- Session 12 (primary log: `session.md`)
+- Auth race fix + mobile layout (carried over from prior session) + SEO fundamentals + Vercel Web Analytics + Render keep-alive setup
+
+### Commits
+- `6b8bfcce` — changed mobile ui and sidebar ui details
+- `0ad879b3` — fixed auth race condition
+- `1708dca6` — added sitemap and robots.txt file
+- `0c70dee1` — edited sitemap
+- `85dffb95` — Improve homepage SEO copy
+- `4579a8d4` — added vercel analytics feature code
+
+### Files Changed
+- `frontend/src/App.tsx` — videos effect gated on `isAuthLoading === false`; removed aggressive `clearAuth()`; removed unused store imports
+- `frontend/src/api/client.ts` — suppressed duplicate `[API ERROR] 401` when `_onUnauthorized` already handled it
+- `frontend/src/store/useAuthStore.ts` — documented post-`getMe()` `isAuthenticated` placement
+- `frontend/index.html` — title, meta description, canonical, OG, Twitter Card, JSON-LD (`SoftwareApplication`)
+- `frontend/src/components/landing/HowItWorksSection.tsx` — intro copy → "AI study tool"
+- `frontend/src/main.tsx` — added `@vercel/analytics/react` import + `<Analytics />` component
+- `frontend/public/sitemap.xml` — **New** — `https://www.scritur.space/` (1 URL)
+- `frontend/public/robots.txt` — **New** — `Allow: /` + sitemap reference
+- `frontend/public/favicon.svg` — **New** — indigo→violet "K" brand mark
+- `frontend/public/og-image.svg` — **New** — 1200×630 social preview
+- `frontend/package.json` — added `@vercel/analytics` dependency
+
+### Decisions
+- Canonical domain: `https://www.scritur.space/` (www host returns 200; non-www 308-redirects)
+- `@vercel/analytics/react` — correct import for Vite + React 18 (not `/next`)
+- No pricing/free/no-signup claims in metadata (auth required; "no sign up" would be false)
+- JSON-LD: factual `SoftwareApplication` only; no `offers`, ratings, reviews
+- UptimeRobot keep-alive over Render cron (Render cron needs paid plan)
+- Sitemap stays at 1 URL; new URLs require real routes + prerendering
+
+### Blockers
+- (none)
+
+### Next Steps
+- SEO phase 2: build-time prerendering so crawlers see landing content (crawlers currently see empty `<div id="root">`)
+- SEO phase 3: dedicated landing pages (features, pricing, blog) with real routes
+- Deploy pending: Vercel analytics needs Web Analytics enabled in Vercel dashboard
+- Backend keep-alive: confirm Render 750h/mo budget isn't exhausted with other services
+- Auth: full race fix (move `set()` after `getMe()`) may still be incomplete; tokens could be swapped mid-flight by listener — consider hardening in next session

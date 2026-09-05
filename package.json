@@ -7,6 +7,7 @@
     "dev:server": "cd backend && venv/bin/python -m uvicorn app.main:app --reload --port 3001",
     "dev:client": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "npm run build:seo --prefix frontend",
     "build:client": "npm run build --prefix frontend",
     "install:all": "npm install --prefix frontend && cd backend && pip install -r requirements.txt",
     "install:server:py": "cd backend && pip install -r requirements.txt"

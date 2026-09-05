@@ -27,14 +27,14 @@ npm run dev                            # frontend :5173, backend :3001
 - `backend/` — FastAPI + SQLAlchemy async + PostgreSQL (port 5433 locally)
 - **`server/` is stale. Never touch it.**
 - Environment template: `backend/.env.example` only (root `.env.example` is stale)
-- `shared/types.ts` — shared TS types between frontend/backend
+- `frontend/public/` — static assets copied to `dist/` by Vite: `sitemap.xml`, `robots.txt`, `favicon.svg`, `og-image.svg`
 
 ## Backend
 
 - **PostgreSQL on port 5433.** `DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5433/knowledgeos`
 - Alembic migrations auto-run on FastAPI startup via `init_db()` in `database.py`
 - Migration chain head: `e08fe825261f` (14 migrations)
-- ChromaDB vectors stored in `backend/data/vectors/` (gitignored)
+- ChromaDB vectors in Chroma Cloud (via `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE` in `.env`) — not local storage
 - Config: `backend/app/config.py` (Pydantic-settings, reads from `.env`)
 - Route pattern: `routes/` for HTTP, `services/` for business logic
 - Auth: Supabase JWT (ES256/H256 via JWKS) first, legacy bcrypt/pyjwt fallback
@@ -72,7 +72,7 @@ When changing API request/response shapes, update both:
 
 ## Testing
 
-- 42 backend tests (unittest): `test_chunk_segments.py`, `test_code_chunker.py`, `test_supabase_auth.py`, `test_standalone_schema.py`, `test_standalone_flows.py`
+- 58 backend tests (unittest): `test_chunk_segments.py`, `test_code_chunker.py`, `test_supabase_auth.py`, `test_standalone_schema.py`, `test_standalone_flows.py`, `test_chroma_config.py`
 - Frontend: no test framework. Build (`npm run build:client`) is the only verification.
 - Activate venv before running tests: `source venv/bin/activate`
 
@@ -86,6 +86,10 @@ When changing API request/response shapes, update both:
 - File uploads restricted to `.pdf, .docx, .pptx, .txt, `.md`
 - Existing instruction file: `CLAUDE.md` (detailed session history)
 - Move endpoint re-indexes sources before deleting standalone indexes — rollback cleans up new vectors on failure
+- Supabase session pooler (`aws-1-ap-south-1.pooler.supabase.com` port 5432) is used for IPv4 — the direct `db.<ref>.supabase.co` host is IPv6-only on some networks. See Session 11 in `session.md`.
+- Vercel Analytics: use `@vercel/analytics/react` (NOT `/next`) — this is a Vite React app, not Next.js.
+- Vercel Analytics requires Web Analytics enabled in the Vercel dashboard; the package alone doesn't activate tracking.
+- Auth race: `isAuthenticated` can become `true` via listener before `resolveAuthOnMount()` completes — videos effect is gated on `isAuthLoading === false` to prevent firing with unvalidated tokens. See `frontend/src/App.tsx`.
 
 ## UI conventions
 
