@@ -14,6 +14,7 @@ from app.middleware.error_handler import register_error_handlers
 from app.middleware.rate_limit import limiter
 from app.routes import health, transcript, chat, export, auth, videos
 from app.routes import workspace_router, sources_router, ai_router, tasks_router, standalone_router
+from app.routes import feedback as feedback_router
 from app.utils.logging import setup_logging
 
 MAX_BODY_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -104,6 +105,7 @@ app.include_router(sources_router, prefix="/api/sources", tags=["sources"])
 app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
 app.include_router(tasks_router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(standalone_router, prefix="/api/standalone", tags=["standalone"])
+app.include_router(feedback_router.router, prefix="/api/feedback", tags=["feedback"])
 
 # Shared / standalone routers
 # Note: old routes/transcript.py and routes/chat.py still registered below for V0 backward compat

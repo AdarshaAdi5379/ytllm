@@ -16,6 +16,7 @@ npm run dev                            # frontend :5173, backend :3001
 | Frontend only | `npm run dev:client` |
 | Backend only | `npm run dev:server` |
 | Build (tsc + vite) | `npm run build:client` |
+| Build + SEO prerender | `npm run build` (root) or `npm run build:seo` (frontend/) |
 | Backend tests | `cd backend && source venv/bin/activate && python -m unittest` |
 | Frontend lint | `cd frontend && npm run lint` (no eslint config — will fail) |
 
@@ -23,11 +24,32 @@ npm run dev                            # frontend :5173, backend :3001
 
 ## Structure
 
-- `frontend/` — React 18 + Vite + TailwindCSS + Zustand
+- `frontend/` — React 18 + Vite 6 + TailwindCSS + Zustand
 - `backend/` — FastAPI + SQLAlchemy async + PostgreSQL (port 5433 locally)
-- **`server/` is stale. Never touch it.**
+- **`server/` is empty. Never touch it.**
 - Environment template: `backend/.env.example` only (root `.env.example` is stale)
-- `frontend/public/` — static assets copied to `dist/` by Vite: `sitemap.xml`, `robots.txt`, `favicon.svg`, `og-image.svg`
+- `shared/` — TypeScript types shared between frontend and backend (path alias `@shared/*` in tsconfig)
+
+## Vercel deployment
+
+- `vercel.json` at repo root: `buildCommand: "npm run build:seo"`, `outputDirectory: "dist"`, `installCommand: "npm install"`
+- **Vercel project Root Directory is `frontend/`** — all commands run inside `frontend/`, output goes to `frontend/dist/`. Do NOT change `vercel.json` to reference `frontend/` paths.
+- `build:seo` = `tsc && vite build && node scripts/prerender.mjs` — produces prerendered static SEO pages + SPA shell.
+- Prerender uses Puppeteer (`puppeteer-core` + `@sparticuz/chromium`) with Chrome at `/tmp/chromium`.
+- SPA shell at `dist/index.html` (empty `<div id="root">`, ~2.4KB).
+- SEO prerendered pages at `dist/<route>/index.html` (~15-21KB each).
+- Static assets: `dist/robots.txt`, `dist/sitemap.xml`, `dist/favicon.svg`, `dist/og-image.svg`.
+
+## SEO pages
+
+- 4 landing pages: `/ai-study-tool`, `/ai-tutor`, `/ai-flashcard-generator`, `/ai-quiz-generator`
+- Content defined in `frontend/src/seo/seo-content.ts` (type `SeoPageContent`)
+- Page components: `frontend/src/seo/pages/*.tsx`
+- Layout: `frontend/src/seo/SeoPageLayout.tsx` — renders sections (features, howItWorks, faq, relatedPages, cta)
+- `SeoPage.tsx` renders meta tags + JSON-LD structured data
+- Each page has SoftwareApplication + FAQPage JSON-LD, unique title/canonical/OG/Twitter
+- `main.tsx` bootstrap: if `#root` has children (prerendered file) → skip React; else if `window.__PRERENDER_ROUTE__` set → render SEO page only; else → full SPA
+- **No React Router for view routing** — view switching uses `viewMode` state in Zustand store `useAppStore.ts`. `react-router-dom` is installed but not used for page routing.
 
 ## Backend
 
@@ -52,7 +74,6 @@ npm run dev                            # frontend :5173, backend :3001
 
 ## Frontend
 
-- **No React Router for view routing.** View switching uses `viewMode` state in Zustand store `useAppStore.ts`. `react-router-dom` is installed but not used for page routing.
 - State in Zustand, not TanStack Query (used sparingly)
 - API payloads from FastAPI are **snake_case**. Frontend API layer (`api/client.ts`, `api/workspace.ts`) maps them to camelCase where needed
 - SSE chat: `frontend/src/hooks/useChat.ts` (legacy video chat), `frontend/src/api/workspace.ts` (workspace chat)
@@ -84,7 +105,6 @@ When changing API request/response shapes, update both:
 - `Folder.children` uses `cascade="all, delete"` (not `delete-orphan`) to avoid self-referential FK issues
 - SSRF protection via `validate_final_url()` in `backend/app/utils/ssrf.py`
 - File uploads restricted to `.pdf, .docx, .pptx, .txt, `.md`
-- Existing instruction file: `CLAUDE.md` (detailed session history)
 - Move endpoint re-indexes sources before deleting standalone indexes — rollback cleans up new vectors on failure
 - Supabase session pooler (`aws-1-ap-south-1.pooler.supabase.com` port 5432) is used for IPv4 — the direct `db.<ref>.supabase.co` host is IPv6-only on some networks. See Session 11 in `session.md`.
 - Vercel Analytics: use `@vercel/analytics/react` (NOT `/next`) — this is a Vite React app, not Next.js.

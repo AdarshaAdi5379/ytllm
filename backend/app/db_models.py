@@ -449,6 +449,30 @@ class StandaloneMessage(Base):
     )
 
 
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    FEEDBACK_TYPES = ("feature_request", "bug_report", "improvement", "general", "other")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    guest_token = Column(String, nullable=True, index=True)
+    message = Column(Text, nullable=False)
+    feature_want = Column(Text, nullable=True)
+    like_most = Column(Text, nullable=True)
+    could_improve = Column(Text, nullable=True)
+    feedback_type = Column(String, nullable=True)
+    rating = Column(Integer, nullable=True)
+    email = Column(String, nullable=True)
+    created_at = Column(DateTime, default=_now, nullable=False)
+
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("ix_feedback_created_at", "created_at"),
+    )
+
+
 class StandaloneSource(Base):
     __tablename__ = "standalone_sources"
 

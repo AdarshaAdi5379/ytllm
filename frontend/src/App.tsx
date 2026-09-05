@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { Sidebar } from './components/layout/Sidebar';
 import { MainPanel } from './components/layout/MainPanel';
 import { URLInputModal } from './components/modals/URLInputModal';
 import { AuthModal } from './components/auth/AuthModal';
+import { FeedbackModal } from './components/modals/FeedbackModal';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { HeroSection } from './components/landing/HeroSection';
 import { HowItWorksSection } from './components/landing/HowItWorksSection';
@@ -18,6 +19,7 @@ import { fetchSavedVideos, fetchSavedVideoDetail, setAuthToken } from './api/cli
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
   const isAddVideoModalOpen = useVideoStore((s) => s.isAddVideoModalOpen);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isAuthLoading = useAuthStore((s) => s.isAuthLoading);
@@ -183,6 +185,15 @@ export default function App() {
         <MainPanel />
         {isAddVideoModalOpen && <URLInputModal />}
         {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
+        {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+        <button
+          onClick={() => setShowFeedback(true)}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-full shadow-lg hover:shadow-xl hover:border-indigo-300 transition-all duration-200 group"
+          aria-label="Send Feedback"
+        >
+          <MessageSquare size={16} className="text-gray-400 group-hover:text-indigo-600 transition-colors" />
+          <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors">Feedback</span>
+        </button>
       </div>
     </ErrorBoundary>
   );

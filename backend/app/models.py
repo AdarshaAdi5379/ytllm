@@ -572,3 +572,59 @@ class MoveToWorkspaceRequest(BaseModel):
 
 class ClaimGuestSessionsRequest(BaseModel):
     guest_token: str
+
+
+class FeedbackRequest(BaseModel):
+    message: str
+    feature_want: str | None = None
+    like_most: str | None = None
+    could_improve: str | None = None
+    feedback_type: str | None = None
+    rating: int | None = None
+    email: str | None = None
+    guest_token: str | None = None
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Feedback message is required")
+        if len(v) > 5000:
+            raise ValueError("Feedback message must be 5000 characters or less")
+        return v
+
+    @field_validator("rating")
+    @classmethod
+    def validate_rating(cls, v: int | None) -> int | None:
+        if v is not None and (v < 1 or v > 5):
+            raise ValueError("Rating must be between 1 and 5")
+        return v
+
+    @field_validator("feedback_type")
+    @classmethod
+    def validate_feedback_type(cls, v: str | None) -> str | None:
+        if v is not None:
+            allowed = ("feature_request", "bug_report", "improvement", "general", "other")
+            if v not in allowed:
+                raise ValueError(f"Feedback type must be one of: {', '.join(allowed)}")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_optional(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
+            if not EMAIL_PATTERN.match(v):
+                raise ValueError("Invalid email format")
+        return v
+
+
+class FeedbackResponse(BaseModel):
+    id: str
+    message: str
+    feedback_type: str | None = None
+    rating: int | None = None
+    created_at: str

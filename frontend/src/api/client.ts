@@ -294,3 +294,29 @@ export async function updateSavedVideo(
     body: JSON.stringify(data),
   });
 }
+
+export interface FeedbackPayload {
+  message: string;
+  feature_want?: string;
+  like_most?: string;
+  could_improve?: string;
+  feedback_type?: string;
+  rating?: number;
+  email?: string;
+  guest_token?: string;
+}
+
+export interface FeedbackResponse {
+  id: string;
+  message: string;
+  feedback_type: string | null;
+  rating: number | null;
+  created_at: string;
+}
+
+export async function submitFeedback(payload: FeedbackPayload): Promise<FeedbackResponse> {
+  return apiFetch<FeedbackResponse>('/feedback/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
