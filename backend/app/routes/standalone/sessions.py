@@ -75,23 +75,30 @@ async def list_sessions(
     else:
         return []
 
-    query = query.order_by(StandaloneSession.created_at.desc())
-    result = await db.execute(query)
-    sessions = result.scalars().all()
-
-    out = []
-    for s in sessions:
-        resp = _session_to_response(s)
-        msg_count = await db.execute(
-            select(func.count(StandaloneMessage.id)).where(StandaloneMessage.session_id == s.id)
-        )
-        resp.message_count = int(msg_count.scalar() or 0)
-        src_count = await db.execute(
-            select(func.count(StandaloneSource.id)).where(StandaloneSource.session_id == s.id)
-        )
-        resp.source_count = int(src_count.scalar() or 0)
-        out.append(resp)
-    return out
+    message_count = (
+        select(func.count(StandaloneMessage.id))
+        .where(StandaloneMessage.session_id == StandaloneSession.id)
+        .correlate(StandaloneSession)
+        .scalar_subquery()
+    )
+    source_count = (
+        select(func.count(StandaloneSource.id))
+        .where(StandaloneSource.session_id == StandaloneSession.id)
+        .correlate(StandaloneSession)
+        .scalar_subquery()
+    )
+    result = await db.execute(
+        select(StandaloneSession, message_count, source_count)
+        .where(query.whereclause)
+        .order_by(StandaloneSession.created_at.desc())
+    )
+    return [
+        _session_to_response(s).model_copy(update={
+            "message_count": int(msg_count or 0),
+            "source_count": int(src_count or 0),
+        })
+        for s, msg_count, src_count in result.all()
+    ]
 
 
 @router.post("", response_model=StandaloneSessionResponse, status_code=201)

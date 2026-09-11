@@ -36,6 +36,7 @@ interface StandaloneChatStore {
 
 // Module-level guard: concurrent ensureSession() calls share one creation promise.
 let ensurePromise: Promise<standaloneApi.StandaloneSessionItem> | null = null;
+let sessionLoadRequest = 0;
 
 export const useStandaloneChatStore = create<StandaloneChatStore>()((set, get) => ({
   sessions: [],
@@ -95,13 +96,15 @@ export const useStandaloneChatStore = create<StandaloneChatStore>()((set, get) =
   },
 
   setActiveSession: async (sessionId) => {
+    const requestId = ++sessionLoadRequest;
     if (!sessionId) {
-      set({ activeSessionId: null, messages: [], sources: [] });
+      set({ activeSessionId: null, messages: [], sources: [], loading: false, error: null });
       return;
     }
     set({ loading: true, error: null });
     try {
       const detail = await standaloneApi.getStandaloneSession(sessionId);
+      if (requestId !== sessionLoadRequest) return;
       set({
         activeSessionId: sessionId,
         messages: detail.messages.map((m) => ({
@@ -113,6 +116,7 @@ export const useStandaloneChatStore = create<StandaloneChatStore>()((set, get) =
         loading: false,
       });
     } catch (err: any) {
+      if (requestId !== sessionLoadRequest) return;
       set({ loading: false, error: err.message || 'Failed to load session', activeSessionId: null, messages: [], sources: [] });
     }
   },

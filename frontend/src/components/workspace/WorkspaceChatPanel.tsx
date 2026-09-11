@@ -1,32 +1,31 @@
-import { useEffect, useState, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Paperclip, Globe, FileText, Upload, Menu } from 'lucide-react';
+import { lazy, Suspense, useEffect, useState, useRef } from 'react';
+import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Paperclip, Globe, FileText, Upload } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
 import { streamWorkspaceChat, type ChatSessionItem, importTextSource, importWebsiteSource, uploadDocument } from '../../api/workspace';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
-import { HomeDashboard } from './HomeDashboard';
-import { NotesPanel } from './NotesPanel';
-import { SearchPanel } from './SearchPanel';
-import { SummaryPanel } from './SummaryPanel';
-import { ActionsToolbar } from './ActionsToolbar';
-import { FlashcardPanel } from './FlashcardPanel';
-import { QuizPanel } from './QuizPanel';
-import { LearningPathPanel } from './LearningPathPanel';
-import { DailyRevisionPanel } from './DailyRevisionPanel';
-import { ProgressDashboardPanel } from './ProgressDashboard';
-import { MentorPanel } from './MentorPanel';
+const HomeDashboard = lazy(() => import('./HomeDashboard').then((m) => ({ default: m.HomeDashboard })));
+const NotesPanel = lazy(() => import('./NotesPanel').then((m) => ({ default: m.NotesPanel })));
+const SearchPanel = lazy(() => import('./SearchPanel').then((m) => ({ default: m.SearchPanel })));
+const SummaryPanel = lazy(() => import('./SummaryPanel').then((m) => ({ default: m.SummaryPanel })));
+const ActionsToolbar = lazy(() => import('./ActionsToolbar').then((m) => ({ default: m.ActionsToolbar })));
+const FlashcardPanel = lazy(() => import('./FlashcardPanel').then((m) => ({ default: m.FlashcardPanel })));
+const QuizPanel = lazy(() => import('./QuizPanel').then((m) => ({ default: m.QuizPanel })));
+const LearningPathPanel = lazy(() => import('./LearningPathPanel').then((m) => ({ default: m.LearningPathPanel })));
+const DailyRevisionPanel = lazy(() => import('./DailyRevisionPanel').then((m) => ({ default: m.DailyRevisionPanel })));
+const ProgressDashboardPanel = lazy(() => import('./ProgressDashboard').then((m) => ({ default: m.ProgressDashboardPanel })));
+const MentorPanel = lazy(() => import('./MentorPanel').then((m) => ({ default: m.MentorPanel })));
 
 export function WorkspaceChatPanel() {
   const { activeWorkspaceId, renameWorkspace } = useWorkspaceStore();
   const {
-    sessions, activeSessionId, messages, streaming,
+    sessions, activeSessionId, messages, streaming, error,
     loadSessions, setActiveSession, deleteSessionFromStore, addMessage, setStreaming, clearMessages,
   } = useChatSessionStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const viewMode = useAppStore((s) => s.viewMode);
   const setViewMode = useAppStore((s) => s.setViewMode);
-  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
 
   const [input, setInput] = useState('');
   const [showSessions, setShowSessions] = useState(true);
@@ -57,6 +56,13 @@ export function WorkspaceChatPanel() {
     'o1-mini',
     'o1-preview',
   ];
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (abortRef.current) {
@@ -217,17 +223,11 @@ export function WorkspaceChatPanel() {
   if (!isAuthenticated || !activeWorkspaceId) return null;
 
   return (
-    <main className="flex-1 flex flex-col bg-white">
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center bg-white text-sm text-gray-400">Loading...</div>}>
+      <main className="flex-1 flex flex-col bg-white">
       {/* Top bar with session selector + settings */}
-      <header className="flex items-center justify-between pr-4 py-3 sm:pr-6 lg:pl-4 border-b border-gray-100">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-all"
-            aria-label="Open sidebar"
-          >
-            <Menu size={20} />
-          </button>
+      <header className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pl-12 pr-2 py-3 sm:pr-6 lg:pl-4 border-b border-gray-100 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
           <button
             onClick={() => setViewMode(viewMode === 'home' ? 'chat' : 'home')}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all min-h-[44px] ${
@@ -275,7 +275,7 @@ export function WorkspaceChatPanel() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
           <ActionsToolbar />
           <div className="relative">
             <button
@@ -328,7 +328,12 @@ export function WorkspaceChatPanel() {
         {/* Session sidebar */}
         {showSessions && (
           <div className="hidden md:flex w-56 flex-shrink-0 border-r border-gray-100 bg-gray-50/50 overflow-y-auto p-2">
-            {sessions.length === 0 ? (
+            {error ? (
+              <div className="p-3 text-center">
+                <p className="text-xs text-rose-500 mb-2">{error}</p>
+                <button onClick={() => activeWorkspaceId && loadSessions(activeWorkspaceId)} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">Retry</button>
+              </div>
+            ) : sessions.length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-8">No chats yet</p>
             ) : (
               <div className="space-y-0.5">
@@ -596,6 +601,7 @@ export function WorkspaceChatPanel() {
         </div>
         )}
       </div>
-    </main>
+      </main>
+    </Suspense>
   );
 }

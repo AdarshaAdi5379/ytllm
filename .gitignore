@@ -32,3 +32,6 @@ venv/
 
 # Python build artifacts
 *.egg-info/
+
+# Remotion local video project (intentionally not tracked)
+/remotion/

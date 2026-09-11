@@ -36,21 +36,21 @@ async def list_sessions(
     db: AsyncSession = Depends(get_db),
 ):
     await verify_workspace_access(db, workspace_id, user.id)
+    message_count = (
+        select(func.count(ChatMessageNew.id))
+        .where(ChatMessageNew.session_id == ChatSession.id)
+        .correlate(ChatSession)
+        .scalar_subquery()
+    )
     result = await db.execute(
-        select(ChatSession)
+        select(ChatSession, message_count)
         .where(ChatSession.workspace_id == workspace_id)
         .order_by(ChatSession.updated_at.desc())
     )
-    sessions = result.scalars().all()
-    out = []
-    for s in sessions:
-        count_result = await db.execute(
-            select(func.count(ChatMessageNew.id)).where(ChatMessageNew.session_id == s.id)
-        )
-        resp = _session_to_response(s)
-        resp.message_count = int(count_result.scalar() or 0)
-        out.append(resp)
-    return out
+    return [
+        _session_to_response(s).model_copy(update={"message_count": int(message_count_value or 0)})
+        for s, message_count_value in result.all()
+    ]
 
 
 @router.post("/", response_model=ChatSessionResponse, status_code=201)

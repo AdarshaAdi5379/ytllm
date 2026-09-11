@@ -314,7 +314,7 @@ The persistence system had three independent but compounding failures:
 ### Features Implemented
 
 **Feature 1 — Security Hardening:**
-- Removed stale `server/.env` containing leaked Google API key (AIzaSyAmh3ToFOvoUp3a1gFND19G3W8zYtZ3V9Y) — file deleted from disk and git.
+- Removed stale `server/.env` containing a leaked Google API key; file deleted from disk and Git.
 - Changed JWT_SECRET default from `"change-me-to-a-random-secret"` to `""` (empty), preventing forged tokens when env var isn't set.
 - Added production-mode validation: FastAPI fails to boot if `OPENAI_API_KEY` or `JWT_SECRET` are empty in NODE_ENV=production.
 - Made Sentry init conditional on `SENTRY_DSN` being set (removed empty DSN initialization).

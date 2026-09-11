@@ -650,6 +650,12 @@ export function streamWorkspaceChat(
   onWorkspaceMeta?: (name: string) => void,
 ): AbortController {
   const controller = new AbortController();
+  let terminal = false;
+  const reportError = (message: string) => {
+    if (terminal) return;
+    terminal = true;
+    onError(message);
+  };
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const token = getAuthToken();
@@ -664,11 +670,14 @@ export function streamWorkspaceChat(
     .then(async (response) => {
       if (!response.ok) {
         const err = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
-        onError(err.message || 'Chat failed');
+        reportError(err.message || 'Chat failed');
         return;
       }
       const reader = response.body?.getReader();
-      if (!reader) return;
+      if (!reader) {
+        reportError('Chat stream was unavailable');
+        return;
+      }
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -694,20 +703,25 @@ export function streamWorkspaceChat(
                 onCitations?.(event.citations || []);
                 break;
               case 'error':
-                onError(event.message || 'Unknown error');
+                reportError(event.message || 'Unknown error');
                 break;
               case 'workspace_meta':
                 onWorkspaceMeta?.(event.name);
                 break;
             }
           } catch { /* skip malformed */ }
+          if (terminal) break;
         }
+        if (terminal) break;
       }
-      onDone();
+      if (!terminal) {
+        terminal = true;
+        onDone();
+      }
     })
     .catch((err) => {
       if (err.name !== 'AbortError') {
-        onError(err.message || 'Connection failed');
+        reportError(err.message || 'Connection failed');
       }
     });
 

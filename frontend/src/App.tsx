@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Loader2, MessageSquare } from 'lucide-react';
-import { Sidebar } from './components/layout/Sidebar';
-import { MainPanel } from './components/layout/MainPanel';
+const Sidebar = lazy(() => import('./components/layout/Sidebar').then((m) => ({ default: m.Sidebar })));
+const MainPanel = lazy(() => import('./components/layout/MainPanel').then((m) => ({ default: m.MainPanel })));
 import { URLInputModal } from './components/modals/URLInputModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { FeedbackModal } from './components/modals/FeedbackModal';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { HeroSection } from './components/landing/HeroSection';
-import { HowItWorksSection } from './components/landing/HowItWorksSection';
-import { ComparisonSection } from './components/landing/ComparisonSection';
-import { WorkspaceShowcaseSection } from './components/landing/WorkspaceShowcaseSection';
-import { CTASection } from './components/landing/CTASection';
-import { FooterSection } from './components/landing/FooterSection';
+const HowItWorksSection = lazy(() => import('./components/landing/HowItWorksSection').then((m) => ({ default: m.HowItWorksSection })));
+const ComparisonSection = lazy(() => import('./components/landing/ComparisonSection').then((m) => ({ default: m.ComparisonSection })));
+const WorkspaceShowcaseSection = lazy(() => import('./components/landing/WorkspaceShowcaseSection').then((m) => ({ default: m.WorkspaceShowcaseSection })));
+const CTASection = lazy(() => import('./components/landing/CTASection').then((m) => ({ default: m.CTASection })));
+const FooterSection = lazy(() => import('./components/landing/FooterSection').then((m) => ({ default: m.FooterSection })));
 import { useVideoStore } from './store/useVideoStore';
 import { useAuthStore } from './store/useAuthStore';
 import { useAppStore } from './store/useAppStore';
@@ -158,6 +158,7 @@ export default function App() {
           }}
           onSignIn={() => setAuthModalMode('login')}
         />
+        <Suspense fallback={null}>
         <HowItWorksSection
           onStartLearning={() => {
             useAppStore.getState().setAppMode('standalone');
@@ -173,6 +174,7 @@ export default function App() {
           }}
         />
         <FooterSection />
+        </Suspense>
         {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
       </ErrorBoundary>
     );
@@ -181,18 +183,20 @@ export default function App() {
   return (
     <ErrorBoundary section="application">
       <div className="flex h-screen bg-gray-50 overflow-hidden">
-        <Sidebar />
-        <MainPanel />
+        <Suspense fallback={<div className="flex flex-1 items-center justify-center bg-gray-50 text-sm text-gray-400">Loading...</div>}>
+          <Sidebar />
+          <MainPanel />
+        </Suspense>
         {isAddVideoModalOpen && <URLInputModal />}
         {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
         {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
         <button
           onClick={() => setShowFeedback(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-full shadow-lg hover:shadow-xl hover:border-indigo-300 transition-all duration-200 group"
+          className="fixed bottom-20 right-3 sm:bottom-20 sm:right-4 lg:bottom-6 lg:right-6 z-40 flex items-center gap-2 p-3 sm:px-4 sm:py-2.5 bg-white border border-gray-200 rounded-full shadow-lg hover:shadow-xl hover:border-indigo-300 transition-all duration-200 group"
           aria-label="Send Feedback"
         >
           <MessageSquare size={16} className="text-gray-400 group-hover:text-indigo-600 transition-colors" />
-          <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors">Feedback</span>
+          <span className="hidden sm:inline text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors">Feedback</span>
         </button>
       </div>
     </ErrorBoundary>

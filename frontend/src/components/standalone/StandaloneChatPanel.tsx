@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Send, Loader2, MessageSquare, Trash2, Plus,
-  User, Bot, Sparkles, AlertCircle, Paperclip, X, Menu,
+  User, Bot, Sparkles, AlertCircle, Paperclip, X
 } from 'lucide-react';
 import { useStandaloneChatStore } from '../../store/useStandaloneChatStore';
 import { streamStandaloneChat } from '../../api/standalone';
-import { useAppStore } from '../../store/useAppStore';
 
 export function StandaloneChatPanel() {
   const {
@@ -27,7 +26,13 @@ export function StandaloneChatPanel() {
   const [addingSource, setAddingSource] = useState(false);
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const attachFileRef = useRef<HTMLInputElement>(null);
-  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -161,25 +166,18 @@ export function StandaloneChatPanel() {
   return (
     <main className="flex-1 flex flex-col bg-white overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between pr-4 py-3 lg:pl-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-all"
-            aria-label="Open sidebar"
-          >
-            <Menu size={20} />
-          </button>
+      <header className="flex items-center justify-between gap-2 pl-12 pr-2 sm:pr-4 py-3 lg:pl-4 border-b border-gray-200 bg-white min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <Sparkles size={18} className="text-indigo-600" />
-          <span className="text-sm font-bold text-gray-800">{activeSessionId ? 'Standalone Chat' : 'New Chat'}</span>
+          <span className="text-sm font-bold text-gray-800 truncate">{activeSessionId ? 'Standalone Chat' : 'New Chat'}</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={handleNewChat}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all min-h-[44px]"
           >
             <Plus size={14} />
-            New Chat
+            <span className="hidden sm:inline">New Chat</span>
           </button>
           <button
             onClick={handleClear}
@@ -187,7 +185,7 @@ export function StandaloneChatPanel() {
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 rounded-lg transition-all min-h-[44px]"
           >
             <Trash2 size={14} />
-            Clear
+            <span className="hidden sm:inline">Clear</span>
           </button>
         </div>
       </header>

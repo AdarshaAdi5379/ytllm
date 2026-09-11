@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { LogIn, UserPlus, MessageSquare, Youtube } from 'lucide-react';
 import { useVideoStore } from '../../store/useVideoStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -9,10 +10,15 @@ import { TranscriptPanel } from '../video/TranscriptPanel';
 import { ChatWindow } from '../chat/ChatWindow';
 import { ChatInput } from '../chat/ChatInput';
 import { LoadingSkeleton } from '../shared/LoadingSkeleton';
-import { WorkspaceChatPanel } from '../workspace/WorkspaceChatPanel';
-import { StandaloneChatPanel } from '../standalone/StandaloneChatPanel';
-import { OnboardingWizard } from '../onboarding/OnboardingWizard';
 import { useChat } from '../../hooks/useChat';
+const WorkspaceChatPanel = lazy(() => import('../workspace/WorkspaceChatPanel').then((m) => ({ default: m.WorkspaceChatPanel })));
+const StandaloneChatPanel = lazy(() => import('../standalone/StandaloneChatPanel').then((m) => ({ default: m.StandaloneChatPanel })));
+const OnboardingWizard = lazy(() => import('../onboarding/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })));
+
+
+function PanelLoading() {
+  return <div className="flex-1 flex items-center justify-center bg-white text-sm text-gray-400">Loading...</div>;
+}
 
 export function MainPanel() {
   const { videos, activeVideoId } = useVideoStore();
@@ -22,16 +28,28 @@ export function MainPanel() {
   const { appMode } = useAppStore();
 
   if (showOnboarding && isAuthenticated && !video) {
-    return <OnboardingWizard />;
+    return (
+      <Suspense fallback={<PanelLoading />}>
+        <OnboardingWizard />
+      </Suspense>
+    );
   }
 
   if (!video) {
     // Show standalone vs workspace based on mode
     if (appMode === 'standalone') {
-      return <StandaloneChatPanel />;
+      return (
+        <Suspense fallback={<PanelLoading />}>
+          <StandaloneChatPanel />
+        </Suspense>
+      );
     }
     if (isAuthenticated) {
-      return <WorkspaceChatPanel />;
+      return (
+        <Suspense fallback={<PanelLoading />}>
+          <WorkspaceChatPanel />
+        </Suspense>
+      );
     }
 
     return (

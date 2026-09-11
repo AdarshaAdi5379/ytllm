@@ -14,6 +14,7 @@ interface ChatSessionStore {
   messages: ChatMessage[];
   streaming: boolean;
   loading: boolean;
+  error: string | null;
 
   loadSessions: (workspaceId: string) => Promise<void>;
   createSession: (workspaceId: string, title?: string, sourceIds?: string[], model?: string, temperature?: number) => Promise<ChatSessionItem>;
@@ -26,20 +27,23 @@ interface ChatSessionStore {
   resetState: () => void;
 }
 
+let sessionLoadRequest = 0;
+
 export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
   sessions: [],
   activeSessionId: null,
   messages: [],
   streaming: false,
   loading: false,
+  error: null,
 
   loadSessions: async (workspaceId: string) => {
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
       const sessions = await workspaceApi.fetchSessions(workspaceId);
-      set({ sessions, loading: false });
-    } catch {
-      set({ loading: false });
+      set({ sessions, loading: false, error: null });
+    } catch (err: any) {
+      set({ loading: false, error: err.message || 'Failed to load chats' });
     }
   },
 
@@ -51,14 +55,17 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
   },
 
   setActiveSession: async (workspaceId, sessionId) => {
+    const requestId = ++sessionLoadRequest;
     if (!sessionId) {
-      set({ activeSessionId: null, messages: [] });
+      set({ activeSessionId: null, messages: [], error: null });
       return;
     }
     try {
       const detail = await workspaceApi.getSession(workspaceId, sessionId);
+      if (requestId !== sessionLoadRequest) return;
       set({
         activeSessionId: sessionId,
+        error: null,
         messages: detail.messages.map((m) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
@@ -66,7 +73,8 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
         })),
       });
     } catch {
-      set({ activeSessionId: null, messages: [] });
+      if (requestId !== sessionLoadRequest) return;
+      set({ activeSessionId: null, messages: [], error: 'Failed to load chat' });
     }
   },
 
@@ -92,7 +100,7 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
 
   setStreaming: (v) => set({ streaming: v }),
 
-  clearMessages: () => set({ messages: [], activeSessionId: null }),
+  clearMessages: () => set({ messages: [], activeSessionId: null, error: null }),
 
   resetState: () => {
     set({
@@ -101,6 +109,7 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
       messages: [],
       streaming: false,
       loading: false,
+      error: null,
     });
   },
 }));

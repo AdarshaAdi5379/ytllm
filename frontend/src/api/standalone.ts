@@ -232,6 +232,12 @@ export function streamStandaloneChat(
   },
 ): AbortController {
   const controller = new AbortController();
+  let terminal = false;
+  const reportError = (message: string) => {
+    if (terminal) return;
+    terminal = true;
+    callbacks.onError(message);
+  };
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const authToken = getAuthToken();
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
@@ -247,11 +253,14 @@ export function streamStandaloneChat(
     .then(async (response) => {
       if (!response.ok) {
         const err = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
-        callbacks.onError(err.message || 'Chat failed');
+        reportError(err.message || 'Chat failed');
         return;
       }
       const reader = response.body?.getReader();
-      if (!reader) return;
+      if (!reader) {
+        reportError('Chat stream was unavailable');
+        return;
+      }
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -280,17 +289,22 @@ export function streamStandaloneChat(
                 if (event.title) callbacks.onTitle?.(event.title);
                 break;
               case 'error':
-                callbacks.onError(event.message || 'Unknown error');
+                reportError(event.message || 'Unknown error');
                 break;
             }
           } catch { /* skip malformed */ }
+          if (terminal) break;
         }
+        if (terminal) break;
       }
-      callbacks.onDone();
+      if (!terminal) {
+        terminal = true;
+        callbacks.onDone();
+      }
     })
     .catch((err) => {
       if (err.name !== 'AbortError') {
-        callbacks.onError(err.message || 'Connection failed');
+        reportError(err.message || 'Connection failed');
       }
     });
 

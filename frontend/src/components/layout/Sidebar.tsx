@@ -219,7 +219,7 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Hamburger button - visible on mobile only */}
+      {/* Shared mobile sidebar opener */}
       <button
         onClick={() => setSidebarOpen(true)}
         className="lg:hidden fixed top-3 left-3 z-30 p-2 rounded-lg bg-slate-900 text-white shadow-lg hover:bg-slate-800 transition-all"

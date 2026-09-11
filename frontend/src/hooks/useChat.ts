@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useVideoStore } from '../store/useVideoStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { seekPlayer } from '../components/video/VideoPlayer';
@@ -8,10 +8,15 @@ import type { Message } from '../../../shared/types';
 export function useChat(videoId: string | null) {
   const videos = useVideoStore((s) => s.videos);
   const { addMessage, appendStreamingToken, finaliseStreamingMessage, setStreaming } = useVideoStore();
+  const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
     async (question: string, chatHistory: Message[], systemPrompt: string) => {
       if (!videoId) return;
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       const parsed = parseChatCommand(question, Object.keys(videos));
       if (parsed.filters?.time_range_s?.[0] != null) {
@@ -56,19 +61,19 @@ export function useChat(videoId: string | null) {
           method: 'POST',
           headers,
           body: JSON.stringify(body),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
+          let errorData: any;
           try {
-            const errorData = await response.json();
-            const detail = errorData?.detail;
-            if (detail?.message) {
-              throw new Error(detail.message);
-            }
-            throw new Error(errorData?.message || 'Failed to connect to chat API');
+            errorData = await response.json();
           } catch {
-            throw new Error('Failed to connect to chat API');
+            throw new Error("Chat request failed (HTTP " + response.status + ")");
           }
+          const detail = errorData?.detail;
+          const message = detail?.message || (typeof detail === 'string' ? detail : null) || errorData?.message;
+          throw new Error(message || "Chat request failed (HTTP " + response.status + ")");
         }
 
         if (!response.body) {
@@ -78,6 +83,7 @@ export function useChat(videoId: string | null) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let receivedDone = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -97,17 +103,24 @@ export function useChat(videoId: string | null) {
                 if (event.type === 'token') {
                   appendStreamingToken(videoId, event.content);
                 } else if (event.type === 'done') {
+                  receivedDone = true;
                   finaliseStreamingMessage(videoId);
                 } else if (event.type === 'error') {
-                  throw new Error(event.message);
+                  throw new Error(event.message || 'Chat stream failed');
                 }
               } catch (parseErr) {
-                // Skip malformed SSE data
+                if (parseErr instanceof SyntaxError) continue;
+                throw parseErr;
               }
             }
           }
         }
+        if (!receivedDone) finaliseStreamingMessage(videoId);
       } catch (err) {
+        if ((err as Error)?.name === 'AbortError') {
+          setStreaming(videoId, false);
+          return;
+        }
         console.error('Chat error:', err);
         appendStreamingToken(videoId, '\n\n*Error: Failed to generate response. Please try again.*');
         finaliseStreamingMessage(videoId);
@@ -115,6 +128,11 @@ export function useChat(videoId: string | null) {
     },
     [videoId, videos, addMessage, appendStreamingToken, finaliseStreamingMessage, setStreaming]
   );
+
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
 
   return { sendMessage };
 }
