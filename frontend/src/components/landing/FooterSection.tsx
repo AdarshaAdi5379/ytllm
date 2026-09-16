@@ -39,6 +39,7 @@ const productLinks = [
 ];
 
 const resourceLinks = [
+  { label: 'Careers', href: '/careers' },
   { label: 'GitHub Repository', href: '#' },
   { label: 'Report an Issue', href: '#' },
   { label: 'Contact', href: '#' },

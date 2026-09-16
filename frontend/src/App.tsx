@@ -1,7 +1,10 @@
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { Loader2, MessageSquare } from 'lucide-react';
+import { Loader2, MessageSquare, ShieldAlert, ArrowLeft } from 'lucide-react';
 const Sidebar = lazy(() => import('./components/layout/Sidebar').then((m) => ({ default: m.Sidebar })));
 const MainPanel = lazy(() => import('./components/layout/MainPanel').then((m) => ({ default: m.MainPanel })));
+const CareersPage = lazy(() => import('./components/careers/CareersPage').then((m) => ({ default: m.CareersPage })));
+const JobDetailPage = lazy(() => import('./components/careers/JobDetailPage').then((m) => ({ default: m.JobDetailPage })));
+const AdminCareersDashboard = lazy(() => import('./components/admin/AdminCareersDashboard').then((m) => ({ default: m.AdminCareersDashboard })));
 import { URLInputModal } from './components/modals/URLInputModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { FeedbackModal } from './components/modals/FeedbackModal';
@@ -18,11 +21,13 @@ import { useAppStore } from './store/useAppStore';
 import { fetchSavedVideos, fetchSavedVideoDetail, setAuthToken } from './api/client';
 
 export default function App() {
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [showLanding, setShowLanding] = useState(true);
   const [showFeedback, setShowFeedback] = useState(false);
   const isAddVideoModalOpen = useVideoStore((s) => s.isAddVideoModalOpen);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isAuthLoading = useAuthStore((s) => s.isAuthLoading);
+  const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const authModalMode = useAuthStore((s) => s.authModalMode);
   const setAuthModalMode = useAuthStore((s) => s.setAuthModalMode);
@@ -137,6 +142,20 @@ export default function App() {
     };
   }, [isAuthenticated, isAuthLoading]);
 
+  // Handle browser URL path changes (e.g. /careers, /careers/:slug, /admin/careers)
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
+
   if (isAuthLoading) {
     return (
       <div className="flex h-screen bg-slate-900 items-center justify-center">
@@ -148,6 +167,100 @@ export default function App() {
     );
   }
 
+  // --- Careers & Admin Routes ---
+  if (currentPath === '/careers' || currentPath === '/careers/') {
+    return (
+      <ErrorBoundary section="careers">
+        <Suspense fallback={<div className="flex h-screen items-center justify-center bg-white"><Loader2 size={32} className="text-indigo-600 animate-spin" /></div>}>
+          <CareersPage
+            onNavigateJob={(slug) => navigateTo(`/careers/${slug}`)}
+            onNavigateHome={() => navigateTo('/')}
+          />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  if (currentPath.startsWith('/careers/')) {
+    const slug = currentPath.replace(/^\/careers\//, '').replace(/\/$/, '');
+    return (
+      <ErrorBoundary section="careers-detail">
+        <Suspense fallback={<div className="flex h-screen items-center justify-center bg-white"><Loader2 size={32} className="text-indigo-600 animate-spin" /></div>}>
+          <JobDetailPage
+            slug={slug}
+            onNavigateBack={() => navigateTo('/careers')}
+            onNavigateHome={() => navigateTo('/')}
+          />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  if (currentPath === '/admin/careers' || currentPath.startsWith('/admin/careers/')) {
+    if (!isAuthenticated) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4">
+            <ShieldAlert size={28} />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Admin Sign In Required</h2>
+          <p className="text-sm text-slate-400 max-w-sm mb-6">
+            You must be signed in with an administrator account to access the careers dashboard.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigateTo('/')}
+              className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white"
+            >
+              Back to Home
+            </button>
+            <button
+              onClick={() => setAuthModalMode('login')}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm"
+            >
+              Sign In
+            </button>
+          </div>
+          {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} initialTab={authModalMode} />}
+        </div>
+      );
+    }
+
+    if (!user?.is_admin) {
+      return (
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4">
+            <ShieldAlert size={28} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-sm text-gray-500 max-w-md mb-6">
+            Your account ({user?.email}) does not have administrative permissions to manage job postings or review candidates.
+          </p>
+          <button
+            onClick={() => navigateTo('/')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm"
+          >
+            <ArrowLeft size={16} />
+            <span>Return to Workspace</span>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <ErrorBoundary section="admin-careers">
+        <Suspense fallback={<div className="flex h-screen items-center justify-center bg-gray-50"><Loader2 size={32} className="text-indigo-600 animate-spin" /></div>}>
+          <AdminCareersDashboard
+            onNavigateHome={() => navigateTo('/')}
+            onViewPublicCareers={() => navigateTo('/careers')}
+            onViewJobDetail={(slug) => navigateTo(`/careers/${slug}`)}
+          />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  // --- Main App & Landing ---
   if (!isAuthenticated && showLanding) {
     return (
       <ErrorBoundary section="landing">

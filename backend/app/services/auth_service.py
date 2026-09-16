@@ -160,3 +160,30 @@ async def verify_workspace_access(db: AsyncSession, workspace_id: str, user_id: 
     if member_result.scalar_one_or_none():
         return ws
     raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
+
+
+def is_user_admin(user: User | None) -> bool:
+    """Check if a user is an administrator via is_admin flag or ADMIN_EMAILS."""
+    if not user:
+        return False
+    if getattr(user, "is_admin", 0) == 1:
+        return True
+    admin_emails_raw = config.get("admin_emails", "")
+    if admin_emails_raw:
+        admin_emails = {e.strip().lower() for e in admin_emails_raw.split(",") if e.strip()}
+        if user.email and user.email.lower() in admin_emails:
+            return True
+    return False
+
+
+async def require_admin_user(
+    user: User = Depends(get_current_user),
+) -> User:
+    """Verify that the current user has administrative permissions."""
+    if not is_user_admin(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "FORBIDDEN", "message": "Admin privileges required to access this resource."},
+        )
+    return user
+

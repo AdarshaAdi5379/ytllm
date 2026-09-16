@@ -7,7 +7,7 @@ from app.database import get_db
 from app.db_models import User, Workspace
 from app.middleware.rate_limit import limiter
 from app.models import UserCreate, UserLogin, UserResponse, ProfileResponse, TokenResponse, ProfileUpdate, RefreshTokenResponse
-from app.services.auth_service import hash_password, verify_password, create_token, decode_token, get_current_user, get_optional_user, security
+from app.services.auth_service import hash_password, verify_password, create_token, decode_token, get_current_user, get_optional_user, security, is_user_admin
 
 
 router = APIRouter()
@@ -20,6 +20,7 @@ def _user_response(user: User) -> UserResponse:
         display_name=user.display_name,
         avatar_url=user.avatar_url,
         auth_provider=user.auth_provider,
+        is_admin=is_user_admin(user),
     )
 
 
@@ -110,6 +111,7 @@ async def get_profile(
         display_name=user.display_name,
         avatar_url=user.avatar_url,
         auth_provider=user.auth_provider,
+        is_admin=is_user_admin(user),
         created_at=user.created_at.isoformat() if user.created_at else "",
         updated_at=user.updated_at.isoformat() if user.updated_at else "",
     )

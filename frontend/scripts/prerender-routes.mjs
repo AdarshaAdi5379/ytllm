@@ -38,4 +38,10 @@ export const prerenderRoutes = [
     description: 'Generate quizzes from any content — YouTube videos, PDFs, websites, and notes. Test your knowledge with AI-powered questions and track your progress.',
     canonical: 'https://www.scritur.space/ai-quiz-generator',
   },
+  {
+    path: 'careers',
+    title: 'Careers — Join Scritur | AI Learning Operating System',
+    description: 'Explore career opportunities at Scritur. Help us build the AI Learning Operating System and rethink how humans learn.',
+    canonical: 'https://www.scritur.space/careers',
+  },
 ];

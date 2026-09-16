@@ -86,6 +86,7 @@ class UserResponse(BaseModel):
     display_name: str | None = None
     avatar_url: str | None = None
     auth_provider: str | None = None
+    is_admin: bool = False
 
 
 class ProfileResponse(BaseModel):
@@ -94,6 +95,7 @@ class ProfileResponse(BaseModel):
     display_name: str | None = None
     avatar_url: str | None = None
     auth_provider: str | None = None
+    is_admin: bool = False
     created_at: str
     updated_at: str
 
@@ -628,3 +630,175 @@ class FeedbackResponse(BaseModel):
     feedback_type: str | None = None
     rating: int | None = None
     created_at: str
+
+
+# ---------------------------------------------------------------------------
+# Careers & Job Postings models
+# ---------------------------------------------------------------------------
+
+class JobPostingBase(BaseModel):
+    title: str
+    slug: str
+    department: str
+    employment_type: str = "full_time"
+    workplace_type: str = "remote"
+    location: str = "Remote"
+    duration: str | None = None
+    compensation_type: str | None = None
+    compensation_amount: str | None = None
+    short_description: str = ""
+    description: str
+    responsibilities: str = ""
+    requirements: str = ""
+    nice_to_have: str = ""
+    what_you_will_learn: str = ""
+    benefits: str = ""
+    application_method: str = "internal"
+    application_url: str | None = None
+    status: str = "draft"
+    expires_at: str | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Job title cannot be empty")
+        return v
+
+    @field_validator("slug")
+    @classmethod
+    def validate_slug(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not v:
+            raise ValueError("Slug cannot be empty")
+        clean_slug = re.sub(r"[^a-z0-9-]", "-", v)
+        clean_slug = re.sub(r"-+", "-", clean_slug).strip("-")
+        if not clean_slug:
+            raise ValueError("Invalid slug format")
+        return clean_slug
+
+
+class JobPostingCreate(JobPostingBase):
+    pass
+
+
+class JobPostingUpdate(BaseModel):
+    title: str | None = None
+    slug: str | None = None
+    department: str | None = None
+    employment_type: str | None = None
+    workplace_type: str | None = None
+    location: str | None = None
+    duration: str | None = None
+    compensation_type: str | None = None
+    compensation_amount: str | None = None
+    short_description: str | None = None
+    description: str | None = None
+    responsibilities: str | None = None
+    requirements: str | None = None
+    nice_to_have: str | None = None
+    what_you_will_learn: str | None = None
+    benefits: str | None = None
+    application_method: str | None = None
+    application_url: str | None = None
+    status: str | None = None
+    expires_at: str | None = None
+
+
+class JobStatusUpdate(BaseModel):
+    status: Literal["draft", "published", "closed"]
+
+
+class JobPostingResponse(BaseModel):
+    id: str
+    title: str
+    slug: str
+    department: str
+    employment_type: str
+    workplace_type: str
+    location: str
+    duration: str | None = None
+    compensation_type: str | None = None
+    compensation_amount: str | None = None
+    short_description: str = ""
+    description: str
+    responsibilities: str = ""
+    requirements: str = ""
+    nice_to_have: str = ""
+    what_you_will_learn: str = ""
+    benefits: str = ""
+    application_method: str
+    application_url: str | None = None
+    status: str
+    published_at: str | None = None
+    expires_at: str | None = None
+    created_at: str
+    updated_at: str
+    json_ld: dict | None = None
+
+
+class AdminJobPostingResponse(JobPostingResponse):
+    application_count: int = 0
+
+
+class JobApplicationCreate(BaseModel):
+    name: str
+    email: str
+    phone: str | None = None
+    resume: str = ""  # Populated via file upload or payload
+    github_url: str | None = None
+    linkedin_url: str | None = None
+    portfolio_url: str | None = None
+    cover_letter: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Candidate name is required")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip()
+        if not EMAIL_PATTERN.match(v):
+            raise ValueError("Invalid email format")
+        return v
+
+
+class JobApplicationStatusUpdate(BaseModel):
+    status: Literal["new", "reviewing", "shortlisted", "interview", "rejected", "hired"]
+
+
+class JobApplicationResponse(BaseModel):
+    id: str
+    job_id: str
+    job_title: str | None = None
+    job_slug: str | None = None
+    name: str
+    email: str
+    phone: str | None = None
+    resume: str
+    github_url: str | None = None
+    linkedin_url: str | None = None
+    portfolio_url: str | None = None
+    cover_letter: str | None = None
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class JobApplicationPublicResponse(BaseModel):
+    id: str
+    job_title: str | None = None
+    job_slug: str | None = None
+    name: str
+    email: str
+    status: str
+    message: str = "Application submitted successfully."
+    created_at: str
+
+

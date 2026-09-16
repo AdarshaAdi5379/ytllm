@@ -11,6 +11,7 @@ interface AuthUser {
   display_name: string | null;
   avatar_url: string | null;
   auth_provider?: string | null;
+  is_admin?: boolean;
 }
 
 interface AuthStore {

@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = Field(default="", alias="SUPABASE_SERVICE_ROLE_KEY")
     supabase_jwt_secret: str = Field(default="", alias="SUPABASE_JWT_SECRET")
 
+    # Admin access
+    admin_emails: str = Field(default="", alias="ADMIN_EMAILS")
+
     # Rate limits
     requests_per_minute: int = 30
 
@@ -170,4 +173,5 @@ config = {
     "supabase_url": settings.supabase_url,
     "supabase_service_role_key": settings.supabase_service_role_key,
     "supabase_jwt_secret": settings.supabase_jwt_secret,
+    "admin_emails": settings.admin_emails,
 }

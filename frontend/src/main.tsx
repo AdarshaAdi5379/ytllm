@@ -18,17 +18,18 @@ if (rootEl.children.length > 0) {
   if (prerenderRoute) {
     // Build-time prerender: the server injected __PRERENDER_ROUTE__ before React loaded.
     // Render only the requested SEO page component, not the full SPA.
-    const seoPages: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
+    const seoPages: Record<string, React.LazyExoticComponent<() => JSX.Element> | React.LazyExoticComponent<(props: { onNavigateJob: () => void; onNavigateHome: () => void }) => JSX.Element>> = {
       'ai-study-tool': React.lazy(() => import('./seo/pages/ai-study-tool')),
       'ai-tutor': React.lazy(() => import('./seo/pages/ai-tutor')),
       'ai-flashcard-generator': React.lazy(() => import('./seo/pages/ai-flashcard-generator')),
       'ai-quiz-generator': React.lazy(() => import('./seo/pages/ai-quiz-generator')),
+      'careers': React.lazy(() => import('./components/careers/CareersPage').then((m) => ({ default: m.CareersPage }))),
     };
     const SeoPage = seoPages[prerenderRoute];
     if (SeoPage) {
       ReactDOM.createRoot(rootEl).render(
         <React.Suspense fallback={null}>
-          <SeoPage />
+          <SeoPage onNavigateJob={() => {}} onNavigateHome={() => {}} />
         </React.Suspense>
       );
     }

@@ -27,6 +27,7 @@ class TestRateLimitConfiguration(unittest.IsolatedAsyncioTestCase):
         from app.routes.ai import flashcards, quiz, learning_path, mentor
         from app.routes.sources import upload as sources_upload
         from app.routes import transcript
+        from app.routes import careers
 
         wrapped = [
             standalone_chat.standalone_chat,
@@ -39,6 +40,7 @@ class TestRateLimitConfiguration(unittest.IsolatedAsyncioTestCase):
             mentor.respond_mentor,
             sources_upload.upload_document,
             transcript.load_transcript,
+            careers.apply_for_job,
         ]
         for fn in wrapped:
             self.assertIsNotNone(

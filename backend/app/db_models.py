@@ -30,6 +30,7 @@ class User(Base):
     display_name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     auth_provider = Column(String, nullable=True)
+    is_admin = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=_now, nullable=False)
     updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
 
@@ -304,7 +305,6 @@ class Quiz(Base):
 
     __table_args__ = (
         Index("ix_quizzes_quiz_type", "quiz_type"),
-        Index("ix_quizzes_source_id", "source_id"),
     )
 
 
@@ -487,3 +487,69 @@ class StandaloneSource(Base):
     created_at = Column(DateTime, default=_now, nullable=False)
 
     session = relationship("StandaloneSession", back_populates="sources")
+
+
+class JobPosting(Base):
+    __tablename__ = "job_postings"
+
+    STATUSES = ("draft", "published", "closed")
+    EMPLOYMENT_TYPES = ("full_time", "part_time", "contract", "internship")
+    WORKPLACE_TYPES = ("remote", "hybrid", "onsite")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    title = Column(String, nullable=False)
+    slug = Column(String, unique=True, nullable=False, index=True)
+    department = Column(String, nullable=False, index=True)
+    employment_type = Column(String, nullable=False, default="full_time")
+    workplace_type = Column(String, nullable=False, default="remote")
+    location = Column(String, nullable=False, default="Remote")
+    duration = Column(String, nullable=True)
+    compensation_type = Column(String, nullable=True)
+    compensation_amount = Column(String, nullable=True)
+    short_description = Column(Text, default="")
+    description = Column(Text, nullable=False, default="")
+    responsibilities = Column(Text, default="")
+    requirements = Column(Text, default="")
+    nice_to_have = Column(Text, default="")
+    what_you_will_learn = Column(Text, default="")
+    benefits = Column(Text, default="")
+    application_method = Column(String, default="internal")  # internal | external
+    application_url = Column(String, nullable=True)
+    status = Column(String, default="draft", nullable=False, index=True)  # draft | published | closed
+    published_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan", order_by="JobApplication.created_at.desc()")
+
+    __table_args__ = (
+        Index("ix_job_postings_status_dept", "status", "department"),
+    )
+
+
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+
+    STATUSES = ("new", "reviewing", "shortlisted", "interview", "rejected", "hired")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    job_id = Column(String, ForeignKey("job_postings.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=False, index=True)
+    phone = Column(String, nullable=True)
+    resume = Column(Text, nullable=False)  # File path, storage URL, or filename
+    github_url = Column(String, nullable=True)
+    linkedin_url = Column(String, nullable=True)
+    portfolio_url = Column(String, nullable=True)
+    cover_letter = Column(Text, nullable=True)
+    status = Column(String, default="new", nullable=False, index=True)
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    job = relationship("JobPosting", back_populates="applications")
+
+    __table_args__ = (
+        Index("ix_job_applications_job_status", "job_id", "status"),
+    )
+
