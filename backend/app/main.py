@@ -38,7 +38,11 @@ if config.get("sentry_dsn"):
 async def lifespan(app: FastAPI):
     setup_logging()
     logger.info("Starting Scritur (env={})", config["node_env"])
-    await init_db()
+    try:
+        await init_db()
+    except Exception as e:
+        logger.exception("Application startup failed during init_db: {}", e)
+        raise
     yield
 
 

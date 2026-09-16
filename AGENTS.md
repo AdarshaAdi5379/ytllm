@@ -55,7 +55,7 @@ npm run dev                            # frontend :5173, backend :3001
 
 - **PostgreSQL on port 5433.** `DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5433/knowledgeos`
 - Alembic migrations auto-run on FastAPI startup via `init_db()` in `database.py`
-- Migration chain head: `e08fe825261f` (14 migrations)
+- Migration chain head: `c1d2e3f4a5b6` (16 migrations)
 - ChromaDB vectors in Chroma Cloud (via `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE` in `.env`) — not local storage
 - Config: `backend/app/config.py` (Pydantic-settings, reads from `.env`)
 - Route pattern: `routes/` for HTTP, `services/` for business logic

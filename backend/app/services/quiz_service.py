@@ -12,6 +12,7 @@ Return a JSON array of question objects with these fields:
 - options (array of 4 strings): Answer choices labeled A-D
 - correct_answer (integer): Index (0-3) of the correct option
 - explanation (string): Why this answer is correct, referencing the source
+- topic (string): The specific sub-topic or concept this question tests (e.g. "Deadlocks", "Memory Management")
 
 Rules:
 - Questions should test understanding, not just memorization
@@ -20,7 +21,7 @@ Rules:
 - Vary difficulty across questions
 - Return exactly {count} questions as a JSON array
 - Return ONLY the JSON array, no other text
-
+{focus_instruction}
 Source title: {title}
 Source type: {source_type}
 
@@ -39,6 +40,7 @@ Return a JSON array of question objects with these fields:
 - expected_solution (string): Correct solution code
 - test_cases (array of objects): Each with "input" and "expected_output"
 - explanation (string): Explanation of the solution approach and key concepts tested
+- topic (string): The specific sub-topic or concept this question tests
 
 Rules:
 - Cover concepts from the source content
@@ -46,7 +48,7 @@ Rules:
 - Starter code should have a function signature and comments where user fills in
 - Return exactly {count} questions as a JSON array
 - Return ONLY the JSON array, no other text
-
+{focus_instruction}
 Source title: {title}
 Source type: {source_type}
 
@@ -63,6 +65,7 @@ Return a JSON array of question objects with these fields:
 - expected_answer (string): The ideal concise answer
 - key_points (array of strings): Specific concepts the answer should include
 - explanation (string): Brief explanation of why this answer is correct
+- topic (string): The specific sub-topic or concept this question tests
 
 Rules:
 - Questions should target specific concepts from the content
@@ -70,7 +73,7 @@ Rules:
 - Key points are the essential components for scoring
 - Return exactly {count} questions as a JSON array
 - Return ONLY the JSON array, no other text
-
+{focus_instruction}
 Source title: {title}
 Source type: {source_type}
 
@@ -88,6 +91,7 @@ Return a JSON array of question objects with these fields:
 - expected_key_points (array of strings): Core concepts the answer should cover
 - suggested_length (string): e.g., "300-500 words"
 - explanation (string): How to approach answering this question
+- topic (string): The specific sub-topic or concept this question tests
 
 Rules:
 - Prompts should require synthesis of multiple concepts from the content
@@ -95,7 +99,7 @@ Rules:
 - Questions should test depth of understanding
 - Return exactly {count} questions as a JSON array
 - Return ONLY the JSON array, no other text
-
+{focus_instruction}
 Source title: {title}
 Source type: {source_type}
 
@@ -112,6 +116,7 @@ Return a JSON array of question objects with these fields:
 - questions (array of objects): Each with "id" ("sq1", "sq2"), "question" (string), and "expected_answer" (string)
 - difficulty (string): "easy", "medium", or "hard"
 - explanation (string): What this case study tests and how to approach it
+- topic (string): The specific sub-topic or concept this case study tests
 
 Rules:
 - Scenarios should apply concepts from the source to realistic situations
@@ -119,7 +124,7 @@ Rules:
 - Sub-questions should test analysis, application, and evaluation
 - Return exactly {count} case studies as a JSON array
 - Return ONLY the JSON array, no other text
-
+{focus_instruction}
 Source title: {title}
 Source type: {source_type}
 
@@ -139,6 +144,7 @@ Return a JSON array of question objects with these fields:
 - category (string): "technical", "behavioral", "system_design", "theory"
 - tips (array of strings): Tips for answering well
 - follow_up (array of strings): Potential follow-up questions
+- topic (string): The specific sub-topic or concept this question tests
 
 Rules:
 - Questions should be realistic interview questions
@@ -147,7 +153,7 @@ Rules:
 - Provide actionable tips
 - Return exactly {count} questions as a JSON array
 - Return ONLY the JSON array, no other text
-
+{focus_instruction}
 Source title: {title}
 Source type: {source_type}
 
@@ -173,6 +179,7 @@ async def generate_quiz(
     raw_text: str,
     quiz_type: str = "mcq",
     count: int = 5,
+    focus_topics: list[str] | None = None,
 ) -> list[dict]:
     """Generate quiz questions from source content using AI."""
     if not raw_text.strip():
@@ -182,11 +189,16 @@ async def generate_quiz(
     if not prompt_template:
         raise ValueError(f"Unknown quiz type: {quiz_type}")
 
+    focus_instruction = ""
+    if focus_topics:
+        focus_instruction = f"- IMPORTANT FOCUS: Prioritize testing knowledge on these specific weak topics/concepts: {', '.join(focus_topics)}.\n"
+
     prompt = prompt_template.format(
         title=source_title,
         source_type=source_type,
         content=raw_text[:10000],
         count=count,
+        focus_instruction=focus_instruction,
     )
 
     try:
@@ -202,6 +214,9 @@ async def generate_quiz(
         questions = json.loads(cleaned)
         if not isinstance(questions, list):
             raise ValueError("Response is not a list")
+        for q in questions:
+            if not q.get("topic"):
+                q["topic"] = source_title
         return questions
     except json.JSONDecodeError as e:
         logger.exception("Failed to parse quiz generation response: {}", e)
@@ -212,32 +227,47 @@ async def generate_quiz(
 
 
 def score_quiz(questions: list[dict], answers: list[dict]) -> tuple[int, int]:
-    """Score a quiz. Returns (score, max_score).
+    """Score a quiz. Returns (score, max_score)."""
+    score, max_score, _ = score_quiz_with_details(questions, answers)
+    return score, max_score
 
-    For MCQ, correct_answer index is compared.
-    For all types, partial credit isn't given in this basic scorer.
-    """
+
+def score_quiz_with_details(
+    questions: list[dict], answers: list[dict]
+) -> tuple[int, int, list[dict]]:
+    """Score a quiz and return detailed correctness breakdown per question and topic."""
     score = 0
     max_score = len(questions)
+    details: list[dict] = []
 
     answer_map = {a.get("question_id"): a.get("answer") for a in answers}
 
     for q in questions:
         qid = q.get("id")
+        topic = q.get("topic")
         user_ans = answer_map.get(qid)
-        if user_ans is None:
-            continue
+        is_correct = False
 
-        if q.get("type") == "mcq" or "options" in q:
-            correct = q.get("correct_answer")
-            if isinstance(user_ans, int) and user_ans == correct:
-                score += 1
-            elif isinstance(user_ans, str) and user_ans.isdigit():
-                if int(user_ans) == correct:
-                    score += 1
-        else:
-            expected = q.get("expected_answer") or q.get("expected_solution") or ""
-            if user_ans and expected and str(user_ans).strip().lower() == expected.strip().lower():
-                score += 1
+        if user_ans is not None:
+            if q.get("type") == "mcq" or "options" in q:
+                correct = q.get("correct_answer")
+                if isinstance(user_ans, int) and user_ans == correct:
+                    is_correct = True
+                elif isinstance(user_ans, str) and user_ans.isdigit():
+                    if int(user_ans) == correct:
+                        is_correct = True
+            else:
+                expected = q.get("expected_answer") or q.get("expected_solution") or ""
+                if user_ans and expected and str(user_ans).strip().lower() == expected.strip().lower():
+                    is_correct = True
 
-    return score, max_score
+        if is_correct:
+            score += 1
+
+        details.append({
+            "question_id": qid,
+            "topic": topic,
+            "is_correct": is_correct,
+        })
+
+    return score, max_score, details

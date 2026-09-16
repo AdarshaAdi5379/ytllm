@@ -17,7 +17,7 @@ from app.models import (
     SubmitQuizRequest,
     SubmitQuizAnswer,
 )
-from app.services import quiz_service
+from app.services import quiz_service, mastery_service
 
 router = APIRouter()
 
@@ -135,9 +135,19 @@ async def generate_quiz(
             detail={"error": "NO_CONTENT", "message": "Source has no content."},
         )
 
+    # Determine focus topics if prioritizing weak topics
+    focus_topics = None
+    if req.prioritize_weak_topics:
+        try:
+            weak_topics = await mastery_service.get_weak_focus_areas(db, source.workspace_id, user.id, limit=4)
+            if weak_topics:
+                focus_topics = [w.topic_name for w in weak_topics]
+        except Exception as e:
+            logger.warning("Failed to load weak topics for quiz generation: {}", e)
+
     try:
         questions = await quiz_service.generate_quiz(
-            source.title, source.source_type, raw_text, req.quiz_type, req.count,
+            source.title, source.source_type, raw_text, req.quiz_type, req.count, focus_topics=focus_topics,
         )
     except Exception as e:
         logger.exception("Quiz generation failed: {}", str(e))
@@ -159,6 +169,7 @@ async def generate_quiz(
         metadata_json=json.dumps({
             "source_title": source.title,
             "source_type": source.source_type,
+            "prioritize_weak_topics": req.prioritize_weak_topics,
         }),
     )
     db.add(quiz)
@@ -209,13 +220,37 @@ async def submit_quiz(
 
     questions = json.loads(quiz.questions or "[]")
     answers = [a.model_dump() for a in req.answers]
-    score, max_score = quiz_service.score_quiz(questions, answers)
+    score, max_score, details = quiz_service.score_quiz_with_details(questions, answers)
 
     quiz.score = score
     quiz.max_score = max_score
     quiz.completed_at = datetime.utcnow()
     await db.commit()
     await db.refresh(quiz)
+
+    # Record performance for each question's topic
+    for item in details:
+        topic_name = item.get("topic")
+        if topic_name:
+            try:
+                topic_obj = await mastery_service.get_or_create_topic_by_name(
+                    db=db,
+                    workspace_id=quiz.workspace_id,
+                    topic_name=topic_name,
+                    source_id=quiz.source_id,
+                )
+                await mastery_service.record_topic_performance(
+                    db=db,
+                    user_id=user.id,
+                    workspace_id=quiz.workspace_id,
+                    topic_id=topic_obj.id,
+                    item_type="quiz",
+                    item_id=quiz.id,
+                    is_correct=item["is_correct"],
+                    score=1.0 if item["is_correct"] else 0.0,
+                )
+            except Exception as e:
+                logger.warning("Failed to record topic mastery for quiz item: {}", e)
 
     return {
         "quiz_id": quiz.id,

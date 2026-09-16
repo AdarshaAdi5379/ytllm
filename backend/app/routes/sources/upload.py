@@ -185,6 +185,21 @@ async def upload_document(
 
         await db.commit()
         await db.refresh(source)
+
+        # Extract topics in background or safely
+        try:
+            from app.services.mastery_service import auto_extract_and_sync_source_topics
+            await auto_extract_and_sync_source_topics(
+                db=db,
+                workspace_id=workspace_id,
+                source_id=source.id,
+                title=effective_title,
+                source_type=source_type,
+                raw_text=result["text"],
+            )
+        except Exception as e:
+            logger.warning("Failed to auto-extract topics on source upload: {}", e)
+
         return _source_to_response(source)
 
     except HTTPException:

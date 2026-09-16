@@ -346,9 +346,11 @@ class FlashcardResponse(BaseModel):
     id: str
     workspace_id: str
     source_id: str | None = None
+    topic_id: str | None = None
+    topic_name: str | None = None
     question: str
     answer: str
-    difficulty: str = "medium"
+    difficulty: str
     tags: str = "[]"
     easiness_factor: float = 2.5
     interval_days: int = 0
@@ -364,6 +366,7 @@ class FlashcardResponse(BaseModel):
 class CreateFlashcardRequest(BaseModel):
     workspace_id: str
     source_id: str | None = None
+    topic_id: str | None = None
     question: str
     answer: str
     difficulty: str = "medium"
@@ -375,11 +378,13 @@ class UpdateFlashcardRequest(BaseModel):
     answer: str | None = None
     difficulty: str | None = None
     tags: list[str] | None = None
+    topic_id: str | None = None
 
 
 class GenerateFlashcardsRequest(BaseModel):
     source_id: str
     count: int = 10
+    topic_id: str | None = None
 
 
 class ReviewFlashcardRequest(BaseModel):
@@ -390,6 +395,8 @@ class ReviewQueueItem(BaseModel):
     id: str
     workspace_id: str
     source_id: str | None = None
+    topic_id: str | None = None
+    topic_name: str | None = None
     question: str
     answer: str
     difficulty: str
@@ -433,15 +440,49 @@ class GenerateQuizRequest(BaseModel):
     quiz_type: str = "mcq"
     count: int = 5
     time_limit_minutes: int | None = None
+    prioritize_weak_topics: bool = False
+    topic_ids: list[str] = []
 
 
 class SubmitQuizAnswer(BaseModel):
     question_id: str
     answer: str | int | None = None
+    topic: str | None = None
 
 
 class SubmitQuizRequest(BaseModel):
     answers: list[SubmitQuizAnswer]
+
+
+class TopicResponse(BaseModel):
+    id: str
+    workspace_id: str
+    source_id: str | None = None
+    name: str
+    description: str = ""
+    created_at: str
+    updated_at: str
+
+
+class TopicMasteryResponse(BaseModel):
+    topic_id: str
+    topic_name: str
+    description: str = ""
+    mastery_score: float
+    status: str
+    total_attempts: int
+    correct_attempts: int
+    accuracy_percentage: float
+    revision_priority: float
+    last_practiced_at: str | None = None
+    next_recommended_action: str
+
+
+class TopicDetailResponse(BaseModel):
+    topic: TopicMasteryResponse
+    related_flashcards: list[FlashcardResponse] = []
+    related_quizzes: list[dict] = []
+    recent_performance: list[dict] = []
 
 
 class LearningPathTopicResponse(BaseModel):

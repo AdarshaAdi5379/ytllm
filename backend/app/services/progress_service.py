@@ -117,6 +117,11 @@ async def build_dashboard(
     # ── Learning hours ──
     total_learning_minutes = lp_minutes + (fc_total_reviews_sum * 2)  # ~2 min per review
 
+    # ── Topic Mastery & Focus Areas ──
+    from app.services import mastery_service
+    topic_masteries = await mastery_service.get_workspace_topic_masteries(db, workspace_id, user_id)
+    focus_areas = await mastery_service.get_weak_focus_areas(db, workspace_id, user_id, limit=5)
+
     return {
         "learning_hours": {
             "total_minutes": total_learning_minutes,
@@ -149,6 +154,8 @@ async def build_dashboard(
             "total": qz_count,
             "accuracy": quiz_accuracy,
         },
+        "topic_mastery": [t.model_dump() for t in topic_masteries],
+        "focus_areas": [f.model_dump() for f in focus_areas],
     }
 
 

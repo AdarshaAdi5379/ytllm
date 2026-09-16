@@ -1,7 +1,7 @@
 """add_careers_and_job_applications
 
 Revision ID: f1a2b3c4d5e6
-Revises: e08fe825261f
+Revises: a1b2c3d4e5f6
 Create Date: 2026-09-16 12:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'f1a2b3c4d5e6'
-down_revision: Union[str, Sequence[str], None] = 'e08fe825261f'
+down_revision: Union[str, Sequence[str], None] = 'a1b2c3d4e5f6'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

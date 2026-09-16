@@ -4,8 +4,8 @@ from loguru import logger
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db_models import Flashcard, Quiz, Source, LearningPath
-from app.services import llm_service
+from app.db_models import Flashcard, Quiz, Source, LearningPath, TopicMastery, Topic
+from app.services import llm_service, mastery_service
 
 
 async def build_revision_summary(
@@ -18,14 +18,27 @@ async def build_revision_summary(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago = now - timedelta(days=7)
 
-    # --- Due flashcards ---
-    due_cards_result = await db.execute(
-        select(Flashcard).where(
+    # --- Due flashcards prioritized by Topic Mastery Revision Priority ---
+    due_cards_stmt = (
+        select(Flashcard)
+        .outerjoin(
+            TopicMastery,
+            and_(
+                TopicMastery.topic_id == Flashcard.topic_id,
+                TopicMastery.user_id == user_id,
+            ),
+        )
+        .where(
             Flashcard.workspace_id == workspace_id,
             Flashcard.user_id == user_id,
             (Flashcard.next_review_date == None) | (Flashcard.next_review_date <= now),
-        ).order_by(Flashcard.next_review_date.asc().nullsfirst())
+        )
+        .order_by(
+            func.coalesce(TopicMastery.revision_priority, 100.0).desc(),
+            Flashcard.next_review_date.asc().nullsfirst(),
+        )
     )
+    due_cards_result = await db.execute(due_cards_stmt)
     due_cards = due_cards_result.scalars().all()
 
     # --- Flashcard stats ---
@@ -156,12 +169,31 @@ async def build_revision_summary(
     for c in due_cards:
         formatted_due.append({
             "id": c.id,
+            "topic_id": c.topic_id,
             "question": c.question,
             "answer": c.answer,
             "difficulty": c.difficulty,
             "total_reviews": c.total_reviews,
             "correct_reviews": c.correct_reviews,
         })
+
+    # Fetch focus topics for revision
+    focus_topics_data = []
+    try:
+        weak_topics = await mastery_service.get_weak_focus_areas(db, workspace_id, user_id, limit=5)
+        focus_topics_data = [
+            {
+                "topic_id": t.topic_id,
+                "topic_name": t.topic_name,
+                "mastery_score": t.mastery_score,
+                "status": t.status,
+                "next_recommended_action": t.next_recommended_action,
+                "revision_priority": t.revision_priority,
+            }
+            for t in weak_topics
+        ]
+    except Exception as e:
+        logger.warning("Failed to fetch focus topics for revision summary: {}", e)
 
     return {
         "date": now.isoformat(),
@@ -172,6 +204,7 @@ async def build_revision_summary(
             "due": formatted_due,
         },
         "weak_areas": weak_areas,
+        "focus_topics": focus_topics_data,
         "missed_questions": missed_questions,
         "low_score_quizzes": low_score_quizzes,
         "activity": {

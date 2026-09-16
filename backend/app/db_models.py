@@ -254,6 +254,7 @@ class Flashcard(Base):
     id = Column(String, primary_key=True, default=_uuid)
     workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
     source_id = Column(String, ForeignKey("sources.id"), nullable=True, index=True)
+    topic_id = Column(String, ForeignKey("topics.id"), nullable=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
@@ -271,6 +272,7 @@ class Flashcard(Base):
 
     workspace = relationship("Workspace")
     source = relationship("Source")
+    topic = relationship("Topic")
     user = relationship("User")
 
     __table_args__ = (
@@ -551,5 +553,79 @@ class JobApplication(Base):
 
     __table_args__ = (
         Index("ix_job_applications_job_status", "job_id", "status"),
+    )
+
+
+class Topic(Base):
+    __tablename__ = "topics"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    source_id = Column(String, ForeignKey("sources.id"), nullable=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    description = Column(Text, default="")
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    workspace = relationship("Workspace")
+    source = relationship("Source")
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "name", name="uq_workspace_topic_name"),
+    )
+
+
+class TopicMastery(Base):
+    __tablename__ = "topic_mastery"
+
+    STATUSES = ("weak", "learning", "strong", "mastered")
+
+    id = Column(String, primary_key=True, default=_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    topic_id = Column(String, ForeignKey("topics.id"), nullable=False, index=True)
+    mastery_score = Column(Float, default=0.0, nullable=False)
+    status = Column(String, default="learning", nullable=False)
+    total_attempts = Column(Integer, default=0, nullable=False)
+    correct_attempts = Column(Integer, default=0, nullable=False)
+    consecutive_correct = Column(Integer, default=0, nullable=False)
+    consecutive_incorrect = Column(Integer, default=0, nullable=False)
+    revision_priority = Column(Float, default=100.0, nullable=False)
+    last_practiced_at = Column(DateTime, nullable=True)
+    next_recommended_action = Column(String, default="Practice", nullable=False)
+    created_at = Column(DateTime, default=_now, nullable=False)
+    updated_at = Column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    user = relationship("User")
+    workspace = relationship("Workspace")
+    topic = relationship("Topic")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "topic_id", name="uq_user_topic_mastery"),
+        Index("ix_topic_mastery_status", "status"),
+        Index("ix_topic_mastery_priority", "revision_priority"),
+    )
+
+
+class TopicPerformanceLog(Base):
+    __tablename__ = "topic_performance_logs"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    topic_id = Column(String, ForeignKey("topics.id"), nullable=False, index=True)
+    item_type = Column(String, nullable=False)  # 'flashcard' | 'quiz'
+    item_id = Column(String, nullable=True)
+    is_correct = Column(Integer, default=0, nullable=False)  # 1 or 0
+    score = Column(Float, default=0.0, nullable=False)
+    created_at = Column(DateTime, default=_now, nullable=False)
+
+    user = relationship("User")
+    workspace = relationship("Workspace")
+    topic = relationship("Topic")
+
+    __table_args__ = (
+        Index("ix_topic_perf_user_topic", "user_id", "topic_id"),
+        Index("ix_topic_perf_created", "created_at"),
     )
 

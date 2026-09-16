@@ -18,7 +18,7 @@ from app.models import (
     ReviewFlashcardRequest,
     ReviewQueueItem,
 )
-from app.services import flashcard_service
+from app.services import flashcard_service, mastery_service
 from app.services.spaced_repetition import calculate_next_review
 
 
@@ -28,10 +28,15 @@ DIFFICULTIES = {"easy", "medium", "hard"}
 
 
 def _fc_to_response(fc: Flashcard) -> FlashcardResponse:
+    topic_name = None
+    if "topic" in fc.__dict__ and fc.__dict__["topic"] is not None:
+        topic_name = getattr(fc.__dict__["topic"], "name", None)
     return FlashcardResponse(
         id=fc.id,
         workspace_id=fc.workspace_id,
         source_id=fc.source_id,
+        topic_id=fc.topic_id,
+        topic_name=topic_name,
         question=fc.question,
         answer=fc.answer,
         difficulty=fc.difficulty,
@@ -49,10 +54,15 @@ def _fc_to_response(fc: Flashcard) -> FlashcardResponse:
 
 
 def _fc_to_review_queue(fc: Flashcard) -> ReviewQueueItem:
+    topic_name = None
+    if "topic" in fc.__dict__ and fc.__dict__["topic"] is not None:
+        topic_name = getattr(fc.__dict__["topic"], "name", None)
     return ReviewQueueItem(
         id=fc.id,
         workspace_id=fc.workspace_id,
         source_id=fc.source_id,
+        topic_id=fc.topic_id,
+        topic_name=topic_name,
         question=fc.question,
         answer=fc.answer,
         difficulty=fc.difficulty,
@@ -116,6 +126,7 @@ async def create_flashcard(
     fc = Flashcard(
         workspace_id=req.workspace_id,
         source_id=req.source_id,
+        topic_id=req.topic_id,
         user_id=user.id,
         question=req.question,
         answer=req.answer,
@@ -272,14 +283,23 @@ async def generate_flashcards(
 
     created: list[Flashcard] = []
     for fc_data in generated:
+        topic_name = fc_data.get("topic")
+        card_topic_id = req.topic_id
+        if not card_topic_id and topic_name:
+            topic_obj = await mastery_service.get_or_create_topic_by_name(
+                db, workspace_id=source.workspace_id, topic_name=topic_name, source_id=source.id,
+            )
+            card_topic_id = topic_obj.id
+
         fc = Flashcard(
             workspace_id=source.workspace_id,
             source_id=source.id,
+            topic_id=card_topic_id,
             user_id=user.id,
             question=fc_data.get("question", ""),
             answer=fc_data.get("answer", ""),
             difficulty=fc_data.get("difficulty", "medium"),
-            tags=json.dumps([]),
+            tags=json.dumps([topic_name] if topic_name else []),
         )
         db.add(fc)
         created.append(fc)
@@ -352,6 +372,8 @@ async def update_flashcard(
         fc.difficulty = req.difficulty
     if req.tags is not None:
         fc.tags = json.dumps(req.tags)
+    if req.topic_id is not None:
+        fc.topic_id = req.topic_id
 
     await db.commit()
     await db.refresh(fc)
@@ -422,4 +444,21 @@ async def review_flashcard(
 
     await db.commit()
     await db.refresh(fc)
+
+    # Record performance in Adaptive Mastery Engine
+    if fc.topic_id:
+        try:
+            await mastery_service.record_topic_performance(
+                db=db,
+                user_id=user.id,
+                workspace_id=fc.workspace_id,
+                topic_id=fc.topic_id,
+                item_type="flashcard",
+                item_id=fc.id,
+                is_correct=sm2["is_correct"],
+                score=1.0 if sm2["is_correct"] else 0.0,
+            )
+        except Exception as e:
+            logger.warning("Failed to record topic mastery for flashcard review: {}", e)
+
     return _fc_to_response(fc)

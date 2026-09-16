@@ -9,6 +9,7 @@ Return a JSON array of objects with these fields:
 - question (string): A clear, specific question about a key fact
 - answer (string): The precise answer to the question
 - difficulty (string): One of "easy", "medium", "hard"
+- topic (string): The specific sub-topic or concept this card covers (e.g. "Deadlocks", "Memory Management")
 
 Rules:
 - Focus on factual, testable information from the content
