@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.middleware.rate_limit import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from loguru import logger
 
 from app.database import get_db
@@ -15,8 +14,9 @@ from app.models import (
     StartMentorSessionRequest,
     MentorRespondRequest,
     MentorSessionResponse,
+    TopicMasteryResponse,
 )
-from app.services import mentor_service
+from app.services import mentor_service, mastery_service
 
 router = APIRouter()
 
@@ -25,6 +25,7 @@ def _session_to_response(s: MentorSession) -> MentorSessionResponse:
     return MentorSessionResponse(
         id=s.id,
         workspace_id=s.workspace_id,
+        topic_id=s.topic_id,
         topic=s.topic,
         source_ids=s.source_ids or "[]",
         messages=s.messages or "[]",
@@ -38,6 +39,17 @@ def _session_to_response(s: MentorSession) -> MentorSessionResponse:
     )
 
 
+@router.get("/weak-topics", response_model=list[TopicMasteryResponse])
+async def get_mentor_weak_topics(
+    workspace_id: str = Query(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve learner's weak focus areas in the workspace for quick-start mentoring."""
+    await verify_workspace_access(db, workspace_id, user.id)
+    return await mastery_service.get_weak_focus_areas(db, workspace_id, user.id, limit=5)
+
+
 @router.post("/start", status_code=201)
 async def start_mentor_session(
     req: StartMentorSessionRequest,
@@ -47,7 +59,13 @@ async def start_mentor_session(
     await verify_workspace_access(db, req.workspace_id, user.id)
     try:
         session, first_question = await mentor_service.start_session(
-            db, req.workspace_id, user, req.topic, req.source_ids, req.context,
+            db=db,
+            workspace_id=req.workspace_id,
+            user=user,
+            topic=req.topic,
+            topic_id=req.topic_id,
+            source_ids=req.source_ids,
+            context=req.context,
         )
         return {
             "session": _session_to_response(session).model_dump(),
@@ -66,6 +84,16 @@ async def respond_mentor(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    session_stmt = select(MentorSession).where(
+        MentorSession.id == req.session_id,
+        MentorSession.user_id == user.id,
+    )
+    session = (await db.execute(session_stmt)).scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Mentor session not found"})
+
+    await verify_workspace_access(db, session.workspace_id, user.id)
+
     try:
         result = await mentor_service.respond(db, user, req.session_id, req.answer)
         return result
@@ -82,6 +110,16 @@ async def end_mentor_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    session_stmt = select(MentorSession).where(
+        MentorSession.id == session_id,
+        MentorSession.user_id == user.id,
+    )
+    session = (await db.execute(session_stmt)).scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Mentor session not found"})
+
+    await verify_workspace_access(db, session.workspace_id, user.id)
+
     try:
         result = await mentor_service.end_session(db, user, session_id)
         return result
@@ -127,6 +165,8 @@ async def get_mentor_session(
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Mentor session not found"})
+
+    await verify_workspace_access(db, session.workspace_id, user.id)
     return _session_to_response(session).model_dump()
 
 
@@ -145,6 +185,8 @@ async def delete_mentor_session(
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Mentor session not found"})
+
+    await verify_workspace_access(db, session.workspace_id, user.id)
     await db.delete(session)
     await db.commit()
     return {"deleted": True}

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db, async_session
 from app.db_models import User, Source, Workspace, Folder
 from app.models import SourceResponse
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, verify_workspace_access
 from app.services import embedding_service
 from app.services.task_service import create_task
 from app.services.text_service import process_text
@@ -47,18 +47,18 @@ async def import_text_source(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    ws_result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == req.workspace_id, Workspace.owner_id == user.id
-        )
-    )
-    if not ws_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
+    await verify_workspace_access(db, req.workspace_id, user.id)
 
-    if req.folder_id:
+    effective_folder_id = (
+        req.folder_id.strip()
+        if req.folder_id and req.folder_id.strip() and req.folder_id.strip() not in ("null", "undefined", "__none__", "None")
+        else None
+    )
+
+    if effective_folder_id:
         folder_result = await db.execute(
             select(Folder).where(
-                Folder.id == req.folder_id, Folder.workspace_id == req.workspace_id
+                Folder.id == effective_folder_id, Folder.workspace_id == req.workspace_id
             )
         )
         if not folder_result.scalar_one_or_none():
@@ -90,7 +90,7 @@ async def import_text_source(
                     else:
                         source = Source(
                             workspace_id=req.workspace_id,
-                            folder_id=req.folder_id,
+                            folder_id=effective_folder_id,
                             user_id=user.id,
                             source_type="text_note",
                             title=txt.title,
@@ -100,6 +100,20 @@ async def import_text_source(
                         )
                         session.add(source)
                     await session.commit()
+                    await session.refresh(source)
+
+                    try:
+                        from app.services.mastery_service import auto_extract_and_sync_source_topics
+                        await auto_extract_and_sync_source_topics(
+                            db=session,
+                            workspace_id=req.workspace_id,
+                            source_id=source.id,
+                            title=txt.title,
+                            source_type="text_note",
+                            raw_text=txt.text,
+                        )
+                    except Exception as e:
+                        logger.warning("Failed to auto-extract topics on background text import: {}", e)
                 except Exception as e:
                     logger.exception("Background text import error: {}", str(e))
                     raise
@@ -133,7 +147,7 @@ async def import_text_source(
         else:
             source = Source(
                 workspace_id=req.workspace_id,
-                folder_id=req.folder_id,
+                folder_id=effective_folder_id,
                 user_id=user.id,
                 source_type="text_note",
                 title=txt.title,
@@ -145,6 +159,20 @@ async def import_text_source(
 
         await db.commit()
         await db.refresh(source)
+
+        try:
+            from app.services.mastery_service import auto_extract_and_sync_source_topics
+            await auto_extract_and_sync_source_topics(
+                db=db,
+                workspace_id=req.workspace_id,
+                source_id=source.id,
+                title=txt.title,
+                source_type="text_note",
+                raw_text=txt.text,
+            )
+        except Exception as e:
+            logger.warning("Failed to auto-extract topics on text import: {}", e)
+
         return _source_to_response(source)
 
     except HTTPException:

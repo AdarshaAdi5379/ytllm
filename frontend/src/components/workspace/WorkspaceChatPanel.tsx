@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState, useRef } from 'react';
 import { Send, Loader2, MessageSquare, Plus, Trash2, ChevronRight, X, FolderOpen, SlidersHorizontal, Book, Search, ExternalLink, Sparkles, Paperclip, Globe, FileText, Upload } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useChatSessionStore } from '../../store/useChatSessionStore';
-import { streamWorkspaceChat, type ChatSessionItem, importTextSource, importWebsiteSource, uploadDocument } from '../../api/workspace';
+import { streamWorkspaceChat, type ChatSessionItem, importTextSource, importWebsiteSource, importYouTubeSource, uploadDocument } from '../../api/workspace';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
 const HomeDashboard = lazy(() => import('./HomeDashboard').then((m) => ({ default: m.HomeDashboard })));
@@ -106,7 +106,13 @@ export function WorkspaceChatPanel() {
         result = await importTextSource(activeWorkspaceId, attachText, attachText.slice(0, 50));
         setAttachText('');
       } else if (attachType === 'url' && attachUrl.trim()) {
-        result = await importWebsiteSource(activeWorkspaceId, attachUrl);
+        const trimmedUrl = attachUrl.trim();
+        const isYouTube = /(?:youtube\.com\/(?:watch\?|embed\/|v\/|shorts\/)|youtu\.be\/)/i.test(trimmedUrl);
+        if (isYouTube) {
+          result = await importYouTubeSource(activeWorkspaceId, trimmedUrl);
+        } else {
+          result = await importWebsiteSource(activeWorkspaceId, trimmedUrl);
+        }
         setAttachUrl('');
       }
       if (result) {

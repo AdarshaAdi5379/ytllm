@@ -143,9 +143,9 @@ async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
     Returns the local User record.
     """
     supabase_user_id = supabase_payload.get("sub", "")
-    email = supabase_payload.get("email", "")
-    metadata = supabase_payload.get("user_metadata", {})
-    app_metadata = supabase_payload.get("app_metadata", {})
+    email = (supabase_payload.get("email") or "").strip().lower()
+    metadata = supabase_payload.get("user_metadata", {}) or {}
+    app_metadata = supabase_payload.get("app_metadata", {}) or {}
     display_name = metadata.get("full_name") or metadata.get("name") or ""
     avatar_url = metadata.get("avatar_url") or ""
 
@@ -158,39 +158,48 @@ async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
     else:
         auth_provider = "supabase"
 
-    result = await db.execute(
-        select(User).where(User.supabase_user_id == supabase_user_id)
-    )
-    user = result.scalar_one_or_none()
-
-    if user:
-        user.email = email
-        user.auth_provider = auth_provider
-        if display_name:
-            user.display_name = display_name
-        if avatar_url:
-            user.avatar_url = avatar_url
-    else:
-        # Try linking to a legacy user by email (no supabase_user_id)
+    try:
+        # 1. Match by supabase_user_id
         result = await db.execute(
-            select(User).where(User.email == email, User.supabase_user_id.is_(None))
+            select(User).where(User.supabase_user_id == supabase_user_id)
         )
-        existing = result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
 
-        if existing:
-            existing.supabase_user_id = supabase_user_id
-            existing.auth_provider = auth_provider
+        if user:
+            if email:
+                user.email = email
+            user.auth_provider = auth_provider
             if display_name:
-                existing.display_name = display_name
+                user.display_name = display_name
             if avatar_url:
-                existing.avatar_url = avatar_url
+                user.avatar_url = avatar_url
             await db.commit()
-            await db.refresh(existing)
-            return existing
+            await db.refresh(user)
+            return user
 
+        # 2. Try linking to an existing user by email (regardless of previous supabase_user_id)
+        if email:
+            result = await db.execute(
+                select(User).where(User.email == email)
+            )
+            existing = result.scalar_one_or_none()
+
+            if existing:
+                existing.supabase_user_id = supabase_user_id
+                existing.auth_provider = auth_provider
+                if display_name:
+                    existing.display_name = display_name
+                if avatar_url:
+                    existing.avatar_url = avatar_url
+                await db.commit()
+                await db.refresh(existing)
+                return existing
+
+        # 3. Create new user
+        user_email = email or f"{supabase_user_id}@supabase.user"
         user = User(
             supabase_user_id=supabase_user_id,
-            email=email,
+            email=user_email,
             display_name=display_name or None,
             avatar_url=avatar_url or None,
             password_hash=None,
@@ -200,12 +209,21 @@ async def upsert_local_user(db: AsyncSession, supabase_payload: dict) -> User:
         await db.commit()
         await db.refresh(user)
 
-        ws = Workspace(name="My Workspace", owner_id=user.id)
-        db.add(ws)
-        await db.commit()
-        await db.refresh(user)
+        # Create default workspace if none exists for this user
+        ws_result = await db.execute(
+            select(Workspace).where(Workspace.owner_id == user.id)
+        )
+        if not ws_result.scalar_one_or_none():
+            ws = Workspace(name="My Workspace", owner_id=user.id)
+            db.add(ws)
+            await db.commit()
+            await db.refresh(user)
 
-    return user
+        return user
+    except Exception as e:
+        await db.rollback()
+        logger.exception("Failed to upsert local user from Supabase token: {}", e)
+        raise
 
 
 async def get_local_user_from_supabase_token(

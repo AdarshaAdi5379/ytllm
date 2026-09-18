@@ -63,12 +63,14 @@ export async function createFlashcard(
   answer: string,
   difficulty?: string,
   sourceId?: string,
+  topicId?: string,
 ): Promise<FlashcardItem> {
   return apiFetch<FlashcardItem>('/ai/flashcards/', {
     method: 'POST',
     body: JSON.stringify({
       workspace_id: workspaceId,
       source_id: sourceId ?? null,
+      topic_id: topicId ?? null,
       question,
       answer,
       difficulty: difficulty ?? 'medium',

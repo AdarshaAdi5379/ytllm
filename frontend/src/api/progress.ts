@@ -35,7 +35,7 @@ export interface TopicMasteryItem {
 
 export interface TopicPerformanceLogItem {
   id: string;
-  item_type: 'flashcard' | 'quiz';
+  item_type: 'flashcard' | 'quiz' | 'mentor';
   is_correct: boolean;
   score: number;
   created_at: string;
@@ -58,6 +58,14 @@ export interface TopicDetailResponse {
     score: number | null;
     max_score: number | null;
     completed_at: string | null;
+  }>;
+  related_mentor_sessions?: Array<{
+    id: string;
+    topic: string;
+    status: string;
+    correct_count: number;
+    total_questions: number;
+    created_at: string;
   }>;
   recent_performance: TopicPerformanceLogItem[];
 }

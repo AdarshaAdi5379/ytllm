@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { FlashcardItem, ReviewQueueItem, FlashcardStats } from '../api/flashcards';
 import * as fcApi from '../api/flashcards';
+import { notifyMasteryUpdated } from './syncMastery';
 
 interface FlashcardStore {
   flashcards: FlashcardItem[];
@@ -15,7 +16,7 @@ interface FlashcardStore {
   loadReviewQueue: (workspaceId: string) => Promise<void>;
   loadUpcomingReviews: (workspaceId: string, days?: number) => Promise<void>;
   loadStats: (workspaceId: string) => Promise<void>;
-  createFlashcard: (workspaceId: string, question: string, answer: string, difficulty?: string, sourceId?: string) => Promise<FlashcardItem>;
+  createFlashcard: (workspaceId: string, question: string, answer: string, difficulty?: string, sourceId?: string, topicId?: string) => Promise<FlashcardItem>;
   generateFlashcards: (sourceId: string, count?: number) => Promise<FlashcardItem[]>;
   updateFlashcard: (id: string, data: { question?: string; answer?: string; difficulty?: string }) => Promise<void>;
   deleteFlashcard: (id: string) => Promise<void>;
@@ -72,8 +73,8 @@ export const useFlashcardStore = create<FlashcardStore>()((set, get) => ({
     }
   },
 
-  createFlashcard: async (workspaceId, question, answer, difficulty, sourceId) => {
-    const card = await fcApi.createFlashcard(workspaceId, question, answer, difficulty, sourceId);
+  createFlashcard: async (workspaceId, question, answer, difficulty, sourceId, topicId) => {
+    const card = await fcApi.createFlashcard(workspaceId, question, answer, difficulty, sourceId, topicId);
     const { flashcards } = get();
     set({ flashcards: [card, ...flashcards] });
     return card;
@@ -108,6 +109,7 @@ export const useFlashcardStore = create<FlashcardStore>()((set, get) => ({
     set({
       reviewQueue: reviewQueue.map((f) => (f.id === id ? { ...f, ...updated } : f)),
     });
+    notifyMasteryUpdated(updated.workspace_id);
   },
 
   setReviewMode: (mode) => set({ reviewMode: mode, currentCardIndex: 0 }),

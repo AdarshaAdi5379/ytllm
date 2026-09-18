@@ -7,7 +7,7 @@ from sqlalchemy import select, func, or_, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db_models import Topic, TopicMastery, TopicPerformanceLog, Flashcard, Quiz
+from app.db_models import Topic, TopicMastery, TopicPerformanceLog, Flashcard, Quiz, MentorSession
 from app.models import TopicResponse, TopicMasteryResponse, TopicDetailResponse, FlashcardResponse
 from app.services import llm_service
 
@@ -171,13 +171,66 @@ async def extract_topics_from_text(title: str, source_type: str, content: str) -
     return topics
 
 
+def normalize_topic_key(name: str) -> str:
+    """Normalize a topic name for comparison: lowercased, stripped, punctuation stripped, simple singularization."""
+    if not name:
+        return ""
+    text = name.strip().lower()
+    text = re.sub(r"[^\w\s]", "", text)
+    tokens = text.split()
+    normalized_tokens = []
+    for token in tokens:
+        if token.endswith("ies") and len(token) > 4:
+            token = token[:-3] + "y"
+        elif token.endswith("es") and len(token) > 3 and token[-3] in "sxhz":
+            token = token[:-2]
+        elif token.endswith("s") and not token.endswith("ss") and len(token) > 2:
+            token = token[:-1]
+        normalized_tokens.append(token)
+    return " ".join(normalized_tokens)
+
+
+async def find_matching_topic(
+    db: AsyncSession,
+    workspace_id: str,
+    topic_name: str,
+) -> Topic | None:
+    """Find an existing topic in workspace by exact, case-insensitive, or stemmed/normalized match."""
+    name_clean = topic_name.strip()
+    if not name_clean:
+        return None
+
+    # 1. Exact case-insensitive DB match first
+    stmt = select(Topic).where(
+        Topic.workspace_id == workspace_id,
+        func.lower(Topic.name) == name_clean.lower(),
+    )
+    exact = (await db.execute(stmt)).scalar_one_or_none()
+    if exact:
+        return exact
+
+    # 2. Fetch all workspace topics to perform normalized key matching
+    stmt_all = select(Topic).where(Topic.workspace_id == workspace_id)
+    all_topics = (await db.execute(stmt_all)).scalars().all()
+
+    target_key = normalize_topic_key(name_clean)
+    if not target_key:
+        return None
+
+    for t in all_topics:
+        if normalize_topic_key(t.name) == target_key:
+            return t
+
+    return None
+
+
 async def sync_topics_for_source(
     db: AsyncSession,
     workspace_id: str,
     source_id: str | None,
     topics_data: list[dict],
 ) -> list[Topic]:
-    """Ensure topic records exist in the database for the given workspace."""
+    """Ensure topic records exist in the database for the given workspace, preventing duplicates."""
     results: list[Topic] = []
     for item in topics_data:
         name = item.get("name", "").strip()
@@ -185,12 +238,7 @@ async def sync_topics_for_source(
             continue
 
         desc = item.get("description", "")
-        # Check if topic already exists in workspace (case-insensitive)
-        stmt = select(Topic).where(
-            Topic.workspace_id == workspace_id,
-            func.lower(Topic.name) == name.lower(),
-        )
-        existing = (await db.execute(stmt)).scalar_one_or_none()
+        existing = await find_matching_topic(db, workspace_id, name)
 
         if existing:
             if not existing.description and desc:
@@ -234,13 +282,12 @@ async def get_or_create_topic_by_name(
     source_id: str | None = None,
     description: str = "",
 ) -> Topic:
-    """Find or create a topic by name in a workspace."""
+    """Find or create a topic by name in a workspace, using normalized matching to prevent duplicates."""
     name_clean = topic_name.strip()
-    stmt = select(Topic).where(
-        Topic.workspace_id == workspace_id,
-        func.lower(Topic.name) == name_clean.lower(),
-    )
-    topic = (await db.execute(stmt)).scalar_one_or_none()
+    if not name_clean:
+        name_clean = "General"
+
+    topic = await find_matching_topic(db, workspace_id, name_clean)
     if not topic:
         topic = Topic(
             workspace_id=workspace_id,
@@ -249,6 +296,10 @@ async def get_or_create_topic_by_name(
             description=description,
         )
         db.add(topic)
+        await db.commit()
+        await db.refresh(topic)
+    elif description and not topic.description:
+        topic.description = description
         await db.commit()
         await db.refresh(topic)
     return topic
@@ -310,8 +361,13 @@ async def record_topic_performance(
     mastery.total_attempts += 1
     if is_correct:
         mastery.correct_attempts += 1
-        mastery.consecutive_correct += 1
-        mastery.consecutive_incorrect = 0
+        if score >= 1.0:
+            mastery.consecutive_correct += 1
+            mastery.consecutive_incorrect = 0
+        else:
+            # Partial score (0.0 < score < 1.0): does NOT increment consecutive_correct streak
+            mastery.consecutive_correct = 0
+            mastery.consecutive_incorrect = 0
     else:
         mastery.consecutive_incorrect += 1
         mastery.consecutive_correct = 0
@@ -523,6 +579,33 @@ async def get_topic_details(
         for q in quizzes
     ]
 
+    # Fetch related mentor sessions
+    mentor_stmt = (
+        select(MentorSession)
+        .where(
+            MentorSession.workspace_id == topic.workspace_id,
+            MentorSession.user_id == user_id,
+            or_(
+                MentorSession.topic_id == topic_id,
+                MentorSession.topic.ilike(f"%{topic.name}%"),
+            ),
+        )
+        .order_by(MentorSession.created_at.desc())
+        .limit(10)
+    )
+    mentor_sessions = (await db.execute(mentor_stmt)).scalars().all()
+    mentor_items = [
+        {
+            "id": m.id,
+            "topic": m.topic,
+            "status": m.status,
+            "correct_count": m.correct_count,
+            "total_questions": m.total_questions,
+            "created_at": m.created_at.isoformat() if m.created_at else "",
+        }
+        for m in mentor_sessions
+    ]
+
     # Fetch recent performance history
     perf_stmt = (
         select(TopicPerformanceLog)
@@ -549,5 +632,6 @@ async def get_topic_details(
         topic=topic_mastery_res,
         related_flashcards=fc_responses,
         related_quizzes=quiz_items,
+        related_mentor_sessions=mentor_items,
         recent_performance=perf_items,
     )

@@ -90,6 +90,7 @@ async def move_session_to_workspace(
 
     try:
         new_source_ids = []
+        created_sources_for_topics = []
         for src in standalone_sources:
             mapped_type = TYPE_MAPPING.get(src.source_type, "text_note")
             new_index_key = content_to_index_key(src.content)
@@ -112,6 +113,7 @@ async def move_session_to_workspace(
             db.add(new_source)
             await db.flush()
             new_source_ids.append(new_source.id)
+            created_sources_for_topics.append((new_source.id, src.title, mapped_type, src.content))
 
             try:
                 indexed_keys.append(new_index_key)
@@ -149,6 +151,20 @@ async def move_session_to_workspace(
 
         await db.delete(session)
         await db.commit()
+
+        for sid, stitle, stype, scontent in created_sources_for_topics:
+            try:
+                from app.services.mastery_service import auto_extract_and_sync_source_topics
+                await auto_extract_and_sync_source_topics(
+                    db=db,
+                    workspace_id=req.workspace_id,
+                    source_id=sid,
+                    title=stitle,
+                    source_type=stype,
+                    raw_text=scontent or "",
+                )
+            except Exception as e:
+                logger.warning("Failed to auto-extract topics on move to workspace: {}", e)
 
     except Exception:
         logger.exception("Move failed, cleaning up re-indexed vectors")

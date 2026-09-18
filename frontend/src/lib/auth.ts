@@ -1,8 +1,11 @@
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 
-function getRedirectUrl(): string {
-  return window.location.origin;
+export function getRedirectUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return (import.meta.env.VITE_SITE_URL as string) || 'http://localhost:5173';
 }
 
 export async function getSupabaseSession(): Promise<Session | null> {

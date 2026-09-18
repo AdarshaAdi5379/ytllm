@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db, async_session
 from app.db_models import Video as VideoModel, Source, Workspace, Folder
-from app.services.auth_service import get_optional_user, get_current_user
+from app.services.auth_service import get_optional_user, get_current_user, verify_workspace_access
 from app.db_models import User
 from app.utils.youtube_parser import extract_video_id
 from app.services import transcript_service
@@ -59,18 +59,18 @@ async def import_youtube_source(
             detail={"error": "INVALID_URL", "message": "Invalid YouTube URL."},
         )
 
-    ws_result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == req.workspace_id, Workspace.owner_id == user.id
-        )
-    )
-    if not ws_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
+    await verify_workspace_access(db, req.workspace_id, user.id)
 
-    if req.folder_id:
+    effective_folder_id = (
+        req.folder_id.strip()
+        if req.folder_id and req.folder_id.strip() and req.folder_id.strip() not in ("null", "undefined", "__none__", "None")
+        else None
+    )
+
+    if effective_folder_id:
         folder_result = await db.execute(
             select(Folder).where(
-                Folder.id == req.folder_id, Folder.workspace_id == req.workspace_id
+                Folder.id == effective_folder_id, Folder.workspace_id == req.workspace_id
             )
         )
         if not folder_result.scalar_one_or_none():
@@ -118,7 +118,7 @@ async def import_youtube_source(
                     else:
                         source = Source(
                             workspace_id=req.workspace_id,
-                            folder_id=req.folder_id,
+                            folder_id=effective_folder_id,
                             user_id=user.id,
                             source_type="youtube_video",
                             title=metadata.title,
@@ -129,6 +129,20 @@ async def import_youtube_source(
                         session.add(source)
 
                     await session.commit()
+                    await session.refresh(source)
+
+                    try:
+                        from app.services.mastery_service import auto_extract_and_sync_source_topics
+                        await auto_extract_and_sync_source_topics(
+                            db=session,
+                            workspace_id=req.workspace_id,
+                            source_id=source.id,
+                            title=metadata.title,
+                            source_type="youtube_video",
+                            raw_text=transcript_text,
+                        )
+                    except Exception as e:
+                        logger.warning("Failed to auto-extract topics on background YouTube source import: {}", e)
                 except Exception as e:
                     logger.exception("Background YouTube import error: {}", str(e))
                     raise
@@ -175,7 +189,7 @@ async def import_youtube_source(
         else:
             source = Source(
                 workspace_id=req.workspace_id,
-                folder_id=req.folder_id,
+                folder_id=effective_folder_id,
                 user_id=user.id,
                 source_type="youtube_video",
                 title=metadata.title,
@@ -187,6 +201,20 @@ async def import_youtube_source(
 
         await db.commit()
         await db.refresh(source)
+
+        try:
+            from app.services.mastery_service import auto_extract_and_sync_source_topics
+            await auto_extract_and_sync_source_topics(
+                db=db,
+                workspace_id=req.workspace_id,
+                source_id=source.id,
+                title=metadata.title,
+                source_type="youtube_video",
+                raw_text=transcript_text,
+            )
+        except Exception as e:
+            logger.warning("Failed to auto-extract topics on YouTube source import: {}", e)
+
         return _source_to_response(source)
 
     except Exception as e:

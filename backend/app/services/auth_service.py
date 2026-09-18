@@ -3,6 +3,7 @@ import jwt as pyjwt
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -46,9 +47,12 @@ async def get_optional_user(
 
     # Try Supabase token verification first
     if config.get("supabase_url"):
-        user = await get_local_user_from_supabase_token(token, db)
-        if user:
-            return user
+        try:
+            user = await get_local_user_from_supabase_token(token, db)
+            if user:
+                return user
+        except Exception as e:
+            logger.warning("Supabase token resolution error in get_optional_user: {}", e)
 
     # Fall back to legacy JWT
     payload = decode_token(token)
@@ -75,9 +79,12 @@ async def get_current_user(
 
     # Try Supabase token verification first
     if config.get("supabase_url"):
-        user = await get_local_user_from_supabase_token(token, db)
-        if user:
-            return user
+        try:
+            user = await get_local_user_from_supabase_token(token, db)
+            if user:
+                return user
+        except Exception as e:
+            logger.warning("Supabase token resolution error in get_current_user: {}", e)
 
     # Fall back to legacy JWT
     payload = decode_token(token)

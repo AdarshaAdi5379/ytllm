@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Trash2, Loader2, Sparkles, Brain, ChevronRight, ChevronDown, BarChart3 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Sparkles, Brain, ChevronRight, ChevronDown, BarChart3, Target } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useQuizStore } from '../../store/useQuizStore';
 import { fetchSources, type SourceItem } from '../../api/workspace';
@@ -25,6 +25,7 @@ export function QuizPanel() {
   const [selectedQuizType, setSelectedQuizType] = useState<QuizType>('mcq');
   const [questionCount, setQuestionCount] = useState(5);
   const [timeLimit, setTimeLimit] = useState<number>(0);
+  const [prioritizeWeakTopics, setPrioritizeWeakTopics] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [filterType, setFilterType] = useState('');
 
@@ -69,6 +70,7 @@ export function QuizPanel() {
         selectedQuizType,
         questionCount,
         timeLimit > 0 ? timeLimit : undefined,
+        prioritizeWeakTopics,
       );
       setShowGenerate(false);
       setSelectedSourceId('');
@@ -186,6 +188,19 @@ export function QuizPanel() {
                   className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-emerald-400"
                 />
               </div>
+            </div>
+            <div className="flex items-center gap-2 pt-0.5">
+              <input
+                type="checkbox"
+                id="prioritizeWeakTopics"
+                checked={prioritizeWeakTopics}
+                onChange={(e) => setPrioritizeWeakTopics(e.target.checked)}
+                className="rounded text-emerald-600 focus:ring-emerald-400 h-3.5 w-3.5 cursor-pointer"
+              />
+              <label htmlFor="prioritizeWeakTopics" className="text-xs text-gray-700 cursor-pointer flex items-center gap-1">
+                <Target size={12} className="text-amber-500" />
+                Prioritize questions on weak topics & focus areas
+              </label>
             </div>
             <div className="flex items-center justify-end gap-2">
               <button

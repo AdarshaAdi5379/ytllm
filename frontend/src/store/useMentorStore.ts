@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import type { MentorSessionItem, MentorMessage, RespondResult, EndSessionResult } from '../api/mentor';
+import type { TopicMasteryItem } from '../api/progress';
 import * as mentorApi from '../api/mentor';
+import { notifyMasteryUpdated } from './syncMastery';
 
 interface MentorStore {
   sessions: MentorSessionItem[];
+  weakTopics: TopicMasteryItem[];
   activeSession: MentorSessionItem | null;
   messages: MentorMessage[];
   respondResult: RespondResult | null;
@@ -11,9 +14,17 @@ interface MentorStore {
   loading: boolean;
   responding: boolean;
   starting: boolean;
+  loadingWeakTopics: boolean;
 
   loadSessions: (workspaceId: string) => Promise<void>;
-  startSession: (workspaceId: string, topic: string, sourceIds?: string[], context?: string) => Promise<string | null>;
+  loadWeakTopics: (workspaceId: string) => Promise<void>;
+  startSession: (
+    workspaceId: string,
+    topic: string,
+    topicId?: string,
+    sourceIds?: string[],
+    context?: string
+  ) => Promise<string | null>;
   respond: (answer: string) => Promise<RespondResult | null>;
   endSession: () => Promise<EndSessionResult | null>;
   loadSession: (sessionId: string) => Promise<void>;
@@ -23,6 +34,7 @@ interface MentorStore {
 
 export const useMentorStore = create<MentorStore>()((set, get) => ({
   sessions: [],
+  weakTopics: [],
   activeSession: null,
   messages: [],
   respondResult: null,
@@ -30,6 +42,7 @@ export const useMentorStore = create<MentorStore>()((set, get) => ({
   loading: false,
   responding: false,
   starting: false,
+  loadingWeakTopics: false,
 
   loadSessions: async (workspaceId) => {
     set({ loading: true });
@@ -41,10 +54,20 @@ export const useMentorStore = create<MentorStore>()((set, get) => ({
     }
   },
 
-  startSession: async (workspaceId, topic, sourceIds, context) => {
+  loadWeakTopics: async (workspaceId) => {
+    set({ loadingWeakTopics: true });
+    try {
+      const weakTopics = await mentorApi.fetchWeakFocusTopics(workspaceId);
+      set({ weakTopics, loadingWeakTopics: false });
+    } catch {
+      set({ loadingWeakTopics: false });
+    }
+  },
+
+  startSession: async (workspaceId, topic, topicId, sourceIds, context) => {
     set({ starting: true, endResult: null });
     try {
-      const result = await mentorApi.startMentorSession(workspaceId, topic, sourceIds, context);
+      const result = await mentorApi.startMentorSession(workspaceId, topic, topicId, sourceIds, context);
       const aiMsg: MentorMessage = {
         role: 'ai',
         content: result.first_question,
@@ -94,6 +117,7 @@ export const useMentorStore = create<MentorStore>()((set, get) => ({
         set({ endResult, activeSession: { ...get().activeSession!, status: 'completed' } });
       }
 
+      notifyMasteryUpdated(activeSession.workspace_id);
       return result;
     } catch {
       set({ responding: false });
@@ -110,6 +134,7 @@ export const useMentorStore = create<MentorStore>()((set, get) => ({
         endResult: result,
         activeSession: { ...activeSession, status: 'completed' },
       });
+      notifyMasteryUpdated(activeSession.workspace_id);
       return result;
     } catch {
       return null;

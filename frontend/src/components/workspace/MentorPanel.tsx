@@ -142,12 +142,14 @@ export function MentorPanel() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const {
     sessions, activeSession, messages, respondResult, endResult,
+    weakTopics, loadingWeakTopics,
     loading, responding, starting,
-    loadSessions, startSession, respond, endSession, loadSession, deleteSession, clearActiveSession,
+    loadSessions, loadWeakTopics, startSession, respond, endSession, loadSession, deleteSession, clearActiveSession,
   } = useMentorStore();
 
   const [view, setView] = useState<'list' | 'active' | 'detail'>('list');
   const [topic, setTopic] = useState('');
+  const [selectedTopicId, setSelectedTopicId] = useState<string | undefined>(undefined);
   const [answer, setAnswer] = useState('');
   const [detailSession, setDetailSession] = useState<MentorSessionItem | null>(null);
   const [detailMessages, setDetailMessages] = useState<MentorMessage[]>([]);
@@ -157,6 +159,7 @@ export function MentorPanel() {
   useEffect(() => {
     if (activeWorkspaceId && isAuthenticated) {
       loadSessions(activeWorkspaceId);
+      loadWeakTopics(activeWorkspaceId);
     }
   }, [activeWorkspaceId, isAuthenticated]);
 
@@ -164,12 +167,16 @@ export function MentorPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleStart = async () => {
-    if (!activeWorkspaceId || !topic.trim()) return;
-    const sessionId = await startSession(activeWorkspaceId, topic.trim());
+  const handleStart = async (customTopic?: string, customTopicId?: string) => {
+    if (!activeWorkspaceId) return;
+    const targetTopic = (customTopic || topic).trim();
+    const targetTopicId = customTopicId || selectedTopicId;
+    if (!targetTopic) return;
+    const sessionId = await startSession(activeWorkspaceId, targetTopic, targetTopicId);
     if (sessionId) {
       setView('active');
       setTopic('');
+      setSelectedTopicId(undefined);
     }
   };
 
@@ -348,22 +355,66 @@ export function MentorPanel() {
                 </div>
               </div>
 
-              <input
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleStart(); }}
-                placeholder="e.g., Machine Learning, BFS vs DFS, React hooks..."
-                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 mb-3"
-              />
+              <div className="mb-4">
+                <input
+                  value={topic}
+                  onChange={(e) => {
+                    setTopic(e.target.value);
+                    setSelectedTopicId(undefined);
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleStart(); }}
+                  placeholder="e.g., Machine Learning, BFS vs DFS, React hooks..."
+                  className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 mb-3"
+                />
 
-              <button
-                onClick={handleStart}
-                disabled={!topic.trim() || starting}
-                className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 rounded-lg hover:from-violet-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {starting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                {starting ? 'Starting...' : 'Start Session'}
-              </button>
+                <button
+                  onClick={() => handleStart()}
+                  disabled={!topic.trim() || starting}
+                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 rounded-lg hover:from-violet-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {starting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  {starting ? 'Starting...' : 'Start Session'}
+                </button>
+              </div>
+
+              {/* Focus Areas (Weak Topics) */}
+              {weakTopics.length > 0 && (
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <Target size={13} className="text-amber-500" />
+                    <span className="text-xs font-semibold text-gray-700">Focus Areas (Weak Topics)</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {weakTopics.map((wt) => (
+                      <div
+                        key={wt.topic_id}
+                        className="flex items-center justify-between p-2.5 bg-gray-50/80 hover:bg-violet-50/50 border border-gray-150 hover:border-violet-200 rounded-lg transition-all"
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-gray-800 truncate">{wt.topic_name}</span>
+                            <span className={`px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase ${
+                              wt.status === 'weak' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {wt.status}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            Mastery: {Math.round(wt.mastery_score)}% • {wt.total_attempts} attempts
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleStart(wt.topic_name, wt.topic_id)}
+                          disabled={starting}
+                          className="flex-shrink-0 px-2.5 py-1 text-[11px] font-semibold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-md transition-all"
+                        >
+                          Start
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useVideoStore } from '../../store/useVideoStore';
 import { useAppStore } from '../../store/useAppStore';
 import { useImportStore } from '../../store/useImportStore';
 import { ImportNotifications } from './ImportNotifications';
@@ -32,7 +31,6 @@ export function WorkspaceSidebarContent() {
     createFolder, renameFolder, removeFolder, loadFolderTree,
   } = useWorkspaceStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const openAddVideoModal = useVideoStore((s) => s.openAddVideoModal);
   const viewMode = useAppStore((s) => s.viewMode);
   const setViewMode = useAppStore((s) => s.setViewMode);
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
@@ -295,7 +293,7 @@ export function WorkspaceSidebarContent() {
       {/* Add source */}
       <div className="px-3 mb-1">
         <AddSourceMenu
-          onYouTubeImport={openAddVideoModal}
+          onYouTubeImport={handleImportYoutube}
           onWebsiteImport={async (url) => {
             if (!activeWorkspaceId) return;
             const jobId = addJob('website_page', url);

@@ -226,6 +226,143 @@ async def generate_quiz(
         raise
 
 
+NON_MCQ_EVALUATION_PROMPT = """You are an expert grading assistant.
+Grade the learner's answer to the following question.
+
+Question Type: {quiz_type}
+Question: {question}
+Expected Answer / Rubric / Solution: {expected}
+Key Points: {key_points}
+
+Learner's Answer:
+{user_answer}
+
+Evaluate the learner's response for factual correctness, conceptual understanding, and completeness.
+Return a JSON object with:
+- "score": Float between 0.0 and 1.0 (e.g. 1.0 for completely correct/sufficient, 0.5-0.8 for partially correct, 0.0 for incorrect/irrelevant)
+- "is_correct": Boolean (true if score >= 0.6, false otherwise)
+- "feedback": Short 1-2 sentence explanation of the grade
+
+JSON:"""
+
+
+def _heuristic_grade_non_mcq(q: dict, user_ans: str) -> tuple[bool, float]:
+    """Fallback grading heuristic when LLM is unavailable."""
+    clean_user = user_ans.strip().lower()
+    if not clean_user:
+        return False, 0.0
+
+    expected = str(q.get("expected_answer") or q.get("expected_solution") or "").strip().lower()
+    if expected and clean_user == expected:
+        return True, 1.0
+
+    # Check key points / keywords if present
+    key_points = q.get("key_points") or q.get("expected_key_points") or []
+    if key_points:
+        matched_kp = sum(1 for kp in key_points if str(kp).lower() in clean_user)
+        ratio = matched_kp / len(key_points)
+        if ratio >= 0.6:
+            return True, round(ratio, 2)
+        elif ratio > 0.2:
+            return False, round(ratio, 2)
+
+    # Substring / overlap check
+    if expected and (expected in clean_user or clean_user in expected):
+        return True, 0.8
+
+    # Non-empty meaningful attempt heuristic
+    if len(clean_user.split()) >= 4:
+        return True, 0.6
+
+    return False, 0.0
+
+
+async def evaluate_non_mcq_answer(q: dict, user_ans: str) -> tuple[bool, float, str]:
+    """Grade a non-MCQ answer using LLM with heuristic fallback."""
+    clean_user = str(user_ans).strip()
+    if not clean_user:
+        return False, 0.0, "No answer provided."
+
+    expected = str(q.get("expected_answer") or q.get("expected_solution") or q.get("rubric") or "")
+    key_points = str(q.get("key_points") or q.get("expected_key_points") or "")
+
+    prompt = NON_MCQ_EVALUATION_PROMPT.format(
+        quiz_type=q.get("type", "short_answer"),
+        question=q.get("question", ""),
+        expected=expected,
+        key_points=key_points,
+        user_answer=clean_user,
+    )
+
+    try:
+        raw = await llm_service.generate_text(prompt, temperature=0.2, max_tokens=256)
+        cleaned = raw.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+        parsed = json.loads(cleaned)
+        if isinstance(parsed, dict):
+            score = float(parsed.get("score", 0.0))
+            score = max(0.0, min(1.0, score))
+            is_correct = bool(parsed.get("is_correct", score >= 0.6))
+            feedback = str(parsed.get("feedback", ""))
+            return is_correct, score, feedback
+    except Exception as e:
+        logger.warning("LLM non-mcq answer evaluation failed, using fallback: {}", e)
+
+    is_corr, sc = _heuristic_grade_non_mcq(q, clean_user)
+    return is_corr, sc, "Evaluated with standard criteria."
+
+
+async def score_quiz_async(
+    questions: list[dict], answers: list[dict]
+) -> tuple[int, int, list[dict]]:
+    """Score a quiz asynchronously supporting both MCQ and non-MCQ grading."""
+    score = 0
+    max_score = len(questions)
+    details: list[dict] = []
+
+    answer_map = {a.get("question_id"): a.get("answer") for a in answers}
+
+    for q in questions:
+        qid = q.get("id")
+        topic = q.get("topic")
+        user_ans = answer_map.get(qid)
+        is_correct = False
+        item_score = 0.0
+
+        if user_ans is not None:
+            # Check if MCQ
+            if q.get("type") == "mcq" or "options" in q:
+                correct = q.get("correct_answer")
+                if isinstance(user_ans, int) and user_ans == correct:
+                    is_correct = True
+                    item_score = 1.0
+                elif isinstance(user_ans, str) and user_ans.isdigit():
+                    if int(user_ans) == correct:
+                        is_correct = True
+                        item_score = 1.0
+            else:
+                # Non-MCQ: Evaluate via LLM / heuristic
+                is_correct, item_score, _ = await evaluate_non_mcq_answer(q, str(user_ans))
+
+        if is_correct:
+            score += 1
+
+        details.append({
+            "question_id": qid,
+            "topic": topic,
+            "is_correct": is_correct,
+            "score": item_score,
+        })
+
+    return score, max_score, details
+
+
 def score_quiz(questions: list[dict], answers: list[dict]) -> tuple[int, int]:
     """Score a quiz. Returns (score, max_score)."""
     score, max_score, _ = score_quiz_with_details(questions, answers)
@@ -247,19 +384,20 @@ def score_quiz_with_details(
         topic = q.get("topic")
         user_ans = answer_map.get(qid)
         is_correct = False
+        item_score = 0.0
 
         if user_ans is not None:
             if q.get("type") == "mcq" or "options" in q:
                 correct = q.get("correct_answer")
                 if isinstance(user_ans, int) and user_ans == correct:
                     is_correct = True
+                    item_score = 1.0
                 elif isinstance(user_ans, str) and user_ans.isdigit():
                     if int(user_ans) == correct:
                         is_correct = True
+                        item_score = 1.0
             else:
-                expected = q.get("expected_answer") or q.get("expected_solution") or ""
-                if user_ans and expected and str(user_ans).strip().lower() == expected.strip().lower():
-                    is_correct = True
+                is_correct, item_score = _heuristic_grade_non_mcq(q, str(user_ans))
 
         if is_correct:
             score += 1
@@ -268,6 +406,7 @@ def score_quiz_with_details(
             "question_id": qid,
             "topic": topic,
             "is_correct": is_correct,
+            "score": item_score,
         })
 
     return score, max_score, details

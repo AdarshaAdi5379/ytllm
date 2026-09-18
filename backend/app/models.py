@@ -82,7 +82,7 @@ class ProfileUpdate(BaseModel):
 
 class UserResponse(BaseModel):
     id: str
-    email: str
+    email: str | None = None
     display_name: str | None = None
     avatar_url: str | None = None
     auth_provider: str | None = None
@@ -91,7 +91,7 @@ class UserResponse(BaseModel):
 
 class ProfileResponse(BaseModel):
     id: str
-    email: str
+    email: str | None = None
     display_name: str | None = None
     avatar_url: str | None = None
     auth_provider: str | None = None
@@ -482,6 +482,7 @@ class TopicDetailResponse(BaseModel):
     topic: TopicMasteryResponse
     related_flashcards: list[FlashcardResponse] = []
     related_quizzes: list[dict] = []
+    related_mentor_sessions: list[dict] = []
     recent_performance: list[dict] = []
 
 
@@ -539,6 +540,7 @@ class MentorMessage(BaseModel):
 class MentorSessionResponse(BaseModel):
     id: str
     workspace_id: str
+    topic_id: str | None = None
     topic: str
     source_ids: str = "[]"
     messages: str = "[]"
@@ -554,6 +556,7 @@ class MentorSessionResponse(BaseModel):
 class StartMentorSessionRequest(BaseModel):
     workspace_id: str
     topic: str
+    topic_id: str | None = None
     source_ids: list[str] = []
     context: str = ""
 

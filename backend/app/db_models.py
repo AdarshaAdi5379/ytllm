@@ -368,6 +368,7 @@ class MentorSession(Base):
     id = Column(String, primary_key=True, default=_uuid)
     workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    topic_id = Column(String, ForeignKey("topics.id"), nullable=True)
     topic = Column(String, nullable=False)
     source_ids = Column(Text, default="[]")
     messages = Column(Text, default="[]")
@@ -381,10 +382,12 @@ class MentorSession(Base):
 
     workspace = relationship("Workspace")
     user = relationship("User")
+    topic_obj = relationship("Topic")
 
     __table_args__ = (
         Index("ix_mentor_sessions_status", "status"),
         Index("ix_mentor_sessions_topic", "topic"),
+        Index("ix_mentor_sessions_topic_id", "topic_id"),
     )
 
 

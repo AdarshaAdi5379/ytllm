@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { TopicMasteryItem } from './progress';
 
 export interface MentorMessage {
   role: 'ai' | 'user';
@@ -12,6 +13,7 @@ export interface MentorMessage {
 export interface MentorSessionItem {
   id: string;
   workspace_id: string;
+  topic_id?: string | null;
   topic: string;
   source_ids: string;
   messages: string;
@@ -31,6 +33,7 @@ export interface StartSessionResult {
 
 export interface RespondResult {
   session_id: string;
+  topic_id?: string | null;
   evaluation: string | null;
   explanation: string;
   follow_up_question: string;
@@ -43,6 +46,7 @@ export interface RespondResult {
 
 export interface EndSessionResult {
   session_id: string;
+  topic_id?: string | null;
   summary: string;
   gap_report: Array<{ concept: string; explanation: string; suggested_review: string }>;
   topics_covered: string[];
@@ -54,9 +58,14 @@ export interface EndSessionResult {
   recommended_focus: string;
 }
 
+export async function fetchWeakFocusTopics(workspaceId: string): Promise<TopicMasteryItem[]> {
+  return apiFetch<TopicMasteryItem[]>(`/ai/mentor/weak-topics?workspace_id=${workspaceId}`);
+}
+
 export async function startMentorSession(
   workspaceId: string,
   topic: string,
+  topicId?: string,
   sourceIds: string[] = [],
   context: string = '',
 ): Promise<StartSessionResult> {
@@ -65,6 +74,7 @@ export async function startMentorSession(
     body: JSON.stringify({
       workspace_id: workspaceId,
       topic,
+      topic_id: topicId || null,
       source_ids: sourceIds,
       context,
     }),

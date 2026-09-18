@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db, async_session
 from app.db_models import User, Source, Workspace, Folder
 from app.models import SourceResponse
-from app.services.auth_service import get_current_user
+from app.services.auth_service import get_current_user, verify_workspace_access
 from app.services import embedding_service
 from app.services.docx_service import process_docx
 from app.services.task_service import create_task
@@ -42,18 +42,18 @@ async def import_docx_source(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    ws_result = await db.execute(
-        select(Workspace).where(
-            Workspace.id == workspace_id, Workspace.owner_id == user.id
-        )
-    )
-    if not ws_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": "Workspace not found."})
+    await verify_workspace_access(db, workspace_id, user.id)
 
-    if folder_id:
+    effective_folder_id = (
+        folder_id.strip()
+        if folder_id and folder_id.strip() and folder_id.strip() not in ("null", "undefined", "__none__", "None")
+        else None
+    )
+
+    if effective_folder_id:
         folder_result = await db.execute(
             select(Folder).where(
-                Folder.id == folder_id, Folder.workspace_id == workspace_id
+                Folder.id == effective_folder_id, Folder.workspace_id == workspace_id
             )
         )
         if not folder_result.scalar_one_or_none():
@@ -91,7 +91,7 @@ async def import_docx_source(
                     else:
                         source = Source(
                             workspace_id=workspace_id,
-                            folder_id=folder_id,
+                            folder_id=effective_folder_id,
                             user_id=user.id,
                             source_type="docx_document",
                             title=docx.title,
@@ -101,6 +101,20 @@ async def import_docx_source(
                         )
                         session.add(source)
                     await session.commit()
+                    await session.refresh(source)
+
+                    try:
+                        from app.services.mastery_service import auto_extract_and_sync_source_topics
+                        await auto_extract_and_sync_source_topics(
+                            db=session,
+                            workspace_id=workspace_id,
+                            source_id=source.id,
+                            title=docx.title,
+                            source_type="docx_document",
+                            raw_text=docx.text,
+                        )
+                    except Exception as e:
+                        logger.warning("Failed to auto-extract topics on background DOCX import: {}", e)
                 except Exception as e:
                     logger.exception("Background DOCX import error: {}", str(e))
                     raise
@@ -135,7 +149,7 @@ async def import_docx_source(
         else:
             source = Source(
                 workspace_id=workspace_id,
-                folder_id=folder_id,
+                folder_id=effective_folder_id,
                 user_id=user.id,
                 source_type="docx_document",
                 title=docx.title,
@@ -147,6 +161,20 @@ async def import_docx_source(
 
         await db.commit()
         await db.refresh(source)
+
+        try:
+            from app.services.mastery_service import auto_extract_and_sync_source_topics
+            await auto_extract_and_sync_source_topics(
+                db=db,
+                workspace_id=workspace_id,
+                source_id=source.id,
+                title=docx.title,
+                source_type="docx_document",
+                raw_text=docx.text,
+            )
+        except Exception as e:
+            logger.warning("Failed to auto-extract topics on DOCX import: {}", e)
+
         return _source_to_response(source)
 
     except HTTPException:

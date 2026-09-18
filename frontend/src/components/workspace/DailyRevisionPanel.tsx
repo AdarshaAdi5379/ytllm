@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import {
   Loader2, CheckCircle, Clock, Brain, BookOpen,
   AlertTriangle, TrendingUp, Sparkles, Zap, ChevronRight, X,
+  Target, MessageSquare,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useDailyRevisionStore } from '../../store/useDailyRevisionStore';
+import { useAppStore } from '../../store/useAppStore';
+import { useMentorStore } from '../../store/useMentorStore';
 
 export function DailyRevisionPanel() {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
@@ -20,6 +23,16 @@ export function DailyRevisionPanel() {
 
   const toggleAnswer = (id: string) => {
     setShowAnswers((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handlePracticeWithMentor = async (topicName: string, topicId: string) => {
+    if (!activeWorkspaceId) return;
+    await useMentorStore.getState().startSession(activeWorkspaceId, topicName, topicId);
+    useAppStore.getState().setViewMode('mentor');
+  };
+
+  const handlePracticeWithQuiz = () => {
+    useAppStore.getState().setViewMode('quiz');
   };
 
   if (!activeWorkspaceId) return null;
@@ -136,6 +149,75 @@ export function DailyRevisionPanel() {
             <p className="text-[10px] text-gray-400 mt-1">
               {summary.learning_path.completed} of {summary.learning_path.total} topics
             </p>
+          </div>
+        )}
+
+        {/* Adaptive Focus Topics (from Mastery Engine) */}
+        {summary?.focus_topics && summary.focus_topics.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target size={15} className="text-rose-500" />
+                <span className="text-xs font-semibold text-gray-800 uppercase tracking-wider">
+                  Adaptive Focus Topics
+                </span>
+              </div>
+              <span className="text-[10px] font-mono bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-medium">
+                {summary.focus_topics.length} priority {summary.focus_topics.length === 1 ? 'topic' : 'topics'}
+              </span>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {summary.focus_topics.map((topic) => {
+                const isWeak = topic.status === 'weak';
+                const score = Math.round(topic.mastery_score);
+                return (
+                  <div key={topic.topic_id} className="p-4 hover:bg-slate-50/70 transition-colors space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-900">{topic.topic_name}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            isWeak ? 'bg-rose-50 text-rose-600 border border-rose-100' :
+                            'bg-amber-50 text-amber-600 border border-amber-100'
+                          }`}>
+                            {topic.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                          <span>Mastery: <strong className="text-gray-700">{score}%</strong></span>
+                          <span>•</span>
+                          <span>Revision Priority: <strong className="text-gray-700">{topic.revision_priority}</strong></span>
+                        </p>
+                      </div>
+
+                      <span className={`text-[11px] px-2.5 py-1 rounded-md font-medium flex-shrink-0 ${
+                        isWeak ? 'bg-rose-50 text-rose-600 border border-rose-100' :
+                        'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                      }`}>
+                        {topic.next_recommended_action}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => handlePracticeWithMentor(topic.topic_name, topic.topic_id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                      >
+                        <MessageSquare size={12} />
+                        Practice with AI Mentor
+                      </button>
+                      <button
+                        onClick={handlePracticeWithQuiz}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                      >
+                        <BookOpen size={12} />
+                        Take Quiz
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

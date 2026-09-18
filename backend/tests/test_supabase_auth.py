@@ -227,10 +227,59 @@ class TestGetLocalUserFromSupabaseToken(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user.password_hash, "existing_hash")  # Preserved
 
 
+    async def test_links_user_with_different_supabase_user_id_by_email(self):
+        existing_user = User(
+            supabase_user_id="old-supabase-id",
+            email="existing@example.com",
+            password_hash=None,
+            display_name="Existing User",
+            avatar_url=None,
+        )
+
+        mock_db = AsyncMock()
+        exec_result1 = MagicMock()
+        exec_result1.scalar_one_or_none.return_value = None  # No match by new supabase_user_id
+        exec_result2 = MagicMock()
+        exec_result2.scalar_one_or_none.return_value = existing_user  # Found by email
+
+        mock_db.execute.side_effect = [exec_result1, exec_result2]
+
+        supabase_payload = {
+            "sub": "new-supabase-id-after-reauth",
+            "email": "existing@example.com",
+            "app_metadata": {"provider": "google"},
+            "user_metadata": {
+                "full_name": "Updated Full Name",
+            },
+        }
+
+        user = await upsert_local_user(mock_db, supabase_payload)
+
+        self.assertEqual(user, existing_user)
+        self.assertEqual(user.supabase_user_id, "new-supabase-id-after-reauth")
+        self.assertEqual(user.auth_provider, "google")
+        self.assertEqual(user.display_name, "Updated Full Name")
+
+    async def test_creates_user_with_fallback_email_when_email_missing(self):
+        mock_db = AsyncMock()
+        exec_result = MagicMock()
+        exec_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=exec_result)
+
+        supabase_payload = {
+            "sub": "no-email-user-id",
+            "user_metadata": {},
+        }
+
+        user = await upsert_local_user(mock_db, supabase_payload)
+
+        self.assertEqual(user.supabase_user_id, "no-email-user-id")
+        self.assertEqual(user.email, "no-email-user-id@supabase.user")
+
+
 class TestGetCurrentUserFallback(unittest.TestCase):
 
     def test_missing_credentials_raises(self):
-        # Should raise 401 regardless of which auth path
         pass
 
 

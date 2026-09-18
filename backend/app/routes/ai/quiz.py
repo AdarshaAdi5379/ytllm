@@ -220,7 +220,7 @@ async def submit_quiz(
 
     questions = json.loads(quiz.questions or "[]")
     answers = [a.model_dump() for a in req.answers]
-    score, max_score, details = quiz_service.score_quiz_with_details(questions, answers)
+    score, max_score, details = await quiz_service.score_quiz_async(questions, answers)
 
     quiz.score = score
     quiz.max_score = max_score
@@ -247,7 +247,7 @@ async def submit_quiz(
                     item_type="quiz",
                     item_id=quiz.id,
                     is_correct=item["is_correct"],
-                    score=1.0 if item["is_correct"] else 0.0,
+                    score=item.get("score", 1.0 if item["is_correct"] else 0.0),
                 )
             except Exception as e:
                 logger.warning("Failed to record topic mastery for quiz item: {}", e)

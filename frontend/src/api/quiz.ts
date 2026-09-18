@@ -73,6 +73,7 @@ export async function generateQuiz(
   quizType: string = 'mcq',
   count: number = 5,
   timeLimitMinutes?: number,
+  prioritizeWeakTopics?: boolean,
 ): Promise<QuizItem> {
   return apiFetch<QuizItem>('/ai/quiz/generate', {
     method: 'POST',
@@ -81,6 +82,7 @@ export async function generateQuiz(
       quiz_type: quizType,
       count,
       time_limit_minutes: timeLimitMinutes ?? null,
+      prioritize_weak_topics: prioritizeWeakTopics ?? false,
     }),
   });
 }

@@ -3,6 +3,7 @@ import { Plus, Trash2, Loader2, Check, X, Search, ChevronRight, ChevronDown, Bra
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useFlashcardStore } from '../../store/useFlashcardStore';
 import { fetchSources, type SourceItem } from '../../api/workspace';
+import { fetchTopicMasteries } from '../../api/progress';
 import { DIFFICULTIES } from '../../api/flashcards';
 import FlashcardReview from './FlashcardReview';
 
@@ -30,6 +31,8 @@ export function FlashcardPanel() {
   const [newQuestion, setNewQuestion] = useState('');
   const [newAnswer, setNewAnswer] = useState('');
   const [newDifficulty, setNewDifficulty] = useState('medium');
+  const [topics, setTopics] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedTopicId, setSelectedTopicId] = useState('');
 
   // Generate form
   const [showGenerateForm, setShowGenerateForm] = useState(false);
@@ -75,11 +78,27 @@ export function FlashcardPanel() {
     }
   }, [activeWorkspaceId]);
 
+  const loadTopics = useCallback(async () => {
+    if (!activeWorkspaceId) return;
+    try {
+      const items = await fetchTopicMasteries(activeWorkspaceId);
+      setTopics(items.map((t) => ({ id: t.topic_id, name: t.topic_name })));
+    } catch {
+      setTopics([]);
+    }
+  }, [activeWorkspaceId]);
+
   useEffect(() => {
     if (showGenerateForm && sources.length === 0) {
       loadSources();
     }
   }, [showGenerateForm]);
+
+  useEffect(() => {
+    if (showCreateForm) {
+      loadTopics();
+    }
+  }, [showCreateForm]);
 
   // Filtered flashcards
   const filteredCards = flashcards.filter((c) => {
@@ -93,10 +112,18 @@ export function FlashcardPanel() {
 
   const handleCreate = async () => {
     if (!activeWorkspaceId || !newQuestion.trim() || !newAnswer.trim()) return;
-    await createFlashcard(activeWorkspaceId, newQuestion.trim(), newAnswer.trim(), newDifficulty);
+    await createFlashcard(
+      activeWorkspaceId,
+      newQuestion.trim(),
+      newAnswer.trim(),
+      newDifficulty,
+      undefined,
+      selectedTopicId || undefined,
+    );
     setNewQuestion('');
     setNewAnswer('');
     setNewDifficulty('medium');
+    setSelectedTopicId('');
     setShowCreateForm(false);
     loadStats(activeWorkspaceId);
   };
@@ -337,6 +364,18 @@ export function FlashcardPanel() {
               rows={3}
               className="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 resize-none"
             />
+            {topics.length > 0 && (
+              <select
+                value={selectedTopicId}
+                onChange={(e) => setSelectedTopicId(e.target.value)}
+                className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-400 text-gray-700"
+              >
+                <option value="">Auto-detect / default topic</option>
+                {topics.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            )}
             <div className="flex items-center gap-2">
               <select
                 value={newDifficulty}

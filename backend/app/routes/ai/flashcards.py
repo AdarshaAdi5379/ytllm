@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services.auth_service import get_current_user, verify_workspace_access
-from app.db_models import User, Flashcard, Source
+from app.db_models import User, Flashcard, Source, Topic
 from app.models import (
     FlashcardResponse,
     CreateFlashcardRequest,
@@ -25,6 +25,51 @@ from app.services.spaced_repetition import calculate_next_review
 router = APIRouter()
 
 DIFFICULTIES = {"easy", "medium", "hard"}
+
+
+async def _resolve_flashcard_topic(
+    db: AsyncSession,
+    workspace_id: str,
+    source_id: str | None = None,
+    tags: list[str] | None = None,
+    question: str = "",
+) -> str | None:
+    """Resolve an appropriate topic ID for a flashcard based on tags, source, or workspace topics."""
+    # 1. Try tags if any
+    if tags:
+        for tag in tags:
+            tag_clean = tag.strip()
+            if tag_clean:
+                matched = await mastery_service.find_matching_topic(db, workspace_id, tag_clean)
+                if matched:
+                    return matched.id
+        for tag in tags:
+            tag_clean = tag.strip()
+            if tag_clean:
+                top = await mastery_service.get_or_create_topic_by_name(db, workspace_id, tag_clean, source_id=source_id)
+                return top.id
+
+    # 2. Try source if any
+    if source_id:
+        stmt = select(Topic).where(Topic.workspace_id == workspace_id, Topic.source_id == source_id)
+        source_topics = (await db.execute(stmt)).scalars().all()
+        if source_topics:
+            return source_topics[0].id
+
+    # 3. Fallback: check all workspace topics against words in question
+    stmt = select(Topic).where(Topic.workspace_id == workspace_id)
+    all_topics = (await db.execute(stmt)).scalars().all()
+    if all_topics:
+        if question:
+            q_lower = question.lower()
+            for t in all_topics:
+                if t.name.lower() in q_lower:
+                    return t.id
+        return all_topics[0].id
+
+    # 4. If workspace has no topics at all, create a General topic
+    gen_topic = await mastery_service.get_or_create_topic_by_name(db, workspace_id, "General", source_id=source_id)
+    return gen_topic.id
 
 
 def _fc_to_response(fc: Flashcard) -> FlashcardResponse:
@@ -123,10 +168,20 @@ async def create_flashcard(
             detail={"error": "EMPTY_FIELDS", "message": "Question and answer cannot be empty."},
         )
 
+    topic_id = req.topic_id
+    if not topic_id:
+        topic_id = await _resolve_flashcard_topic(
+            db=db,
+            workspace_id=req.workspace_id,
+            source_id=req.source_id,
+            tags=req.tags,
+            question=req.question,
+        )
+
     fc = Flashcard(
         workspace_id=req.workspace_id,
         source_id=req.source_id,
-        topic_id=req.topic_id,
+        topic_id=topic_id,
         user_id=user.id,
         question=req.question,
         answer=req.answer,
@@ -444,6 +499,26 @@ async def review_flashcard(
 
     await db.commit()
     await db.refresh(fc)
+
+    # Ensure flashcard is associated with a topic before recording mastery
+    if not fc.topic_id:
+        tags_list = []
+        if fc.tags:
+            try:
+                tags_list = json.loads(fc.tags)
+            except Exception:
+                pass
+        resolved_id = await _resolve_flashcard_topic(
+            db=db,
+            workspace_id=fc.workspace_id,
+            source_id=fc.source_id,
+            tags=tags_list,
+            question=fc.question,
+        )
+        if resolved_id:
+            fc.topic_id = resolved_id
+            await db.commit()
+            await db.refresh(fc)
 
     # Record performance in Adaptive Mastery Engine
     if fc.topic_id:

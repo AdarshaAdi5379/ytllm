@@ -7,6 +7,7 @@ import { useStandaloneChatStore } from '../../store/useStandaloneChatStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
+import { useVideoStore } from '../../store/useVideoStore';
 import { MoveToWorkspaceDialog } from '../modals/MoveToWorkspaceDialog';
 import { AddSourceMenu } from '../shared/AddSourceMenu';
 
@@ -25,6 +26,7 @@ export function StandaloneSidebarSection() {
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const setActiveVideo = useVideoStore((s) => s.setActiveVideo);
 
   useEffect(() => {
     loadSessions();
@@ -41,6 +43,7 @@ export function StandaloneSidebarSection() {
   const handleNewChat = () => {
     // Ephemeral New Chat: clear active UI state only — no database session is created.
     setActiveSession(null);
+    setActiveVideo(null);
     setSidebarOpen(false);
   };
 
@@ -51,9 +54,9 @@ export function StandaloneSidebarSection() {
     setEditingId(null);
   };
 
-  const handleYouTubeImport = () => {
+  const handleYouTubeImport = async (url: string) => {
     if (!activeSessionId) return;
-    window.dispatchEvent(new CustomEvent('open-add-video-modal'));
+    await addSource(activeSessionId, 'url', { url });
   };
 
   const handleWebsiteImport = async (url: string) => {
@@ -114,7 +117,11 @@ export function StandaloneSidebarSection() {
           visibleSessions.map((s) => (
             <div key={s.id} className="group">
               <div
-                onClick={() => { setActiveSession(s.id); setSidebarOpen(false); }}
+                onClick={() => {
+                  setActiveSession(s.id);
+                  setActiveVideo(null);
+                  setSidebarOpen(false);
+                }}
                 className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all ${
                   activeSessionId === s.id
                     ? 'bg-indigo-600/20 text-white'

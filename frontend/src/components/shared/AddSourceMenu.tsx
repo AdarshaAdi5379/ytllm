@@ -4,7 +4,7 @@ import { Plus, Youtube, Globe, Upload, FileText, Code, Github, Loader2, X, Check
 type SourceType = 'youtube' | 'website' | 'document' | 'markdown' | 'text' | 'github';
 
 interface AddSourceMenuProps {
-  onYouTubeImport: () => void;
+  onYouTubeImport: (url: string) => Promise<void>;
   onWebsiteImport: (url: string) => Promise<void>;
   onDocumentUpload: (file: File) => Promise<void>;
   onMarkdownImport: (title: string, content: string) => Promise<void>;
@@ -56,7 +56,10 @@ export function AddSourceMenu({
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      if (activeType === 'website' && url.trim()) {
+      if (activeType === 'youtube' && url.trim()) {
+        await onYouTubeImport(url.trim());
+        setUrl('');
+      } else if (activeType === 'website' && url.trim()) {
         await onWebsiteImport(url.trim());
         setUrl('');
       } else if (activeType === 'markdown' && text.trim()) {
@@ -121,11 +124,6 @@ export function AddSourceMenu({
                 <button
                   key={item.type}
                   onClick={() => {
-                    if (item.type === 'youtube') {
-                      onYouTubeImport();
-                      setOpen(false);
-                      return;
-                    }
                     if (item.type === 'document') {
                       fileRef.current?.click();
                       return;
@@ -153,13 +151,19 @@ export function AddSourceMenu({
                 </button>
               </div>
 
-              {(activeType === 'website' || activeType === 'github') && (
+              {(activeType === 'youtube' || activeType === 'website' || activeType === 'github') && (
                 <input
                   autoFocus
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                  placeholder={activeType === 'github' ? 'https://github.com/owner/repo' : 'https://...'}
+                  placeholder={
+                    activeType === 'youtube'
+                      ? 'https://www.youtube.com/watch?v=...'
+                      : activeType === 'github'
+                      ? 'https://github.com/owner/repo'
+                      : 'https://...'
+                  }
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-400"
                 />
               )}

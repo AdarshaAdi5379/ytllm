@@ -49,6 +49,15 @@ export interface LearningPathProgress {
   percentage: number;
 }
 
+export interface FocusTopicItem {
+  topic_id: string;
+  topic_name: string;
+  mastery_score: number;
+  status: string;
+  next_recommended_action: string;
+  revision_priority: number;
+}
+
 export interface DailyRevisionSummary {
   date: string;
   flashcards: {
@@ -58,6 +67,7 @@ export interface DailyRevisionSummary {
     due: DueFlashcardItem[];
   };
   weak_areas: WeakAreaItem[];
+  focus_topics?: FocusTopicItem[];
   missed_questions: MissedQuestionItem[];
   low_score_quizzes: LowScoreQuizItem[];
   activity: ActivityItem;
